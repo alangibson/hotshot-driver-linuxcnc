@@ -2918,39 +2918,39 @@ bool setup_once() {
     // Configure TMC-API
     //
     ConfigurationTypeDef tmc5041_chip_config_1 = (ConfigurationTypeDef) {
-        .reset = &tmc5041_chip_1_reset,
-        .restore = &tmc5041_chip_1_restore
+        .reset = &tmc5041_chip1_reset,
+        .restore = &tmc5041_chip1_restore
     };
     ConfigurationTypeDef tmc5041_chip_config_2 = (ConfigurationTypeDef) {
-        .reset = &tmc5041_chip_2_reset,
-        .restore = &tmc5041_chip_2_restore
+        .reset = &tmc5041_chip2_reset,
+        .restore = &tmc5041_chip2_restore
     };
     SPITypeDef spi = (SPITypeDef) {
         .ch1 = (SPIChannelTypeDef) {
             .CSN = &(IOPinTypeDef) {
                 .bitWeight = 0
             },
-            .readWrite = spi_ch1_readWrite,
-            .readWriteArray = spi_ch1_readWriteArray,
-            .reset = reset_ch1
+            .readWrite = spi_chan1_readWrite,
+            .readWriteArray = spi_chan1_readWriteArray,
+            .reset = spi_chan1_reset
         },
         .ch2 = (SPIChannelTypeDef) {
             .CSN = &(IOPinTypeDef) {           
                 .bitWeight = 1
             },
-            .readWrite = spi_ch2_readWrite,
-            .readWriteArray = spi_ch2_readWriteArray,
-            .reset = reset_ch2
+            .readWrite = spi_chan2_readWrite,
+            .readWriteArray = spi_chan2_readWriteArray,
+            .reset = spi_chan2_reset
         }
     };
 
     // Channel is just motor number
     uint8_t channel_0 = 0;
     uint8_t channel_1 = 1;
-    tmc5041_init(&tmc5041_chip_1, channel_0, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_1, channel_1, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_2, channel_0, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_2, channel_1, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
+    tmc5041_init(&TMC5041_CHIP1, channel_0, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
+    tmc5041_init(&TMC5041_CHIP1, channel_1, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
+    tmc5041_init(&TMC5041_CHIP2, channel_0, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
+    tmc5041_init(&TMC5041_CHIP2, channel_1, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
 
     // config_tmc5041(motors, MOTOR_COUNT);
 

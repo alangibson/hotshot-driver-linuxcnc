@@ -17,9 +17,9 @@
 #define PIN_OHMIC_PROBE 4
 #define PIN_TORCH_BREAKAWAY 6
 
-typedef bool pin_enable_t;   // hal_bit_t aka int
-typedef bool pin_is_homing_t;
-typedef bool pin_sg_stop_t;
+typedef bool        pin_enable_t;   // hal_bit_t aka int
+typedef bool        pin_is_homing_t;
+typedef bool        pin_sg_stop_t;
 typedef uint32_t    pin_sg_thresh_t;
 typedef bool        pin_home_sw_t;
 typedef bool        pin_torch_breakaway_t;
@@ -36,9 +36,9 @@ typedef struct {
     bool        is_on;
     float       mm_per_rev;
     uint32_t    microstep_per_mm;
-    uint8_t     tmc_mres;
-    uint32_t    cs_thresh_cmd;      // coolStep threshold in machine units / time
-    uint32_t    tmc_cs_thresh;      // coolStep threshold in ppt for TMC register
+    uint8_t                         tmc_mres;
+    uint32_t                        cs_thresh_cmd;      // coolStep threshold in machine units / time
+    uint32_t                        tmc_cs_thresh;      // coolStep threshold in ppt for TMC register
     // input
     volatile pin_enable_t           * is_enabled;
     bool                            is_homing;

@@ -12,35 +12,35 @@
 
 #include "tmc/helpers/API_Header.h"
 
-#include "hal/derivative.h"
-#include "hal/HAL.h"
-#include "tmc/VitalSignsMonitor.h"
+// #include "hal/derivative.h"
+#include "TMC-EVALSYSTEM/boards/Board.h"
+#include "TMC-EVALSYSTEM/tmc/VitalSignsMonitor.h"
 
-#include "tmc/ic/TMC2130/TMC2130.h"
-#include "tmc/ic/TMC2160/TMC2160.h"
-#include "tmc/ic/TMC2208/TMC2208.h"
-#include "tmc/ic/TMC2224/TMC2224.h"
-#include "tmc/ic/TMC2590/TMC2590.h"
-#include "tmc/ic/TMC2660/TMC2660.h"
-#include "tmc/ic/TMC6100/TMC6100.h"
-#include "tmc/ic/TMC6200/TMC6200.h"
-#include "tmc/ic/TMC7300/TMC7300.h"
+// #include "tmc/ic/TMC2130/TMC2130.h"
+// #include "tmc/ic/TMC2160/TMC2160.h"
+// #include "tmc/ic/TMC2208/TMC2208.h"
+// #include "tmc/ic/TMC2224/TMC2224.h"
+// #include "tmc/ic/TMC2590/TMC2590.h"
+// #include "tmc/ic/TMC2660/TMC2660.h"
+// #include "tmc/ic/TMC6100/TMC6100.h"
+// #include "tmc/ic/TMC6200/TMC6200.h"
+// #include "tmc/ic/TMC7300/TMC7300.h"
 
 
-#include "tmc/ic/TMC2209/TMC2209.h"
-#include "tmc/ic/TMC2225/TMC2225.h"
-#include "tmc/ic/TMC2226/TMC2226.h"
-#include "tmc/ic/TMC2300/TMC2300.h"
-#include "tmc/ic/MAX22216/MAX22216.h"
-#include "tmc/ic/TMC4361A/TMC4361A.h"
-#include "tmc/ic/TMC5031/TMC5031.h"
+// #include "tmc/ic/TMC2209/TMC2209.h"
+// #include "tmc/ic/TMC2225/TMC2225.h"
+// #include "tmc/ic/TMC2226/TMC2226.h"
+// #include "tmc/ic/TMC2300/TMC2300.h"
+// #include "tmc/ic/MAX22216/MAX22216.h"
+// #include "tmc/ic/TMC4361A/TMC4361A.h"
+// #include "tmc/ic/TMC5031/TMC5031.h"
 #include "tmc/ic/TMC5041/TMC5041.h"
-#include "tmc/ic/TMC5062/TMC5062.h"
-#include "tmc/ic/TMC5072/TMC5072.h"
-#include "tmc/ic/TMC5130/TMC5130.h"
-#include "tmc/ic/TMC5160/TMC5160.h"
-#include "tmc/ic/TMC8461/TMC8461.h"
-#include "tmc/ic/TMC8462/TMC8462.h"
+// #include "tmc/ic/TMC5062/TMC5062.h"
+// #include "tmc/ic/TMC5072/TMC5072.h"
+// #include "tmc/ic/TMC5130/TMC5130.h"
+// #include "tmc/ic/TMC5160/TMC5160.h"
+// #include "tmc/ic/TMC8461/TMC8461.h"
+// #include "tmc/ic/TMC8462/TMC8462.h"
 
 // parameter access (for axis parameters)
 #define READ   0
@@ -158,33 +158,33 @@ typedef enum {
 // Group all the motion controller chip objects into a single union to save memory,
 // since we will only ever use one driver at a time
 typedef union {
-    TMC4361ATypeDef tmc4361A;
-    TMC5031TypeDef tmc5031;
+    // TMC4361ATypeDef tmc4361A;
+    // TMC5031TypeDef tmc5031;
     TMC5041TypeDef tmc5041;
-    TMC5062TypeDef tmc5062;
-    TMC5072TypeDef tmc5072;
-    TMC5130TypeDef tmc5130;
-    TMC5160TypeDef tmc5160;
-    TMC8461TypeDef tmc8461;
-    TMC8462TypeDef tmc8462;
+    // TMC5062TypeDef tmc5062;
+    // TMC5072TypeDef tmc5072;
+    // TMC5130TypeDef tmc5130;
+    // TMC5160TypeDef tmc5160;
+    // TMC8461TypeDef tmc8461;
+    // TMC8462TypeDef tmc8462;
 } MotionControllerBoards;
 extern MotionControllerBoards motionControllerBoards;
 
 // Group all the driver chip objects into a single union to save memory,
 // since we will only ever use one motion controller at a time
 typedef union {
-    TMC2130TypeDef tmc2130;
-    TMC2160TypeDef tmc2160;
-    TMC2208TypeDef tmc2208;
-    TMC2224TypeDef tmc2224;
-    TMC2590TypeDef tmc2590;
-    TMC2660TypeDef tmc2660;
-    TMC7300TypeDef tmc7300;
-    TMC2209TypeDef tmc2209;
-    TMC2225TypeDef tmc2225;
-    TMC2226TypeDef tmc2226;
-    TMC2300TypeDef tmc2300;
-	MAX22216TypeDef max22216;
+    // TMC2130TypeDef tmc2130;
+    // TMC2160TypeDef tmc2160;
+    // TMC2208TypeDef tmc2208;
+    // TMC2224TypeDef tmc2224;
+    // TMC2590TypeDef tmc2590;
+    // TMC2660TypeDef tmc2660;
+    // TMC7300TypeDef tmc7300;
+    // TMC2209TypeDef tmc2209;
+    // TMC2225TypeDef tmc2225;
+    // TMC2226TypeDef tmc2226;
+    // TMC2300TypeDef tmc2300;
+	// MAX22216TypeDef max22216;
 } DriverBoards;
 extern DriverBoards driverBoards;
 

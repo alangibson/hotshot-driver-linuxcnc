@@ -16,7 +16,21 @@ extern void tmc5041_readWriteArray(uint8_t channel, uint8_t *data, size_t length
 void tmc5041_writeDatagram(TMC5041TypeDef *tmc5041, uint8_t address, uint8_t x1, uint8_t x2, uint8_t x3, uint8_t x4)
 {
 	uint8_t data[5] = {address | TMC5041_WRITE_BIT, x1, x2, x3, x4 };
+
+	printf("tmc5041_writeDatagram: Writing data = %d %d %d %d %d\n", 
+		data[0], data[1], data[2], data[3], data[4]);
+
 	tmc5041_readWriteArray(tmc5041->config->channel, &data[0], 5);
+
+	printf("tmc5041_writeDatagram: Read back data = %d %d %d %d %d\n", 
+		data[0], data[1], data[2], data[3], data[4]);
+	printf("tmc5041_writeDatagram: 	  status_stop_l2=%d\n", (data[0] & 0b01000000) >> 6);
+	printf("tmc5041_writeDatagram: 	  status_stop_l1=%d\n", (data[0] & 0b00100000) >> 5);
+	printf("tmc5041_writeDatagram:    velocity_reached2=%d\n", (data[0] & 0b00010000) >> 4);
+	printf("tmc5041_writeDatagram:    velocity_reached1=%d\n", (data[0] & 0b00001000) >> 3);
+	printf("tmc5041_writeDatagram:    driver_error2=%d\n", (data[0] & 0b00000100) >> 2);
+	printf("tmc5041_writeDatagram:    driver_error1=%d\n", (data[0] & 0b00000010) >> 1);
+	printf("tmc5041_writeDatagram:    reset_flag=%d\n", (data[0] & 0b00000001));
 
 	int32_t value = ((uint32_t)x1 << 24) | ((uint32_t)x2 << 16) | (x3 << 8) | x4;
 
@@ -36,8 +50,10 @@ int32_t tmc5041_readInt(TMC5041TypeDef *tmc5041, uint8_t address)
 	address = TMC_ADDRESS(address);
 
 	// register not readable -> shadow register copy
-	if(!TMC_IS_READABLE(tmc5041->registerAccess[address]))
+	if(!TMC_IS_READABLE(tmc5041->registerAccess[address])) {
+		printf("WARNING: Register %d not readable! Returning from shadow register.\n", address);
 		return tmc5041->config->shadowRegister[address];
+	}
 
 	uint8_t data[5] = { 0, 0, 0, 0, 0 };
 
@@ -104,6 +120,7 @@ void tmc5041_periodicJob(TMC5041TypeDef *tmc5041, uint32_t tick)
 
 	if(tmc5041->config->state != CONFIG_READY)
 	{
+		printf("tmc5041_periodicJob: Writing configuration to chip\n");
 		tmc5041_writeConfiguration(tmc5041);
 		return;
 	}
@@ -119,11 +136,9 @@ void tmc5041_periodicJob(TMC5041TypeDef *tmc5041, uint32_t tick)
 		for (i = 0; i < TMC5041_MOTORS; i++)
 		{
 
-			printf("tmc5041_periodicJob: tmc5041_readInt() motor=%d\n", i);
+			printf("tmc5041_periodicJob: tmc5041_readInt(TMC5041_XACTUAL) motor=%d\n", i);
 
 			xActual = tmc5041_readInt(tmc5041, TMC5041_XACTUAL(i));
-
-			printf("tmc5041_periodicJob: xactual=%d\n", xActual);
 
 			tmc5041->config->shadowRegister[TMC5041_XACTUAL(i)] = xActual;
 			tmc5041->velocity[i] = (int32_t) ((float) (abs(xActual-tmc5041->oldX[i]) / (float) tickDiff) * (float) 1048.576);

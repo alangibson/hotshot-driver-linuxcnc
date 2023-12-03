@@ -73,13 +73,14 @@ setp                hotshot.0.axis-x-acceleration-cmd   1500.0
 setp                hotshot.0.axis-x-sgt 5
 start
 
-
 # Sync from laptop to Rpi
 rsync -uav --delete /home/alangibson/dev/plasma linuxcnc.local:/home/alangibson/dev
-
 
 # Use HAL component directly
 sudo usermod -a -G gpio $USER 
 sudo usermod -a -G kmem $USER # required for /dev/mem access 
 sudo chmod g+w /dev/mem
 halrun
+
+# Run live test
+gcc -I . tmc5041.test.c -o tmc5041.test && ./tmc5041.testl

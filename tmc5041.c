@@ -1,18 +1,25 @@
+#include "stdio.h"
+#include "bcm2835.h"
 #include "tmc/ic/TMC5041/TMC5041.h"
+#include "TMC-EVALSYSTEM/boards/Board.h"
 #include "TMC-EVALSYSTEM/hal/SPI.h"
 #include "TMC-EVALSYSTEM/hal/HAL.h"
 #include "tmc/ic/TMC5041/TMC5041.c"
 #include "tmc5041.h"
+#include "hotshot.h"
+
+#include "bcm2835.c"
+#include "TMC5041_eval.c"
 
 // SPI setup
 //
 static void spi_init(void);
-static uint8_t spi_ch1_readWrite(uint8_t data, uint8_t lastTransfer);
-static uint8_t spi_ch2_readWrite(uint8_t data, uint8_t lastTransfer);
-static void spi_ch1_readWriteArray(uint8_t *data, size_t length);
-static void spi_ch2_readWriteArray(uint8_t *data, size_t length);
-static void reset_ch1();
-static void reset_ch2();
+static uint8_t spi_chan1_readWrite(uint8_t data, uint8_t lastTransfer);
+static uint8_t spi_chan2_readWrite(uint8_t data, uint8_t lastTransfer);
+static void spi_chan1_readWriteArray(uint8_t *data, size_t length);
+static void spi_chan2_readWriteArray(uint8_t *data, size_t length);
+static void spi_chan1_reset();
+static void spi_chan2_reset();
 // FIXME give real pin number
 static IOPinTypeDef IODummy = {.bitWeight = DUMMY_BITWEIGHT};
 SPITypeDef SPI =
@@ -21,16 +28,16 @@ SPITypeDef SPI =
             {
                 // .periphery       = SPI1_BASE_PTR,
                 .CSN = &IODummy,
-                .readWrite = spi_ch1_readWrite,
-                .readWriteArray = spi_ch1_readWriteArray,
-                .reset = reset_ch1},
+                .readWrite = spi_chan1_readWrite,
+                .readWriteArray = spi_chan1_readWriteArray,
+                .reset = spi_chan1_reset},
         .ch2 =
             {
                 // .periphery       = SPI2_BASE_PTR,
                 .CSN = &IODummy,
-                .readWrite = spi_ch2_readWrite,
-                .readWriteArray = spi_ch2_readWriteArray,
-                .reset = reset_ch2},
+                .readWrite = spi_chan2_readWrite,
+                .readWriteArray = spi_chan2_readWriteArray,
+                .reset = spi_chan2_reset},
         .init = spi_init};
 
 // HAL setup
@@ -87,9 +94,8 @@ IOsTypeDef IOs =
 };
 
 static void iomap_init();
-IOPinMapTypeDef IOMap =
-    {
-        .init = iomap_init,
+IOPinMapTypeDef IOMap = {
+    .init = iomap_init,
 };
 
 static void iomap_init()
@@ -99,33 +105,29 @@ static void iomap_init()
 
 static void setPinHigh(IOPinTypeDef *pin)
 {
-    printf("TODO set pin high: %d\n", pin->bitWeight);
+    // printf("Release SPI chip select: %d\n", pin->bit);
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
 
 static void setPinLow(IOPinTypeDef *pin)
 {
-    printf("TODO set pin low: %d\n", pin->bitWeight);
+    // printf("SPI chip select: %d\n", pin->bit);
+    // bcm2835_spi_chipSelect(pin->bit);
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS0);
 }
 
 uint8_t readWrite(SPIChannelTypeDef *SPIChannel, uint8_t writeData, uint8_t lastTransfer)
 {
 
-    printf("readWrite: writeData=%d lastTransfer=%d\n", writeData, lastTransfer);
-    printf("readWrite: SPI bitWeight=%d\n", SPIChannel->CSN->bitWeight);
+    // printf("readWrite: Write byte=%d lastTransfer=%d\n", writeData, lastTransfer);
+    // printf("readWrite: SPI bit=%d\n", SPIChannel->CSN->bit);
 
     uint8_t readData = 0;
-
-    printf("readWrite: Calling setLow\n");
 
     // Chip Select
     HAL.IOs->config->setLow(SPIChannel->CSN);
 
-    printf("readWrite: Done calling setLow\n");
-
-    // TODO send data
-    // writeData
-    // TODO read the data
-    // readData = SPI_POPR_REG(SPIChannel->periphery);
+    readData = bcm2835_spi_transfer(writeData);
 
     if (lastTransfer)
     {
@@ -134,10 +136,10 @@ uint8_t readWrite(SPIChannelTypeDef *SPIChannel, uint8_t writeData, uint8_t last
         HAL.IOs->config->setHigh(SPIChannel->CSN);
     }
 
+    // printf("readWrite: Read byte=%d\n", readData);
+
     return readData;
 }
-
-#include "stdio.h"
 
 /**
  * This function is required by the TMC-API.
@@ -145,28 +147,26 @@ uint8_t readWrite(SPIChannelTypeDef *SPIChannel, uint8_t writeData, uint8_t last
  */
 void tmc5041_readWriteArray(uint8_t channel, uint8_t *data, size_t length)
 {
-    // TODO implement this
-    // Maybe combine tmc5041_read_register and tmc5041_write_register?
-
-    printf("tmc5041_readWriteArray: channel=%d\n", channel);
+    // printf("tmc5041_readWriteArray: length=%d\n", length);
 
     for (size_t i = 0; i < length; i++)
     {
+        // FIXME should work for any channel
         data[i] = readWrite(&HAL.SPI->ch1, data[i], (i == (length - 1)) ? true : false);
     }
 }
 
-uint8_t spi_ch1_readWrite(uint8_t data, uint8_t lastTransfer)
+uint8_t spi_chan1_readWrite(uint8_t data, uint8_t lastTransfer)
 {
     return readWrite(&HAL.SPI->ch1, data, lastTransfer);
 }
 
-uint8_t spi_ch2_readWrite(uint8_t data, uint8_t lastTransfer)
+uint8_t spi_chan2_readWrite(uint8_t data, uint8_t lastTransfer)
 {
     return readWrite(&HAL.SPI->ch2, data, lastTransfer);
 }
 
-static void spi_ch1_readWriteArray(uint8_t *data, size_t length)
+static void spi_chan1_readWriteArray(uint8_t *data, size_t length)
 {
     for (size_t i = 0; i < length; i++)
     {
@@ -174,7 +174,7 @@ static void spi_ch1_readWriteArray(uint8_t *data, size_t length)
     }
 }
 
-static void spi_ch2_readWriteArray(uint8_t *data, size_t length)
+static void spi_chan2_readWriteArray(uint8_t *data, size_t length)
 {
     for (size_t i = 0; i < length; i++)
     {
@@ -182,8 +182,11 @@ static void spi_ch2_readWriteArray(uint8_t *data, size_t length)
     }
 }
 
-void reset_ch1()
+void spi_chan1_reset()
 {
+
+    printf("spi_chan1_reset\n");
+
     // configure SPI1 pins PORTB_PCR11(SCK), PORTB_PCR17(SDI), PORTB_PCR15(SDO), PORTB_PCR10(CSN)
     HAL.IOs->config->reset(&HAL.IOs->pins->SPI1_SCK);
     HAL.IOs->config->reset(&HAL.IOs->pins->SPI1_SDI);
@@ -194,55 +197,65 @@ void reset_ch1()
     // SPI_MCR_REG(SPI.ch1.periphery) |= SPI_MCR_CLR_RXF_MASK | SPI_MCR_CLR_TXF_MASK;
 }
 
-void reset_ch2()
+void spi_chan2_reset()
 {
+    printf("spi_chan2_reset\n");
+
     //	// configure SPI2 pins PORTB_PCR21(SCK), PORTB_PCR23(SDI), PORTB_PCR22(SDO), PORTC_PCR0(CSN0), PORTA_PCR0(CSN5), PORTA_PCR4(CSN2)
     HAL.IOs->config->reset(&HAL.IOs->pins->SPI2_SCK);
     HAL.IOs->config->reset(&HAL.IOs->pins->SPI2_SDI);
     HAL.IOs->config->reset(&HAL.IOs->pins->SPI2_SDO);
     HAL.IOs->config->reset(SPI.ch2.CSN);
-    SPI.ch2.readWrite = spi_ch2_readWrite;
+    SPI.ch2.readWrite = spi_chan2_readWrite;
 
     // set SPI0 to master mode, set inactive state of chip select to HIGH, flush both FIFO buffer by clearing their counters (Tx FIFO, and Rx FIFO are enabled)
     // SPI_MCR_REG(SPI.ch2.periphery) |= SPI_MCR_CLR_RXF_MASK | SPI_MCR_CLR_TXF_MASK;
 }
 
 // Taken from TMC5041_eval.c reset()
-static uint8_t tmc5041_chip_1_reset()
+static uint8_t tmc5041_chip1_reset()
 {
+    printf("tmc5041_chip1_reset\n");
 
     for (uint8_t motor = 0; motor < TMC5041_MOTORS; motor++)
-        if (tmc5041_readInt(&tmc5041_chip_1, TMC5041_VACTUAL(motor)) != 0)
+        if (tmc5041_readInt(&TMC5041_CHIP1, TMC5041_VACTUAL(motor)) != 0)
             return 0;
 
-    return tmc5041_reset(&tmc5041_chip_1);
+    return tmc5041_reset(&TMC5041_CHIP1);
 }
 
 // Taken from TMC5041_eval.c restore()
-static uint8_t tmc5041_chip_1_restore()
+static uint8_t tmc5041_chip1_restore()
 {
-    return tmc5041_restore(&tmc5041_chip_1);
+    printf("tmc5041_chip1_restore\n");
+
+    return tmc5041_restore(&TMC5041_CHIP1);
 }
 
 // Taken from TMC5041_eval.c reset()
-static uint8_t tmc5041_chip_2_reset()
+static uint8_t tmc5041_chip2_reset()
 {
+    printf("tmc5041_chip2_reset\n");
 
     for (uint8_t motor = 0; motor < TMC5041_MOTORS; motor++)
-        if (tmc5041_readInt(&tmc5041_chip_2, TMC5041_VACTUAL(motor)) != 0)
+        if (tmc5041_readInt(&TMC5041_CHIP2, TMC5041_VACTUAL(motor)) != 0)
             return 0;
 
-    return tmc5041_reset(&tmc5041_chip_2);
+    return tmc5041_reset(&TMC5041_CHIP2);
 }
 
 // Taken from TMC5041_eval.c restore()
-static uint8_t tmc5041_chip_2_restore()
+static uint8_t tmc5041_chip2_restore()
 {
-    return tmc5041_restore(&tmc5041_chip_2);
+    return tmc5041_restore(&TMC5041_CHIP2);
 }
 
 void spi_init()
 {
+    // Initialize SPI
+    setup_spi0();
+    setup_spi1();
+    
     // SPI0 -> EEPROM
     // -------------------------------------------------------------------------------
     // SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK;  // enable clock for PORT C
@@ -333,25 +346,8 @@ void spi_init()
 
 static void hal_init(void)
 {
-    // Cpu.initClocks();
-    // Cpu.initLowLevel();
-    // NVIC_init();
-    // EnableInterrupts;;
-
-    // systick_init();
-    // wait(100);
-
     IOs.init();
-    // IOMap.init();
-    // LEDs.init();
-    // ADCs.init();
     SPI.init();
-    // WLAN.init();
-    // RS232.init();
-    // USB.init();
-
-    // Determine HW version
-    // get_hwid();
 }
 
 static void hal_reset(uint8_t ResetPeripherals)
@@ -371,49 +367,93 @@ void ios_init()
     // SIM_SOPT2 &= ~SIM_SOPT2_CLKOUTSEL_MASK;
     // SIM_SOPT2 |= SIM_SOPT2_CLKOUTSEL(6);
     // PORTC_PCR3 = PORT_PCR_MUX(5);
+
+    setup_gpio();
 }
+
+// -------------------------------------------------------------
+// Copied from hotshot.comp
+
+void setup_gpio()
+{
+    bcm2835_gpio_fsel(PIN_ARC_OK, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_ARC_OK, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_OHMIC_PROBE, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_OHMIC_PROBE, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_ESTOP, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_ESTOP, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_TORCH_ON, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(PIN_OHMIC_ENABLE, BCM2835_GPIO_FSEL_OUTP);
+}
+
+// Call once to configure SPI0
+void setup_spi0()
+{
+
+    // Start SPI operations.
+    // Forces RPi SPI0 pins P1-19 (MOSI), P1-21 (MISO), P1-23 (CLK),
+    // P1-24 (CE0) and P1-26 (CE1) to alternate function ALT0,
+    // which enables those pins for SPI interface.
+    int spi_begin_success = bcm2835_spi_begin();
+
+    // Set SPI parameters
+    bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);    // The default
+    bcm2835_spi_setDataMode(BCM2835_SPI_MODE3);                 // The default
+    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_1024); // <= 4 MHz for internal clock
+    bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);    // the default
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+}
+
+// Call once to configure SPI1
+void setup_spi1()
+{
+
+    // Start SPI1 operations.
+    int spi_begin_success = bcm2835_aux_spi_begin();
+
+    // Set SPI parameters
+    bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);        // The default
+    bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                     // Data comes in on falling edge
+    bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_1024); // <= 4 MHz for internal clock
+    bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);        // the default
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+}
+
+// Copied from hotshot.comp
+// -------------------------------------------------------------
+
+ConfigurationTypeDef tmc5041_chip1_config = (ConfigurationTypeDef){
+    .reset = &tmc5041_chip1_reset,
+    .restore = &tmc5041_chip1_restore};
+ConfigurationTypeDef tmc5041_chip2_config = (ConfigurationTypeDef){
+    .reset = &tmc5041_chip2_reset,
+    .restore = &tmc5041_chip2_restore};
 
 bool setup_once()
 {
+    // Intialize Broadcom driver
+    int init_success = bcm2835_init();
 
-    // Configure TMC-API HAL
-    //
-    SPITypeDef SPI = (SPITypeDef){
-        .ch1 = (SPIChannelTypeDef){
-            // .CSN = &(IOPinTypeDef) {
-            //     .bitWeight = 0
-            // }
-        },
-        .ch2 = (SPIChannelTypeDef){
-            // .CSN = &(IOPinTypeDef) {
-            //     .bitWeight = 1
-            // }
-        }};
+    // Set up RPi GPIO
+    // setup_gpio();
 
-    // HAL.IOs->config
-    HAL.init();
+    // Initialize SPI
+    // setup_spi0();
+    // setup_spi1();
 
     // Configure TMC-API
+    // 
+    // Note: this just initializes TMC5041_CHIP*. 
+    // It does not write anything until tmc5041_periodicJob() is called.
+    HAL.init();
     //
-    ConfigurationTypeDef tmc5041_chip_config_1 = (ConfigurationTypeDef){
-        .reset = &tmc5041_chip_1_reset,
-        .restore = &tmc5041_chip_1_restore};
-    ConfigurationTypeDef tmc5041_chip_config_2 = (ConfigurationTypeDef){
-        .reset = &tmc5041_chip_2_reset,
-        .restore = &tmc5041_chip_2_restore};
-    SPITypeDef spi = (SPITypeDef){
-        .ch1 = (SPIChannelTypeDef){
-            .CSN = &(IOPinTypeDef){
-                .bitWeight = 0},
-            .readWrite = spi_ch1_readWrite,
-            .readWriteArray = spi_ch1_readWriteArray,
-            .reset = reset_ch1},
-        .ch2 = (SPIChannelTypeDef){.CSN = &(IOPinTypeDef){.bitWeight = 1}, .readWrite = spi_ch2_readWrite, .readWriteArray = spi_ch2_readWriteArray, .reset = reset_ch2}};
     // Channel is just motor number
-    uint8_t channel_0 = 0;
-    uint8_t channel_1 = 1;
-    tmc5041_init(&tmc5041_chip_1, channel_0, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_1, channel_1, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_2, channel_0, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_2, channel_1, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
+    tmc5041_init(&TMC5041_CHIP1, 0, &tmc5041_chip1_config, tmc5041_defaultRegisterResetState);
+    tmc5041_init(&TMC5041_CHIP2, 0, &tmc5041_chip2_config, tmc5041_defaultRegisterResetState);
+    // Force flush config to chip on first periodicJob
+    TMC5041_CHIP1.config->state = CONFIG_RESET;
+
+    // enableDriver(1); // DriverState.DRIVER_ENABLE
 }

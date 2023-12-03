@@ -1599,19 +1599,6 @@ void config_motor(joint_t * motor)
 
     // Chopper configuration
     //
-    // PWMCONF: StealthChop Configuration
-    //
-    // write_payload = 0x00;
-    // // PWM_AUTOSCALE: Enable automatic current scaling using current measurement or use fixed scaling mode.
-    // write_payload = FIELD_SET(write_payload, TMC5041_PWM_AUTOSCALE_MASK, TMC5041_PWM_AUTOSCALE_SHIFT, pwm_autoscale);
-    // // PWM_GRAD: Global enable and regulation loop gradient when pwm_autoscale=1
-    // write_payload = FIELD_SET(write_payload, TMC5041_PWM_GRAD_MASK, TMC5041_PWM_GRAD_SHIFT, pwm_grad);
-    // // PWM_AMPL: User defined PWM amplitude for fixed scaling or amplitude limit for re-entry into StealthChop mode when pwm_autoscale=1.
-    // write_payload = FIELD_SET(write_payload, TMC5041_PWM_AMPL_MASK, TMC5041_PWM_AMPL_SHIFT, pwm_ampl);
-    // // PWM_FREQ: PWM frequency selection. See 7.1 Two Modes for Current Regulation
-    // write_payload = FIELD_SET(write_payload, TMC5041_PWM_FREQ_MASK, TMC5041_PWM_FREQ_SHIFT, pwm_freq);
-    // uint8_t pwmconf[40] = {TMC5041_PWMCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    // bcm2835_spi_transfernb(pwmconf, spi_status, 5);
     //
     // CHOPCONF: Chopper Configuration (i.e. SpreadCycle)
     //
@@ -1945,41 +1932,41 @@ bool setup_once() {
 
     // Configure TMC-API
     //
-    ConfigurationTypeDef tmc5041_chip_config_1 = (ConfigurationTypeDef) {
-        .reset = &tmc5041_chip_1_reset,
-        .restore = &tmc5041_chip_1_restore
-    };
-    ConfigurationTypeDef tmc5041_chip_config_2 = (ConfigurationTypeDef) {
-        .reset = &tmc5041_chip_2_reset,
-        .restore = &tmc5041_chip_2_restore
-    };
-    SPITypeDef spi = (SPITypeDef) {
-        .ch1 = (SPIChannelTypeDef) {
-            .CSN = &(IOPinTypeDef) {
-                .bitWeight = 0
-            },
-            .readWrite = spi_ch1_readWrite,
-            .readWriteArray = spi_ch1_readWriteArray,
-            .reset = reset_ch1
-        },
-        .ch2 = (SPIChannelTypeDef) {
-            .CSN = &(IOPinTypeDef) {           
-                .bitWeight = 1
-            },
-            .readWrite = spi_ch2_readWrite,
-            .readWriteArray = spi_ch2_readWriteArray,
-            .reset = reset_ch2
-        }
-    };
-    // Channel is just motor number
-    uint8_t channel_0 = 0;
-    uint8_t channel_1 = 1;
-    tmc5041_init(&tmc5041_chip_1, channel_0, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_1, channel_1, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_2, channel_0, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_2, channel_1, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
+    // ConfigurationTypeDef tmc5041_chip_config_1 = (ConfigurationTypeDef) {
+    //     .reset = &tmc5041_chip1_reset,
+    //     .restore = &tmc5041_chip1_restore
+    // };
+    // ConfigurationTypeDef tmc5041_chip_config_2 = (ConfigurationTypeDef) {
+    //     .reset = &tmc5041_chip2_reset,
+    //     .restore = &tmc5041_chip2_restore
+    // };
+    // SPITypeDef spi = (SPITypeDef) {
+    //     .ch1 = (SPIChannelTypeDef) {
+    //         .CSN = &(IOPinTypeDef) {
+    //             .bitWeight = 0
+    //         },
+    //         .readWrite = spi_chan1_readWrite,
+    //         .readWriteArray = spi_chan1_readWriteArray,
+    //         .reset = spi_chan1_reset
+    //     },
+    //     .ch2 = (SPIChannelTypeDef) {
+    //         .CSN = &(IOPinTypeDef) {           
+    //             .bitWeight = 1
+    //         },
+    //         .readWrite = spi_chan2_readWrite,
+    //         .readWriteArray = spi_chan2_readWriteArray,
+    //         .reset = spi_chan2_reset
+    //     }
+    // };
+    // // Channel is just motor number
+    // uint8_t channel_0 = 0;
+    // uint8_t channel_1 = 1;
+    // tmc5041_init(&TMC5041_CHIP1, channel_0, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
+    // tmc5041_init(&TMC5041_CHIP1, channel_1, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
+    // tmc5041_init(&TMC5041_CHIP2, channel_0, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
+    // tmc5041_init(&TMC5041_CHIP2, channel_1, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
 
-    // config_tmc5041(motors, MOTOR_COUNT);
+    config_tmc5041(motors, MOTOR_COUNT);
 
     #ifdef DEBUG
     rtapi_print("Done running setup once\n");
