@@ -11,7 +11,7 @@
 // Raspberry Pi 4 SPI support
 
 // Call once to configure SPI0
-void setup_spi0()
+void rpi_spi0_init()
 {
 
     // Start SPI operations.
@@ -29,7 +29,7 @@ void setup_spi0()
 }
 
 // Call once to configure SPI1
-void setup_spi1()
+void rpi_spi1_init()
 {
 
     // Start SPI1 operations.
@@ -44,7 +44,7 @@ void setup_spi1()
 }
 
 // Call once to unconfgure SPI0
-void teardown_spi0()
+void rpi_spi0_end()
 {
     // Unselect chip
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
@@ -56,7 +56,7 @@ void teardown_spi0()
 }
 
 // Call once to unconfgure SPI1
-void teardown_spi1()
+void rpi_spi1_end()
 {
     // Unselect chip
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
@@ -67,13 +67,13 @@ void teardown_spi1()
     bcm2835_aux_spi_end();
 }
 
-void start_spi_conversation(uint32_t chip)
+void rpi_spi_select(uint32_t chip)
 {
     // Select a chip
     bcm2835_spi_chipSelect(chip);
 }
 
-void end_spi_conversation()
+void rpi_spi_unselect()
 {
     // Unselect chip
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
@@ -85,7 +85,7 @@ void end_spi_conversation()
 // ============================================================================
 // Raspberry Pi 4 GPIO support
 
-void setup_gpio()
+void rpi_gpio_init()
 {
     bcm2835_gpio_fsel(PIN_ARC_OK, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_set_pud(PIN_ARC_OK, BCM2835_GPIO_PUD_DOWN);
@@ -101,3 +101,20 @@ void setup_gpio()
 
 // Raspberry Pi 4 GPIO support
 // ============================================================================
+
+void rpi_init() {
+    bcm2835_init();
+
+    rpi_gpio_init();
+
+    rpi_spi0_init();
+    rpi_spi1_init();  
+}
+
+void rpi_end() {
+    rpi_spi0_end();
+    rpi_spi1_end();
+
+    // Close the library, deallocating any allocated memory and closing /dev/mem
+    bcm2835_close();
+}

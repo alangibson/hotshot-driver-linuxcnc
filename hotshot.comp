@@ -208,271 +208,16 @@ pin out bit abort-fb;
 // #include <math.h>
 // #include <sys/types.h>
 #include <rtapi.h>
-#include "tmc/ic/TMC5041/TMC5041.h"
+// #include "tmc/ic/TMC5041/TMC5041.h"
 #include "bcm2835.h"
-#include "hotshot.h"
 #include "tmc5041.h"
 
-// ============================================================================
-// bcm2835.c
+// #include "bcm2835.c"
+// #include "rpi.c"
+// #include "tmc5041.c"
+// #include "hotshot.lib.c"
+// #include "hotshot.hal.c"
 
-#include "bcm2835.c"
-
-// bcm2835.c
-// ============================================================================
-
-#include "rpi.c"
-
-// ============================================================================
-// TMC5041 support
-
-#include "tmc5041.c"
-
-// TMC5041 support
-// ============================================================================
-
-// ============================================================================
-// Main application
-
-int64_t mm_to_microsteps(uint32_t microstep_per_mm, float mm)
-{
-    return mm * microstep_per_mm;
-}
-
-uint32_t microsteps_per_mm(uint32_t fullsteps_per_rev, float linear_mm_per_rev, uint32_t microsteps)
-{
-    return (fullsteps_per_rev * microsteps) / linear_mm_per_rev;
-}
-
-
-spi_status_t follow(joint_t * motor)
-{
-    // XTARGET: Target position for ramp mode
-    // Calculate target position and velocity
-    // Implicitly round to lower since were converting from float to int
-    int32 xtarget = (*motor->position_cmd) * motor->microstep_per_mm;
-    spi_status_t spi_status = tmc5041_set_register_XTARGET(motor, xtarget);
-
-    int64_t xactual_value = tmc5041_get_register_XACTUAL(motor);
-    spi_status.xactual_mm = (float)xactual_value / (float)motor->microstep_per_mm;
-
-    return spi_status;
-}
-
-float thc_voltage(uint8_t chip, float V_ref)
-{
-    //
-    // Read from ADC
-    // Protocol start bit (S), sgl/diff (D), odd/sign (C), MSBF (M)
-    //  S = 1
-    //  D = 1 ; 0=diff, 1= Single ended (i.e. 2 channel) mode
-    //  C = 0; if D=0, then odd/sign, if D=1, then 0 or 1 for channel number
-    //  M = 1
-    // Message = { 0000000S, DCM00000, 00000000 }
-    // Final byte of zeros is so we get an 3 total bytes back from ADC
-    char send_data[3] = {0b00000001, 0b10000000, 0b00000000};
-    bcm2835_aux_spi_transfern(send_data, 3);
-    // Intrepret ADC response
-    // Get sensor value
-    uint16_t value = 0x00;
-    // We need only data from last 2 bytes.
-    // And there we can discard last two bits to get 10 bit value
-    // as MCP3002 resolution is 10bits
-    //
-    // 15 = 0000 1111 with & operation makes sure that we have all data from XXXX DDDD and nothing more.
-    value = send_data[1] & 15;
-    // Move to left to make room for next piece of data.
-    value = value << 6; // 000D DDDD << 6 == 0DDD DD00 0000
-    // Now we get the last of data from byte 3, discarding last two bits
-    value = value + (send_data[2] >> 2);
-    // DDDD DDXXX >> 2 == 00DD DDDD
-    // 0DDD DD00 0000 + 00DD DDDD == 0DDD DDDD DDDD
-    // Convert to voltage
-    // Voltage = ( V_ref * value ) / 1024
-    float voltage = (V_ref * value) / 1024;
-
-    // Assumes 50:1 voltage divider
-    return voltage * 50;
-}
-
-bool was_all_homed = 0;
-
-bool get_home_switch_state(joint_t * motor, bool axis_is_homing) {
-    if (axis_is_homing) {
-        ramp_stat_register_t reg = tmc5041_get_register_RAMP_STAT(motor);
-        return reg.status_sg;
-    }
-    return FALSE;
-}
-
-bool get_neg_limit_switch_state(joint_t * motor, float axis_max_velocity_cmd) {
-    if (axis_max_velocity_cmd < 0) {
-        ramp_stat_register_t reg = tmc5041_get_register_RAMP_STAT(motor);
-        return reg.status_sg;
-    }
-    return FALSE;
-}
-
-#include "hotshot_init.c"
-
-// Main application
-// ============================================================================
-
-// ============================================================================
-// LinuxCNC HAL Module
-
-void handle_joint(joint_t * motor) {
-
-    if (*motor->is_enabled) {
-
-        #ifdef DEBUG
-        rtapi_print("joint x is enabled. chip=%d motor=%d pitch=%d teeth=%d\n", 
-            motor->chip, motor->motor, motor->pitch, motor->teeth);
-        #endif
-
-        start_spi_conversation(motor->chip);
-
-        // Check switches
-        //
-        // Note: Reading RAMP_STAT clears sg_stop
-        ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(motor);
-        // Note: status_sg and event_stop_sg appear to be the same
-        // axis_x_sg_stop_fb = ramp_stat.event_stop_sg;
-        *motor->sg_stop_fb = ramp_stat.status_sg;
-        // TODO
-        // axis_x_tmc_position_reached_fb = ramp_stat.position_reached;
-        // axis_x_tmc_t_zerowait_active_fb = ramp_stat.t_zerowait_active;
-        // axis_x_tmc_velocity_reached_fb = ramp_stat.velocity_reached;
-                
-        #ifdef DEBUG
-        rtapi_print("ramp_stat axis_x_sg_stop_fb %d \n", (*motor->sg_stop_fb));
-        #endif
-
-        // Handle StallGuard state
-        //
-        if (*motor->sg_stop_fb) {
-            // StallGuard has been triggered
-
-            #ifdef DEBUG
-            rtapi_print("SG triggered sg_stop_cmd=%d sg_thresh_cmd=%d\n", 
-                motor->tmc_sg_stop_cmd, motor->tmc_sg_thresh_cmd);
-            #endif
-
-            // TODO shut off torch
-            // TODO stop motion controller or motor will twitch every time we read RAMP_STAT
-
-            if (motor->is_homing) {
-                // We are homing and we have hit a Stallguard stop event, so trigger home switch
-
-                #ifdef DEBUG
-                rtapi_print("Setting home\n");
-                #endif
-
-                motor->home_sw = set_home(motor);
-            } else {
-                // We've hit a Stallguard stop, but we're not homing, so trigger breakaway
-
-                #ifdef DEBUG
-                rtapi_print("Setting breakaway\n");
-                #endif
-
-                // TODO Add `torch_breakaway = set_breakaway(&motors[0])1 that should immediately stop motor
-                *motor->torch_breakaway_fb = TRUE;
-                // TODO "breakaway" for the x axis should indicate negative limit switch is triggered
-                // There is currently no negative limit switch for X and YL/YR
-            }             
-        } else {
-            // No active StallGuard switches, so move motor and reset all switches
-
-            #ifdef DEBUG
-            rtapi_print("Moving motor to %f\n", (*motor->position_cmd));
-            #endif
-
-            // Move motor
-            //
-            spi_status_t spi_status = follow(motor);
-
-            #ifdef DEBUG
-            rtapi_print("Followed position to %f\n", spi_status.xactual_mm);
-            #endif
-
-            *motor->position_fb = spi_status.xactual_mm;
-
-            #ifdef DEBUG
-            rtapi_print("position_fb is %f\n", *motor->position_fb);
-            #endif
-
-            *motor->tmc_position_fb = tmc5041_get_register_XACTUAL(motor);
-
-            #ifdef DEBUG
-            rtapi_print("Motor actual position now %f\n", *motor->position_fb);
-            #endif
-
-            // Ensure switches aren't triggered
-            //
-            motor->home_sw = FALSE;
-            // FIXME
-            *motor->torch_breakaway_fb = FALSE;
-
-            #ifdef DEBUG
-            rtapi_print("Finished resetting switches\n");
-            #endif
-        }
-
-        #ifdef DEBUG
-        rtapi_print("Get velocity\n");
-        #endif
-
-        // Get velocity
-        //
-        *motor->tmc_velocity_fb = tmc5041_get_register_VACTUAL(motor);
-        float vactual_mm = (float)(*motor->tmc_velocity_fb) / (float)motor->microstep_per_mm;
-        *motor->velocity_fb = vactual_mm;
-       
-        #ifdef DEBUG
-        rtapi_print("vactual_mm is %f\n", vactual_mm);
-        rtapi_print("Get driver state\n");
-        #endif
-
-        // Get driver state
-        // 
-        drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(motor);
-        *motor->tmc_motor_standstill_fb = drv_status.standstill;
-        *motor->tmc_motor_full_stepping_fb = drv_status.full_stepping;
-        *motor->tmc_motor_overtemp_warning_fb = drv_status.overtemp_warning;
-        *motor->tmc_motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
-        *motor->tmc_motor_load_fb = drv_status.sg_result;
-        *motor->tmc_motor_current_fb = drv_status.cs_actual;
-        *motor->tmc_motor_stall_fb = drv_status.sg_status;
-
-        #ifdef DEBUG
-        rtapi_print("vactual_mm is %f\n", vactual_mm);
-        rtapi_print("Get chopper state\n");
-        #endif
-
-        // Get chopper state
-        //
-        chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(motor);
-        *motor->tmc_microstep_resolution_fb = chopconf.mres;
-
-        #ifdef DEBUG
-        rtapi_print("Done handling joint\n");
-        #endif
-
-        end_spi_conversation();
-    } else {
-        // Joint is not enabled in LinuxCNC
-
-        // Cut power to motor
-        // Can only do this when we config_motor inside motor->is_enabled condition
-        // TODO reset_motor(&motors[0]);
-        motor->is_on = FALSE;
-
-        // Clear torch breakaway
-        // TODO we should really do this when we transition from unenabled to enabled power
-        *motor->torch_breakaway_fb = FALSE;
-    }
-}
 
 // main function
 FUNCTION(_)
@@ -480,16 +225,41 @@ FUNCTION(_)
     // Set up motors exactly once.
     if (needs_setup) {
 
+
+        tmc5041_chip_t chip0 = (tmc5041_chip_t) {
+            .chip = BCM2835_SPI_CS0
+        };
+
+        tmc5041_chip_t chip1 = (tmc5041_chip_t) {
+            .chip = BCM2835_SPI_CS1
+        };
+
         // X
         #undef axis_x_enable
         #undef axis_x_is_homing
         #undef axis_x_position_cmd
         #undef axis_x_tmc_sg_stop_cmd
         #undef axis_x_tmc_sg_thresh_cmd
-        uint32_t axis_x_microstep_per_mm = microsteps_per_mm(200, axis_x_pitch * axis_x_teeth, axis_x_microsteps_cmd);
+        uint32_t axis_x_microstep_per_mm = microsteps_per_mm(
+            200, axis_x_pitch * axis_x_teeth, axis_x_microsteps_cmd);
+        tmc5041_motor_t tmc5041_motors_x = (tmc5041_motor_t) {
+            .chip                   = chip0,
+            .motor                  = 0,
+            .run_current_cmd        = &axis_x_tmc_run_current_cmd,
+            .hold_current_cmd       = &axis_x_tmc_hold_current_cmd,
+            .max_velocity_cmd       = &axis_x_tmc_max_velocity_cmd,
+            .max_acceleration_cmd   = &axis_x_tmc_max_acceleration_cmd,
+            .position_cmd           = &axis_x_tmc_position_cmd,
+            .velocity_cmd           = &axis_x_tmc_velocity_cmd,
+            .sg_stop_cmd            = &axis_x_tmc_sg_stop_cmd,
+            .cs_thresh_cmd          = &axis_x_tmc_cs_thresh_cmd,
+            .sg_thresh_cmd          = &axis_x_tmc_sg_thresh_cmd,
+            .max_velocity_fb        = (float)fabs(axis_x_max_velocity_cmd) * axis_x_microstep_per_mm;
+            .max_acceleration_fb    = mm_to_microsteps(axis_x_microstep_per_mm, axis_x_max_acceleration_cmd);
+        };
         motors[0] = (joint_t) {
-            .chip                   = axis_x_chip,
-            .motor                  = axis_x_motor,
+            // .chip                   = axis_x_chip,
+            // .motor                  = axis_x_motor,
             .pitch                  = axis_x_pitch,
             .teeth                  = axis_x_teeth,
             .is_enabled             = __comp_inst->axis_x_enable,
@@ -502,31 +272,33 @@ FUNCTION(_)
             .microsteps_cmd         = axis_x_microsteps_cmd,
             .mm_per_rev             = axis_x_pitch * axis_x_teeth,
             .microstep_per_mm       = axis_x_microstep_per_mm,
-            .tmc_run_current_cmd    = axis_x_tmc_run_current_cmd,
-            .tmc_hold_current_cmd   = axis_x_tmc_hold_current_cmd,
-            .tmc_sg_stop_cmd        = __comp_inst->axis_x_tmc_sg_stop_cmd,
-            .tmc_sg_thresh_cmd      = __comp_inst->axis_x_tmc_sg_thresh_cmd,
-            .tmc_mres                           = microsteps_to_tmc_mres(axis_x_microsteps_cmd),
-            .tmc_cs_thresh                      = axis_x_tmc_cs_thresh_cmd,
-            .tmc_max_velocity_fb                = &axis_x_tmc_max_velocity_fb,
-            .tmc_max_acceleration_fb            = &axis_x_tmc_max_acceleration_fb,
-            .sg_stop_fb                         = &axis_x_sg_stop_fb,
-            .home_sw_fb                         = &axis_x_home_sw,
-            .tmc_position_fb                    = &axis_x_tmc_position_fb,
-            .tmc_velocity_fb                    = &axis_x_tmc_velocity_fb,
-            .tmc_motor_standstill_fb            = &axis_x_tmc_motor_standstill_fb,
-            .tmc_motor_full_stepping_fb         = &axis_x_tmc_motor_full_stepping_fb,
-            .tmc_motor_overtemp_warning_fb      = &axis_x_tmc_motor_overtemp_warning_fb,
-            .tmc_motor_overtemp_alarm_fb        = &axis_x_tmc_motor_overtemp_alarm_fb,
-            .tmc_motor_load_fb                  = &axis_x_tmc_motor_load_fb,
-            .tmc_motor_current_fb               = &axis_x_tmc_motor_current_fb,
-            .tmc_motor_stall_fb                 = &axis_x_tmc_motor_stall_fb,
-            .tmc_microstep_resolution_fb        = &axis_x_tmc_microstep_resolution_fb,
-            // TODO move to sensors() function
+            .home_sw_fb             = &axis_x_home_sw,
             .torch_breakaway_fb     = &torch_breakaway,
+
+            .tmc                    = tmc5041_motors_x,
+
+            // .sg_stop_fb                         = &axis_x_sg_stop_fb,
+            // .tmc_run_current_cmd                = axis_x_tmc_run_current_cmd,
+            // .tmc_hold_current_cmd               = axis_x_tmc_hold_current_cmd,
+            // .tmc_sg_stop_cmd                    = __comp_inst->axis_x_tmc_sg_stop_cmd,
+            // .tmc_sg_thresh_cmd                  = __comp_inst->axis_x_tmc_sg_thresh_cmd,
+            // .tmc_mres                           = microsteps_to_tmc_mres(axis_x_microsteps_cmd),
+            // .tmc_cs_thresh                      = axis_x_tmc_cs_thresh_cmd,
+            // .tmc_max_velocity_fb                = &axis_x_tmc_max_velocity_fb,
+            // .tmc_max_acceleration_fb            = &axis_x_tmc_max_acceleration_fb,
+            // .tmc_position_fb                    = &axis_x_tmc_position_fb,
+            // .tmc_velocity_fb                    = &axis_x_tmc_velocity_fb,
+            // .tmc_motor_standstill_fb            = &axis_x_tmc_motor_standstill_fb,
+            // .tmc_motor_full_stepping_fb         = &axis_x_tmc_motor_full_stepping_fb,
+            // .tmc_motor_overtemp_warning_fb      = &axis_x_tmc_motor_overtemp_warning_fb,
+            // .tmc_motor_overtemp_alarm_fb        = &axis_x_tmc_motor_overtemp_alarm_fb,
+            // .tmc_motor_load_fb                  = &axis_x_tmc_motor_load_fb,
+            // .tmc_motor_current_fb               = &axis_x_tmc_motor_current_fb,
+            // .tmc_motor_stall_fb                 = &axis_x_tmc_motor_stall_fb,
+            // .tmc_microstep_resolution_fb        = &axis_x_tmc_microstep_resolution_fb,
         };
-        *motors[0].tmc_max_velocity_fb = (float)fabs(axis_x_max_velocity_cmd) * axis_x_microstep_per_mm;
-        *motors[0].tmc_max_acceleration_fb = mm_to_microsteps(axis_x_microstep_per_mm, axis_x_max_acceleration_cmd);
+        // *motors[0].tmc_max_velocity_fb = (float)fabs(axis_x_max_velocity_cmd) * axis_x_microstep_per_mm;
+        // *motors[0].tmc_max_acceleration_fb = mm_to_microsteps(axis_x_microstep_per_mm, axis_x_max_acceleration_cmd);
 
         // YL
         #undef axis_yl_enable
@@ -535,6 +307,21 @@ FUNCTION(_)
         #undef axis_yl_tmc_sg_stop_cmd
         #undef axis_yl_tmc_sg_thresh_cmd
         uint32_t axis_yl_microstep_per_mm = microsteps_per_mm(200, axis_yl_pitch * axis_yl_teeth, axis_yl_microsteps_cmd);
+        tmc5041_motor_t tmc5041_motors_yl = (tmc5041_motor_t) {
+            .chip                   = chip0,
+            .motor                  = 1,
+            .run_current_cmd        = &axis_yl_tmc_run_current_cmd,
+            .hold_current_cmd       = &axis_yl_tmc_hold_current_cmd,
+            .max_velocity_cmd       = &axis_yl_tmc_max_velocity_cmd,
+            .max_acceleration_cmd   = &axis_yl_tmc_max_acceleration_cmd,
+            .position_cmd           = &axis_yl_tmc_position_cmd,
+            .velocity_cmd           = &axis_yl_tmc_velocity_cmd,
+            .sg_stop_cmd            = &axis_yl_tmc_sg_stop_cmd,
+            .cs_thresh_cmd          = &axis_yl_tmc_cs_thresh_cmd,
+            .sg_thresh_cmd          = &axis_yl_tmc_sg_thresh_cmd,
+            .max_velocity_fb        = (float)fabs(axis_yl_max_velocity_cmd) * axis_yl_microstep_per_mm;
+            .max_acceleration_fb    = mm_to_microsteps(axis_yl_microstep_per_mm, axis_yl_max_acceleration_cmd);
+        };
         motors[1] = (joint_t) {
             .chip                   = axis_yl_chip,
             .motor                  = axis_yl_motor,
@@ -550,31 +337,33 @@ FUNCTION(_)
             .microsteps_cmd         = axis_yl_microsteps_cmd,
             .mm_per_rev             = axis_yl_pitch * axis_yl_teeth,
             .microstep_per_mm       = axis_yl_microstep_per_mm,
-            .tmc_run_current_cmd    = axis_yl_tmc_run_current_cmd,
-            .tmc_hold_current_cmd   = axis_yl_tmc_hold_current_cmd,
-            .tmc_sg_stop_cmd        = __comp_inst->axis_yl_tmc_sg_stop_cmd,
-            .tmc_sg_thresh_cmd      = __comp_inst->axis_yl_tmc_sg_thresh_cmd,
-            .tmc_mres               = microsteps_to_tmc_mres(axis_yl_microsteps_cmd),
-            .tmc_cs_thresh                      = axis_yl_tmc_cs_thresh_cmd,
-            .tmc_max_velocity_fb                = &axis_yl_tmc_max_velocity_fb,
-            .tmc_max_acceleration_fb            = &axis_yl_tmc_max_acceleration_fb,
-            .sg_stop_fb                         = &axis_yl_sg_stop_fb,
-            .home_sw_fb                         = &axis_yl_home_sw,
-            .tmc_position_fb                    = &axis_yl_tmc_position_fb,
-            .tmc_velocity_fb                    = &axis_yl_tmc_velocity_fb,
-            .tmc_motor_standstill_fb            = &axis_yl_tmc_motor_standstill_fb,
-            .tmc_motor_full_stepping_fb         = &axis_yl_tmc_motor_full_stepping_fb,
-            .tmc_motor_overtemp_warning_fb      = &axis_yl_tmc_motor_overtemp_warning_fb,
-            .tmc_motor_overtemp_alarm_fb        = &axis_yl_tmc_motor_overtemp_alarm_fb,
-            .tmc_motor_load_fb                  = &axis_yl_tmc_motor_load_fb,
-            .tmc_motor_current_fb               = &axis_yl_tmc_motor_current_fb,
-            .tmc_motor_stall_fb                 = &axis_yl_tmc_motor_stall_fb,
-            .tmc_microstep_resolution_fb        = &axis_yl_tmc_microstep_resolution_fb,
-            // TODO move to sensors() function
+            .sg_stop_fb             = &axis_yl_sg_stop_fb,
+            .home_sw_fb             = &axis_yl_home_sw,
             .torch_breakaway_fb     = &torch_breakaway,
+
+            .tmc                    = tmc5041_motors_yl,
+
+            // .tmc_run_current_cmd                = axis_yl_tmc_run_current_cmd,
+            // .tmc_hold_current_cmd               = axis_yl_tmc_hold_current_cmd,
+            // .tmc_sg_stop_cmd                    = __comp_inst->axis_yl_tmc_sg_stop_cmd,
+            // .tmc_sg_thresh_cmd                  = __comp_inst->axis_yl_tmc_sg_thresh_cmd,
+            // .tmc_mres                           = microsteps_to_tmc_mres(axis_yl_microsteps_cmd),
+            // .tmc_cs_thresh                      = axis_yl_tmc_cs_thresh_cmd,
+            // .tmc_max_velocity_fb                = &axis_yl_tmc_max_velocity_fb,
+            // .tmc_max_acceleration_fb            = &axis_yl_tmc_max_acceleration_fb,
+            // .tmc_position_fb                    = &axis_yl_tmc_position_fb,
+            // .tmc_velocity_fb                    = &axis_yl_tmc_velocity_fb,
+            // .tmc_motor_standstill_fb            = &axis_yl_tmc_motor_standstill_fb,
+            // .tmc_motor_full_stepping_fb         = &axis_yl_tmc_motor_full_stepping_fb,
+            // .tmc_motor_overtemp_warning_fb      = &axis_yl_tmc_motor_overtemp_warning_fb,
+            // .tmc_motor_overtemp_alarm_fb        = &axis_yl_tmc_motor_overtemp_alarm_fb,
+            // .tmc_motor_load_fb                  = &axis_yl_tmc_motor_load_fb,
+            // .tmc_motor_current_fb               = &axis_yl_tmc_motor_current_fb,
+            // .tmc_motor_stall_fb                 = &axis_yl_tmc_motor_stall_fb,
+            // .tmc_microstep_resolution_fb        = &axis_yl_tmc_microstep_resolution_fb,
         };
-        *motors[1].tmc_max_velocity_fb = (float)fabs(axis_yl_max_velocity_cmd) * axis_yl_microstep_per_mm;
-        *motors[1].tmc_max_acceleration_fb = mm_to_microsteps(axis_yl_microstep_per_mm, axis_yl_max_acceleration_cmd);
+        // *motors[1].tmc_max_velocity_fb = (float)fabs(axis_yl_max_velocity_cmd) * axis_yl_microstep_per_mm;
+        // *motors[1].tmc_max_acceleration_fb = mm_to_microsteps(axis_yl_microstep_per_mm, axis_yl_max_acceleration_cmd);
 
         // YR
         #undef axis_yr_enable
@@ -583,6 +372,21 @@ FUNCTION(_)
         #undef axis_yr_tmc_sg_stop_cmd
         #undef axis_yr_tmc_sg_thresh_cmd
         uint32_t axis_yr_microstep_per_mm = microsteps_per_mm(200, axis_yr_pitch * axis_yr_teeth, axis_yr_microsteps_cmd);
+        tmc5041_motor_t tmc5041_motors_yr = (tmc5041_motor_t) {
+            .chip                   = chip0,
+            .motor                  = 1,
+            .run_current_cmd        = &axis_yr_tmc_run_current_cmd,
+            .hold_current_cmd       = &axis_yr_tmc_hold_current_cmd,
+            .max_velocity_cmd       = &axis_yr_tmc_max_velocity_cmd,
+            .max_acceleration_cmd   = &axis_yr_tmc_max_acceleration_cmd,
+            .position_cmd           = &axis_yr_tmc_position_cmd,
+            .velocity_cmd           = &axis_yr_tmc_velocity_cmd,
+            .sg_stop_cmd            = &axis_yr_tmc_sg_stop_cmd,
+            .cs_thresh_cmd          = &axis_yr_tmc_cs_thresh_cmd,
+            .sg_thresh_cmd          = &axis_yr_tmc_sg_thresh_cmd,
+            .max_velocity_fb        = (float)fabs(axis_yr_max_velocity_cmd) * axis_yr_microstep_per_mm;
+            .max_acceleration_fb    = mm_to_microsteps(axis_yr_microstep_per_mm, axis_yr_max_acceleration_cmd);
+        };
         motors[2] = (joint_t) {
             .chip                   = axis_yr_chip,
             .motor                  = axis_yr_motor,
@@ -598,31 +402,33 @@ FUNCTION(_)
             .microsteps_cmd         = axis_yr_microsteps_cmd,
             .mm_per_rev             = axis_yr_pitch * axis_yr_teeth,
             .microstep_per_mm       = axis_yr_microstep_per_mm,
-            .tmc_run_current_cmd    = axis_yr_tmc_run_current_cmd,
-            .tmc_hold_current_cmd   = axis_yr_tmc_hold_current_cmd,
-            .tmc_sg_stop_cmd        = __comp_inst->axis_yr_tmc_sg_stop_cmd,
-            .tmc_sg_thresh_cmd      = __comp_inst->axis_yr_tmc_sg_thresh_cmd,
-            .tmc_mres                           = microsteps_to_tmc_mres(axis_yr_microsteps_cmd),
-            .tmc_cs_thresh                      = axis_yr_tmc_cs_thresh_cmd,
-            .tmc_max_velocity_fb                = &axis_yr_tmc_max_velocity_fb,
-            .tmc_max_acceleration_fb            = &axis_yr_tmc_max_acceleration_fb,
-            .sg_stop_fb                         = &axis_yr_sg_stop_fb,
-            .home_sw_fb                         = &axis_yr_home_sw,
-            .tmc_position_fb                    = &axis_yr_tmc_position_fb,
-            .tmc_velocity_fb                    = &axis_yr_tmc_velocity_fb,
-            .tmc_motor_standstill_fb            = &axis_yr_tmc_motor_standstill_fb,
-            .tmc_motor_full_stepping_fb         = &axis_yr_tmc_motor_full_stepping_fb,
-            .tmc_motor_overtemp_warning_fb      = &axis_yr_tmc_motor_overtemp_warning_fb,
-            .tmc_motor_overtemp_alarm_fb        = &axis_yr_tmc_motor_overtemp_alarm_fb,
-            .tmc_motor_load_fb                  = &axis_yr_tmc_motor_load_fb,
-            .tmc_motor_current_fb               = &axis_yr_tmc_motor_current_fb,
-            .tmc_motor_stall_fb                 = &axis_yr_tmc_motor_stall_fb,
-            .tmc_microstep_resolution_fb        = &axis_yr_tmc_microstep_resolution_fb,
-            // TODO move to sensors() function
+            .sg_stop_fb             = &axis_yr_sg_stop_fb,
+            .home_sw_fb             = &axis_yr_home_sw,
             .torch_breakaway_fb     = &torch_breakaway,
+
+            .tmc                    = tmc5041_motors_yr,
+
+            // .tmc_run_current_cmd                = axis_yr_tmc_run_current_cmd,
+            // .tmc_hold_current_cmd               = axis_yr_tmc_hold_current_cmd,
+            // .tmc_sg_stop_cmd                    = __comp_inst->axis_yr_tmc_sg_stop_cmd,
+            // .tmc_sg_thresh_cmd                  = __comp_inst->axis_yr_tmc_sg_thresh_cmd,
+            // .tmc_mres                           = microsteps_to_tmc_mres(axis_yr_microsteps_cmd),
+            // .tmc_cs_thresh                      = axis_yr_tmc_cs_thresh_cmd,
+            // .tmc_max_velocity_fb                = &axis_yr_tmc_max_velocity_fb,
+            // .tmc_max_acceleration_fb            = &axis_yr_tmc_max_acceleration_fb,
+            // .tmc_position_fb                    = &axis_yr_tmc_position_fb,
+            // .tmc_velocity_fb                    = &axis_yr_tmc_velocity_fb,
+            // .tmc_motor_standstill_fb            = &axis_yr_tmc_motor_standstill_fb,
+            // .tmc_motor_full_stepping_fb         = &axis_yr_tmc_motor_full_stepping_fb,
+            // .tmc_motor_overtemp_warning_fb      = &axis_yr_tmc_motor_overtemp_warning_fb,
+            // .tmc_motor_overtemp_alarm_fb        = &axis_yr_tmc_motor_overtemp_alarm_fb,
+            // .tmc_motor_load_fb                  = &axis_yr_tmc_motor_load_fb,
+            // .tmc_motor_current_fb               = &axis_yr_tmc_motor_current_fb,
+            // .tmc_motor_stall_fb                 = &axis_yr_tmc_motor_stall_fb,
+            // .tmc_microstep_resolution_fb        = &axis_yr_tmc_microstep_resolution_fb,
         };
-        *motors[2].tmc_max_velocity_fb = (float)fabs(axis_yr_max_velocity_cmd) * axis_yr_microstep_per_mm;
-        *motors[2].tmc_max_acceleration_fb = mm_to_microsteps(axis_yr_microstep_per_mm, axis_yr_max_acceleration_cmd);
+        // *motors[2].tmc_max_velocity_fb = (float)fabs(axis_yr_max_velocity_cmd) * axis_yr_microstep_per_mm;
+        // *motors[2].tmc_max_acceleration_fb = mm_to_microsteps(axis_yr_microstep_per_mm, axis_yr_max_acceleration_cmd);
 
         // Z
         #undef axis_z_enable
@@ -631,6 +437,21 @@ FUNCTION(_)
         #undef axis_z_tmc_sg_stop_cmd
         #undef axis_z_tmc_sg_thresh_cmd
         uint32_t axis_z_microstep_per_mm = microsteps_per_mm(200, axis_z_pitch * axis_z_teeth, axis_z_microsteps_cmd);
+        tmc5041_motor_t tmc5041_motors_z = (tmc5041_motor_t) {
+            .chip                   = chip0,
+            .motor                  = 1,
+            .run_current_cmd        = &axis_z_tmc_run_current_cmd,
+            .hold_current_cmd       = &axis_z_tmc_hold_current_cmd,
+            .max_velocity_cmd       = &axis_z_tmc_max_velocity_cmd,
+            .max_acceleration_cmd   = &axis_z_tmc_max_acceleration_cmd,
+            .position_cmd           = &axis_z_tmc_position_cmd,
+            .velocity_cmd           = &axis_z_tmc_velocity_cmd,
+            .sg_stop_cmd            = &axis_z_tmc_sg_stop_cmd,
+            .cs_thresh_cmd          = &axis_z_tmc_cs_thresh_cmd,
+            .sg_thresh_cmd          = &axis_z_tmc_sg_thresh_cmd,
+            .max_velocity_fb        = (float)fabs(axis_z_max_velocity_cmd) * axis_z_microstep_per_mm;
+            .max_acceleration_fb    = mm_to_microsteps(axis_z_microstep_per_mm, axis_z_max_acceleration_cmd);
+        };
         motors[3] = (joint_t) {
             .chip                   = axis_z_chip,
             .motor                  = axis_z_motor,
@@ -646,53 +467,43 @@ FUNCTION(_)
             .microsteps_cmd         = axis_z_microsteps_cmd,
             .mm_per_rev             = axis_z_pitch * axis_z_teeth,
             .microstep_per_mm       = axis_z_microstep_per_mm,
-            .tmc_run_current_cmd    = axis_z_tmc_run_current_cmd,
-            .tmc_hold_current_cmd   = axis_z_tmc_hold_current_cmd,
-            .tmc_sg_stop_cmd        = __comp_inst->axis_z_tmc_sg_stop_cmd,
-            .tmc_sg_thresh_cmd      = __comp_inst->axis_z_tmc_sg_thresh_cmd,
-            .tmc_mres               = microsteps_to_tmc_mres(axis_z_microsteps_cmd),
-            .tmc_cs_thresh                      = axis_z_tmc_cs_thresh_cmd,
-            .tmc_max_velocity_fb                = &axis_z_tmc_max_velocity_fb,
-            .tmc_max_acceleration_fb            = &axis_z_tmc_max_acceleration_fb,
-            .sg_stop_fb                         = &axis_z_sg_stop_fb,
-            .home_sw_fb                         = &axis_z_home_sw,
-            .tmc_position_fb                    = &axis_z_tmc_position_fb,
-            .tmc_velocity_fb                    = &axis_z_tmc_velocity_fb,
-            .tmc_motor_standstill_fb            = &axis_z_tmc_motor_standstill_fb,
-            .tmc_motor_full_stepping_fb         = &axis_z_tmc_motor_full_stepping_fb,
-            .tmc_motor_overtemp_warning_fb      = &axis_z_tmc_motor_overtemp_warning_fb,
-            .tmc_motor_overtemp_alarm_fb        = &axis_z_tmc_motor_overtemp_alarm_fb,
-            .tmc_motor_load_fb                  = &axis_z_tmc_motor_load_fb,
-            .tmc_motor_current_fb               = &axis_z_tmc_motor_current_fb,
-            .tmc_motor_stall_fb                 = &axis_z_tmc_motor_stall_fb,
-            .tmc_microstep_resolution_fb        = &axis_z_tmc_microstep_resolution_fb,
-            // TODO move to sensors() function
+            .sg_stop_fb             = &axis_z_sg_stop_fb,
+            .home_sw_fb             = &axis_z_home_sw,
             .torch_breakaway_fb     = &torch_breakaway,
+
+            .tmc                    = tmc5041_motors_z,
+
+            // .tmc_run_current_cmd                = axis_z_tmc_run_current_cmd,
+            // .tmc_hold_current_cmd               = axis_z_tmc_hold_current_cmd,
+            // .tmc_sg_stop_cmd                    = __comp_inst->axis_z_tmc_sg_stop_cmd,
+            // .tmc_sg_thresh_cmd                  = __comp_inst->axis_z_tmc_sg_thresh_cmd,
+            // .tmc_mres                           = microsteps_to_tmc_mres(axis_z_microsteps_cmd),
+            // .tmc_cs_thresh                      = axis_z_tmc_cs_thresh_cmd,
+            // .tmc_max_velocity_fb                = &axis_z_tmc_max_velocity_fb,
+            // .tmc_max_acceleration_fb            = &axis_z_tmc_max_acceleration_fb,
+            // .tmc_position_fb                    = &axis_z_tmc_position_fb,
+            // .tmc_velocity_fb                    = &axis_z_tmc_velocity_fb,
+            // .tmc_motor_standstill_fb            = &axis_z_tmc_motor_standstill_fb,
+            // .tmc_motor_full_stepping_fb         = &axis_z_tmc_motor_full_stepping_fb,
+            // .tmc_motor_overtemp_warning_fb      = &axis_z_tmc_motor_overtemp_warning_fb,
+            // .tmc_motor_overtemp_alarm_fb        = &axis_z_tmc_motor_overtemp_alarm_fb,
+            // .tmc_motor_load_fb                  = &axis_z_tmc_motor_load_fb,
+            // .tmc_motor_current_fb               = &axis_z_tmc_motor_current_fb,
+            // .tmc_motor_stall_fb                 = &axis_z_tmc_motor_stall_fb,
+            // .tmc_microstep_resolution_fb        = &axis_z_tmc_microstep_resolution_fb,
         };
-        *motors[3].tmc_max_velocity_fb = (float)fabs(axis_z_max_velocity_cmd) * microsteps_per_mm(200, axis_z_pitch * axis_z_teeth, axis_z_microsteps_cmd);
-        *motors[3].tmc_max_acceleration_fb = mm_to_microsteps(axis_z_microstep_per_mm, axis_z_max_acceleration_cmd);
+        // *motors[3].tmc_max_velocity_fb = (float)fabs(axis_z_max_velocity_cmd) * microsteps_per_mm(200, axis_z_pitch * axis_z_teeth, axis_z_microsteps_cmd);
+        // *motors[3].tmc_max_acceleration_fb = mm_to_microsteps(axis_z_microstep_per_mm, axis_z_max_acceleration_cmd);
 
-        #ifdef DEBUG
-        rtapi_print("Invoking setup_once\n");
-        #endif
-
-        needs_setup = setup_once(motors, MOTOR_COUNT);
+        needs_setup = hotshot_init();
     }
 
-    // TODO TMC-API Call this function once per cycle for each IC
-    // tmc5041_periodicJob(TMC5041TypeDef *tmc5041, uint32_t tick)
-    // tmc5041_periodicJob(TMC5041TypeDef *tmc5041, uint32_t tick)
-
-    handle_joint(&motors[0]);
-    handle_joint(&motors[1]);
-    handle_joint(&motors[2]);
-    handle_joint(&motors[3]);
-
+    handle_joints();
 }
 
 FUNCTION(sensors) {
 
-    start_spi_conversation(BCM2835_SPI_CS1);
+    rpi_spi_select(BCM2835_SPI_CS1);
 
     // TODO go into estop mode on estop-cmd?
 
@@ -705,7 +516,7 @@ FUNCTION(sensors) {
     // TODO implmement moving average? https://forums.raspberrypi.com/viewtopic.php?t=40248
     //      (new result) = (previous result)*(1 - ratio) + (new sample) * (ratio)
     //      using a ratio of 0.025
-    end_spi_conversation();
+    rpi_spi_unselect();
 
     // Read in arc ok switch state and set arc_ok bin bit
     //  plasmac.arc-ok-in bit in
@@ -788,13 +599,7 @@ FUNCTION(sensors) {
 
 EXTRA_CLEANUP()
 {
-    teardown_tmc5041(motors);
-   
-    teardown_spi0();
-    teardown_spi1();
-
-    // Close the library, deallocating any allocated memory and closing /dev/mem
-    bcm2835_close();
+    hotshot_end();
 }
 
 // HAL Module
