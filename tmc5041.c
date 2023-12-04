@@ -235,16 +235,24 @@ bool tmc5041_motor_set_home(tmc5041_motor_t * motor)
 
 void tmc5041_motor_reset(tmc5041_motor_t * motor)
 {
+    // Stop chopper
+    tmc5041_motor_halt(motor);
+    // Reset XACTUAL to 0
+    tmc5041_motor_set_home(motor);
+}
+
+void tmc5041_motor_halt(tmc5041_motor_t * motor) {
+    
+    // TODO Go to hold current instead of turning off chopper?
+    // We can hold by setting XTARGET = XACTUAL
+
     static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
     uint32_t write_payload = 0x00;
-
     // Set TOFF=0 to clear registers
     write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0b0);
     uint8_t chop_conf[40] = {TMC5041_CHOPCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(chop_conf, spi_status, 5);
 
-    // Reset XACTUAL to 0
-    tmc5041_motor_set_home(motor);
 }
 
 uint8_t microsteps_to_tmc_mres(uint16_t usteps)

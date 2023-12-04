@@ -3,7 +3,7 @@
 
 #define GLOBAL_OK
 
-#define MOTOR_COUNT 4
+#define MOTOR_COUNT 1
 
 // Define GPIO pin numbers
 #define PIN_TORCH_ON 18

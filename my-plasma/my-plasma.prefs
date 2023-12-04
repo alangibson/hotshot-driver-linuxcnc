@@ -1,6 +1,33 @@
 [PLASMA_PARAMETERS]
 Arc Voltage Offset = 0.0
 Arc Voltage Scale = 1.0
+Setup Feed Rate = 1200.0
+Arc Fail Timeout = 3
+Arc OK High = 250
+Arc OK Low = 60
+Arc Maximum Starts = 3
+Velocity Anti Dive Threshold = 90
+Float Switch Travel = 1.5
+Height Per Volt = 0.1
+Void Sense Slope = 500
+Ohmic Maximum Attempts = 0
+Ohmic Probe Offset = 0
+Pid P Gain = 10
+Pid D Gain = 0
+Pid I Gain = 0
+Probe Feed Rate = 300
+Probe Start Height = 25
+Arc Restart Delay = 1
+Safe Height = 25
+Scribe Arming Delay = 0
+Scribe On Delay = 0
+Skip IHS Distance = 0
+Spotting Threshold = 1
+Spotting Time = 0
+THC Delay = 0.5
+THC Sample Counts = 50
+THC Sample Threshold = 1
+THC Threshold = 1
 
 [GUI_OPTIONS]
 Mode = 1
@@ -10,6 +37,19 @@ Flash error = 0
 Hide run = 0
 Hide pause = 0
 Hide abort = 0
+Autorepeat all = False
+Use keyboard shortcuts = False
+Use soft keyboard = False
+Show materials = True
+Run from line = False
+Tool tips = True
+Exit warning = True
+Exit warning text = 
+Preview cone size = 0.5
+Preview grid size = 0.0
+T view zoom scale = 1.0
+Override jog inhibit via Z+ = False
+Custom style = None
 
 [BUTTONS]
 1 Name = OHMIC\TEST
@@ -55,4 +95,61 @@ Hide abort = 0
 
 [POWERMAX]
 Port = 
+
+[COLOR_OPTIONS]
+Foreground = #ffee06
+Highlight = #ffee06
+LED = #ffee06
+Background = #16160e
+Background Alt = #36362e
+Frames = #ffee06
+Estop = #ff0000
+Disabled = #b0b0b0
+Preview = #000000
+
+[ENABLE_OPTIONS]
+THC enable = True
+Corner lock enable = True
+Void lock enable = False
+Use auto volts = True
+Ohmic probe enable = False
+THC auto = False
+
+[CAMERA_OFFSET]
+Camera port = 0
+X axis = 0
+Y axis = 0
+
+[STATISTICS]
+Cut time = 0
+Paused time = 0
+Probe time = 0
+Program run time = 0
+Torch on time = 0
+Rapid time = 0
+Cut length = 0
+Pierce count = 0
+
+[DEFAULT MATERIAL]
+Kerf width = 1
+Pierce height = 3
+Pierce delay = 0
+Puddle jump height = 0
+Puddle jump delay = 0
+Cut height = 1
+Cut feed rate = 4000
+Cut amps = 45
+Cut volts = 99
+Pause at end = 0
+Gas pressure = 0
+Cut mode = 1
+
+[LASER_OFFSET]
+X axis = 0
+Y axis = 0
+
+[OFFSET_PROBING]
+X axis = 0
+Y axis = 0
+Delay = 0
 

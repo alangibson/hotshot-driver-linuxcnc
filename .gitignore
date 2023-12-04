@@ -1,2 +1,8 @@
 *.c.*
 *.o
+*/*.var.bak
+*/machine_log_*.txt
+*.so
+*.sym
+*.tmp
+*.ver

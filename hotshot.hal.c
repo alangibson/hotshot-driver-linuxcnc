@@ -1,5 +1,6 @@
 // Glue code tying Hotshot to LinuxCNC montion controller
 
+#include "stdio.h"
 #include "stdbool.h"
 #include "global.h"
 #include "bcm2835.h"
@@ -17,18 +18,20 @@ void handle_joint(joint_t * motor) {
 
         rpi_spi_select(motor->chip);
 
+
         // Check switches
         //
         // Note: Reading RAMP_STAT clears sg_stop
         ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(&motor->tmc);
         // Note: status_sg and event_stop_sg appear to be the same
-        // axis_x_sg_stop_fb = ramp_stat.event_stop_sg;
-        *motor->sg_stop_fb = ramp_stat.status_sg;
+        *motor->sg_stop_fb = ramp_stat.event_stop_sg;
+        // *motor->sg_stop_fb = ramp_stat.status_sg;
         // TODO
         // axis_x_tmc_position_reached_fb = ramp_stat.position_reached;
         // axis_x_tmc_t_zerowait_active_fb = ramp_stat.t_zerowait_active;
         // axis_x_tmc_velocity_reached_fb = ramp_stat.velocity_reached;
-                
+        // printf("status_sg=%d\n", *motor->sg_stop_fb);
+
         #ifdef DEBUG
         rtapi_print("ramp_stat axis_x_sg_stop_fb %d \n", (*motor->sg_stop_fb));
         #endif
@@ -43,9 +46,6 @@ void handle_joint(joint_t * motor) {
                 motor->tmc_sg_stop_cmd, motor->tmc_sg_thresh_cmd);
             #endif
 
-            // TODO shut off torch
-            // TODO stop motion controller or motor will twitch every time we read RAMP_STAT
-
             if (motor->is_homing) {
                 // We are homing and we have hit a Stallguard stop event, so trigger home switch
 
@@ -55,14 +55,15 @@ void handle_joint(joint_t * motor) {
 
                 motor->home_sw = tmc5041_motor_set_home(&motor->tmc);
             } else {
-                // We've hit a Stallguard stop, but we're not homing, so trigger breakaway
+                // We've hit a Stallguard stop, but we're not homing
 
-                #ifdef DEBUG
-                rtapi_print("Setting breakaway\n");
-                #endif
+                // TODO shut off torch
+                
+                // Stop motion controller or motor will twitch every time we read RAMP_STAT
+                tmc5041_motor_halt(&motor->tmc);
 
-                // TODO Add `torch_breakaway = set_breakaway(&motors[0])1 that should immediately stop motor
                 *motor->torch_breakaway_fb = TRUE;
+
                 // TODO "breakaway" for the x axis should indicate negative limit switch is triggered
                 // There is currently no negative limit switch for X and YL/YR
             }             
@@ -111,8 +112,8 @@ void handle_joint(joint_t * motor) {
 
         // Get velocity
         //
-        *motor->tmc.velocity_cmd = tmc5041_get_register_VACTUAL(&motor->tmc);
-        float vactual_mm = (float)(*motor->tmc.velocity_cmd) / (float)motor->microstep_per_mm;
+        *motor->tmc.velocity_fb = tmc5041_get_register_VACTUAL(&motor->tmc);
+        float vactual_mm = (float)(*motor->tmc.velocity_fb) / (float)(*motor->microstep_per_mm);
         *motor->velocity_fb = vactual_mm;
        
         #ifdef DEBUG
@@ -123,13 +124,13 @@ void handle_joint(joint_t * motor) {
         // Get driver state
         // 
         drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&motor->tmc);
-        *motor->tmc_motor_standstill_fb = drv_status.standstill;
-        *motor->tmc_motor_full_stepping_fb = drv_status.full_stepping;
-        *motor->tmc_motor_overtemp_warning_fb = drv_status.overtemp_warning;
-        *motor->tmc_motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
-        *motor->tmc_motor_load_fb = drv_status.sg_result;
-        *motor->tmc_motor_current_fb = drv_status.cs_actual;
-        *motor->tmc_motor_stall_fb = drv_status.sg_status;
+        *motor->tmc.motor_standstill_fb = drv_status.standstill;
+        *motor->tmc.motor_full_stepping_fb = drv_status.full_stepping;
+        *motor->tmc.motor_overtemp_warning_fb = drv_status.overtemp_warning;
+        *motor->tmc.motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
+        *motor->tmc.motor_load_fb = drv_status.sg_result;
+        *motor->tmc.motor_current_fb = drv_status.cs_actual;
+        *motor->tmc.motor_stall_fb = drv_status.sg_status;
 
         #ifdef DEBUG
         rtapi_print("vactual_mm is %f\n", vactual_mm);
@@ -139,7 +140,7 @@ void handle_joint(joint_t * motor) {
         // Get chopper state
         //
         chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(&motor->tmc);
-        *motor->tmc_microstep_resolution_fb = chopconf.mres;
+        *motor->tmc.microstep_resolution_fb = chopconf.mres;
 
         #ifdef DEBUG
         rtapi_print("Done handling joint\n");
@@ -162,10 +163,9 @@ void handle_joint(joint_t * motor) {
 
 void handle_joints(joint_t * motors, uint8_t motor_count) {
     // Do something with each joint
-    handle_joint(&motors[0]);
-    handle_joint(&motors[1]);
-    handle_joint(&motors[2]);
-    handle_joint(&motors[3]);
+    for (uint8_t i = 0; i < motor_count; i++) {
+        handle_joint(&motors[i]);
+    }
 }
 
 bool hotshot_init(joint_t * motors, uint8_t motor_count)

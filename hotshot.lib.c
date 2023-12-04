@@ -1,5 +1,6 @@
 // Convenience functions on top of low level TMC5041 functions
 
+#include "stdio.h"
 #include "tmc/helpers/Types.h"
 #include "bcm2835.h"
 #include "hotshot.h"
@@ -19,12 +20,12 @@ spi_status_t follow(joint_t * motor)
     // XTARGET: Target position for ramp mode
     // Calculate target position and velocity
     // Implicitly round to lower since were converting from float to int
-    int32 xtarget = (*motor->position_cmd) * motor->microstep_per_mm;
+    int32 xtarget = (*motor->position_cmd) * (*motor->microstep_per_mm);
     spi_status_t spi_status = tmc5041_set_register_XTARGET(&motor->tmc, xtarget);
 
     // TODO return xactual_mm
     // int64_t xactual_value = tmc5041_get_register_XACTUAL(&motor->tmc);
-    // spi_status.xactual_mm = (float)xactual_value / (float)motor->microstep_per_mm;
+    // spi_status.xactual_mm = (float)xactual_value / (float)(*motor->microstep_per_mm);
 
     return spi_status;
 }

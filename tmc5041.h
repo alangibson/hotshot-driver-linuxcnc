@@ -83,8 +83,8 @@ typedef struct {
     volatile sg_thresh_t        	* sg_thresh_cmd;
     volatile float64_t              * max_velocity_cmd;
     volatile uint32_t               * max_acceleration_cmd;
-    volatile tmc_position_t     	* position_cmd;
-    volatile tmc_velocity_t     	* velocity_cmd;
+    volatile tmc_position_t     	* position_fb;
+    volatile tmc_velocity_t     	* velocity_fb;
     volatile bool                   * motor_standstill_fb;
     volatile bool                   * motor_full_stepping_fb;
     volatile bool                   * motor_overtemp_warning_fb;
@@ -113,3 +113,4 @@ drv_status_register_t tmc5041_get_register_DRV_STATUS(tmc5041_motor_t * motor);
 chopconf_register_t tmc5041_get_register_CHOPCONF(tmc5041_motor_t * motor);
 bool tmc5041_motor_set_home(tmc5041_motor_t * motor);
 void tmc5041_motor_end(tmc5041_motor_t * motor);
+void tmc5041_motor_halt(tmc5041_motor_t * motor);
