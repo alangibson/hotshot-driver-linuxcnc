@@ -1,419 +1,317 @@
-#include "tmc/ic/TMC5041/TMC5041.h"
-#include "TMC-EVALSYSTEM/hal/SPI.h"
-#include "TMC-EVALSYSTEM/hal/HAL.h"
-#include "tmc/ic/TMC5041/TMC5041.c"
+#include "bcm2835.h"
 #include "tmc5041.h"
 
-// SPI setup
-//
-static void spi_init(void);
-static uint8_t spi_ch1_readWrite(uint8_t data, uint8_t lastTransfer);
-static uint8_t spi_ch2_readWrite(uint8_t data, uint8_t lastTransfer);
-static void spi_ch1_readWriteArray(uint8_t *data, size_t length);
-static void spi_ch2_readWriteArray(uint8_t *data, size_t length);
-static void reset_ch1();
-static void reset_ch2();
-// FIXME give real pin number
-static IOPinTypeDef IODummy = {.bitWeight = DUMMY_BITWEIGHT};
-SPITypeDef SPI =
-    {
-        .ch1 =
-            {
-                // .periphery       = SPI1_BASE_PTR,
-                .CSN = &IODummy,
-                .readWrite = spi_ch1_readWrite,
-                .readWriteArray = spi_ch1_readWriteArray,
-                .reset = reset_ch1},
-        .ch2 =
-            {
-                // .periphery       = SPI2_BASE_PTR,
-                .CSN = &IODummy,
-                .readWrite = spi_ch2_readWrite,
-                .readWriteArray = spi_ch2_readWriteArray,
-                .reset = reset_ch2},
-        .init = spi_init};
+#include "bcm2835.c"
 
-// HAL setup
-//
-static void hal_init(void);
-static void hal_reset(uint8_t ResetPeripherals);
-static const IOsFunctionsTypeDef IOFunctions =
-    {
-        .config = &IOs,
-        .pins = &IOMap,
-};
-const HALTypeDef HAL =
-    {
-        .init = hal_init,
-        .reset = hal_reset,
-        // .NVIC_DeInit  = NVIC_DeInit,
-        .SPI = &SPI,
-        // .USB          = &USB,
-        // .LEDs         = &LEDs,
-        // .ADCs         = &ADCs,
-        .IOs = &IOFunctions,
-        // .RS232        = &RS232,
-        // .WLAN         = &WLAN,
-        // .Timer        = &Timer,
-        // .UART         = &UART
-};
+// ----------------------------------------------------------------------------
+// Taken from TMC5041.c and modified
 
-// IOs setup
-//
-static void ios_init();
-// static void setPinConfiguration(IOPinTypeDef *pin);
-// static void copyPinConfiguration(IOPinInitTypeDef *from, IOPinTypeDef*to);
-// static void resetPinConfiguration(IOPinTypeDef *pin);
-// static void setPin2Output(IOPinTypeDef *pin);
-// static void setPin2Input(IOPinTypeDef *pin);
-static void setPinHigh(IOPinTypeDef *pin);
-static void setPinLow(IOPinTypeDef *pin);
-// static void setPinState(IOPinTypeDef *pin, IO_States state);
-// static IO_States getPinState(IOPinTypeDef *pin);
-// static uint8_t isPinHigh(IOPinTypeDef *pin);
-IOsTypeDef IOs =
-    {
-        .init = ios_init,
-        // .set         = setPinConfiguration,
-        // .reset       = resetPinConfiguration,
-        // .copy        = copyPinConfiguration,
-        // .toOutput    = setPin2Output,
-        // .toInput     = setPin2Input,
-        .setHigh = setPinHigh,
-        .setLow = setPinLow,
-        // .setToState  = setPinState,
-        // .getState    = getPinState,
-        // .isHigh      = isPinHigh
-};
-
-static void iomap_init();
-IOPinMapTypeDef IOMap =
-    {
-        .init = iomap_init,
-};
-
-static void iomap_init()
-{
-    // TODO ?
+void tmc5041_readWriteArray(uint8_t chip, uint8_t *data, size_t length) {
+    // printf("tmc5041_readWriteArray: select chip=%d\n", chip);
+    // bcm2835_spi_chipSelect(chip);
+    bcm2835_spi_transfernb(data, data, length);
+    // bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
-
-static void setPinHigh(IOPinTypeDef *pin)
-{
-    printf("TODO set pin high: %d\n", pin->bitWeight);
-}
-
-static void setPinLow(IOPinTypeDef *pin)
-{
-    printf("TODO set pin low: %d\n", pin->bitWeight);
-}
-
-uint8_t readWrite(SPIChannelTypeDef *SPIChannel, uint8_t writeData, uint8_t lastTransfer)
-{
-
-    printf("readWrite: writeData=%d lastTransfer=%d\n", writeData, lastTransfer);
-    printf("readWrite: SPI bitWeight=%d\n", SPIChannel->CSN->bitWeight);
-
-    uint8_t readData = 0;
-
-    printf("readWrite: Calling setLow\n");
-
-    // Chip Select
-    HAL.IOs->config->setLow(SPIChannel->CSN);
-
-    printf("readWrite: Done calling setLow\n");
-
-    // TODO send data
-    // writeData
-    // TODO read the data
-    // readData = SPI_POPR_REG(SPIChannel->periphery);
-
-    if (lastTransfer)
-    {
-        // Chip Unselect
-        // reset CSN manual, falls Probleme Auftreten, dann diese Zeile unter die while Schleife
-        HAL.IOs->config->setHigh(SPIChannel->CSN);
-    }
-
-    return readData;
-}
-
-#include "stdio.h"
 
 /**
- * This function is required by the TMC-API.
- * Implementation is inspired by TMC5041_eval.c
- */
-void tmc5041_readWriteArray(uint8_t channel, uint8_t *data, size_t length)
+ * Inspired by tmc5041_readInt() in TMC-API.
+ * Do not change any types in this function.
+*/
+// int32_t tmc5041_read_register(uint8_t address) {
+// 	uint8_t data[5] = { 0, 0, 0, 0, 0 };
+//     data[0] = address;
+//     bcm2835_spi_transfernb(data, data, 5);
+//     data[0] = address;
+//     bcm2835_spi_transfernb(data, data, 5);
+//     return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | data[3] << 8 | data[4];
+// }
+
+// int32_t tmc5041_write_register(uint8_t address, int32_t value)
+// {
+//     uint8_t data[5] = {address | TMC5041_WRITE_BIT, BYTE(value, 3), BYTE(value, 2), BYTE(value, 1), BYTE(value, 0) };
+//     bcm2835_spi_transfernb(data, data, 5);
+//     return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | data[3] << 8 | data[4];
+// }
+
+int32_t tmc5041_writeDatagram(joint_t * motor, uint8_t address, uint8_t x1, uint8_t x2, uint8_t x3, uint8_t x4)
 {
-    // TODO implement this
-    // Maybe combine tmc5041_read_register and tmc5041_write_register?
+	uint8_t data[5] = {address | TMC5041_WRITE_BIT, x1, x2, x3, x4 };
+	tmc5041_readWriteArray(motor->chip, data, 5);
 
-    printf("tmc5041_readWriteArray: channel=%d\n", channel);
+	int32_t value = ((uint32_t)x1 << 24) | ((uint32_t)x2 << 16) | (x3 << 8) | x4;
 
-    for (size_t i = 0; i < length; i++)
-    {
-        data[i] = readWrite(&HAL.SPI->ch1, data[i], (i == (length - 1)) ? true : false);
+	// Write to the shadow register and mark the register dirty
+	// address = TMC_ADDRESS(address);
+	// tmc5041->config->shadowRegister[address] = value;
+	// tmc5041->registerAccess[address] |= TMC_ACCESS_DIRTY;
+
+    return value;
+}
+
+int32_t tmc5041_writeInt(joint_t * motor, uint8_t address, int32_t value)
+{
+    // return tmc5041_write_register(address, value);
+    return tmc5041_writeDatagram(motor, address, BYTE(value, 3), BYTE(value, 2), BYTE(value, 1), BYTE(value, 0));
+}
+
+int32_t tmc5041_readInt(joint_t * motor, uint8_t address)
+{
+    // return tmc5041_read_register(address);
+
+    // Remove shadow register bit
+	// address = TMC_ADDRESS(address);
+
+	// // register not readable -> shadow register copy
+	// // if(!TMC_IS_READABLE(tmc5041->registerAccess[address]))
+	// // 	return tmc5041->config->shadowRegister[address];
+
+	uint8_t data[5] = { 0, 0, 0, 0, 0 };
+
+	data[0] = address;
+	tmc5041_readWriteArray(motor->chip, data, 5);
+
+	data[0] = address;
+	tmc5041_readWriteArray(motor->chip, data, 5);
+
+	return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | (data[3] << 8) | data[4];
+}
+
+// Taken from TMC5041.c and modified
+// ----------------------------------------------------------------------------
+
+spi_status_t parse_spi_status(uint8_t spi_status[40]) {
+    return (spi_status_t) {
+        .status_stop_l2     = spi_status[0] & 0b01000000,
+        .status_stop_l1     = spi_status[0] & 0b00100000,
+        .velocity_reached2  = spi_status[0] & 0b00010000,
+        .velocity_reached1  = spi_status[0] & 0b00001000,
+        .driver_error2      = spi_status[0] & 0b00000100,
+        .driver_error1      = spi_status[0] & 0b00000010,
+        .reset_flag         = spi_status[0] & 0b00000001
+    };
+}
+
+// 4.1.2 SPI Status Bits Transferred with Each Datagram Read Back
+void log_spi_status(joint_t * motor, uint8_t spi_status[40])
+{
+    bool status_stop_l2     = spi_status[0] & 0b01000000;
+    bool status_stop_l1     = spi_status[0] & 0b00100000;
+    bool velocity_reached2  = spi_status[0] & 0b00010000;
+    bool velocity_reached1  = spi_status[0] & 0b00001000;
+    bool driver_error2      = spi_status[0] & 0b00000100;
+    bool driver_error1      = spi_status[0] & 0b00000010;
+    bool reset_flag         = spi_status[0] & 0b00000001;
+    #ifdef DEBUG
+    rtapi_print("hotshot (%d:%d): spi_status: status_stop_l2=%x status_stop_l1=%x velocity_reached2=%x velocity_reached1=%x driver_error2=%x driver_error1=%x reset_flag=%x\n",
+        motor->chip, motor->motor, status_stop_l2, status_stop_l1, velocity_reached2, velocity_reached1, driver_error2, driver_error1, reset_flag);
+    #endif
+    // Reset by reading GSTAT
+    // TODO handle resets
+    if (driver_error2 || driver_error1 || reset_flag) {
+    //     rtapi_print("hotshot: WARNING resetting driver");
+        printf("hotshot: WARNING needs driver reset");
+    //     config_chip();
     }
 }
 
-uint8_t spi_ch1_readWrite(uint8_t data, uint8_t lastTransfer)
+/** Set RAMPMODE register value*/
+void tmc5041_set_register_RAMPMODE(joint_t * motor, uint8_t rampmode)
 {
-    return readWrite(&HAL.SPI->ch1, data, lastTransfer);
-}
-
-uint8_t spi_ch2_readWrite(uint8_t data, uint8_t lastTransfer)
-{
-    return readWrite(&HAL.SPI->ch2, data, lastTransfer);
-}
-
-static void spi_ch1_readWriteArray(uint8_t *data, size_t length)
-{
-    for (size_t i = 0; i < length; i++)
-    {
-        data[i] = readWrite(&HAL.SPI->ch1, data[i], (i == (length - 1)) ? true : false);
-    }
-}
-
-static void spi_ch2_readWriteArray(uint8_t *data, size_t length)
-{
-    for (size_t i = 0; i < length; i++)
-    {
-        data[i] = readWrite(&HAL.SPI->ch2, data[i], (i == (length - 1)) ? true : false);
-    }
-}
-
-void reset_ch1()
-{
-    // configure SPI1 pins PORTB_PCR11(SCK), PORTB_PCR17(SDI), PORTB_PCR15(SDO), PORTB_PCR10(CSN)
-    HAL.IOs->config->reset(&HAL.IOs->pins->SPI1_SCK);
-    HAL.IOs->config->reset(&HAL.IOs->pins->SPI1_SDI);
-    HAL.IOs->config->reset(&HAL.IOs->pins->SPI1_SDO);
-    HAL.IOs->config->reset(SPI.ch1.CSN);
-
-    // set SPI0 to master mode, set inactive state of chip select to HIGH, flush both FIFO buffer by clearing their counters (Tx FIFO, and Rx FIFO are enabled)
-    // SPI_MCR_REG(SPI.ch1.periphery) |= SPI_MCR_CLR_RXF_MASK | SPI_MCR_CLR_TXF_MASK;
-}
-
-void reset_ch2()
-{
-    //	// configure SPI2 pins PORTB_PCR21(SCK), PORTB_PCR23(SDI), PORTB_PCR22(SDO), PORTC_PCR0(CSN0), PORTA_PCR0(CSN5), PORTA_PCR4(CSN2)
-    HAL.IOs->config->reset(&HAL.IOs->pins->SPI2_SCK);
-    HAL.IOs->config->reset(&HAL.IOs->pins->SPI2_SDI);
-    HAL.IOs->config->reset(&HAL.IOs->pins->SPI2_SDO);
-    HAL.IOs->config->reset(SPI.ch2.CSN);
-    SPI.ch2.readWrite = spi_ch2_readWrite;
-
-    // set SPI0 to master mode, set inactive state of chip select to HIGH, flush both FIFO buffer by clearing their counters (Tx FIFO, and Rx FIFO are enabled)
-    // SPI_MCR_REG(SPI.ch2.periphery) |= SPI_MCR_CLR_RXF_MASK | SPI_MCR_CLR_TXF_MASK;
-}
-
-// Taken from TMC5041_eval.c reset()
-static uint8_t tmc5041_chip_1_reset()
-{
-
-    for (uint8_t motor = 0; motor < TMC5041_MOTORS; motor++)
-        if (tmc5041_readInt(&tmc5041_chip_1, TMC5041_VACTUAL(motor)) != 0)
-            return 0;
-
-    return tmc5041_reset(&tmc5041_chip_1);
-}
-
-// Taken from TMC5041_eval.c restore()
-static uint8_t tmc5041_chip_1_restore()
-{
-    return tmc5041_restore(&tmc5041_chip_1);
-}
-
-// Taken from TMC5041_eval.c reset()
-static uint8_t tmc5041_chip_2_reset()
-{
-
-    for (uint8_t motor = 0; motor < TMC5041_MOTORS; motor++)
-        if (tmc5041_readInt(&tmc5041_chip_2, TMC5041_VACTUAL(motor)) != 0)
-            return 0;
-
-    return tmc5041_reset(&tmc5041_chip_2);
-}
-
-// Taken from TMC5041_eval.c restore()
-static uint8_t tmc5041_chip_2_restore()
-{
-    return tmc5041_restore(&tmc5041_chip_2);
-}
-
-void spi_init()
-{
-    // SPI0 -> EEPROM
-    // -------------------------------------------------------------------------------
-    // SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK;  // enable clock for PORT C
-    // SIM_SCGC6 |= SIM_SCGC6_SPI0_MASK;   // enable clock for SPI0
-    // SIM_SCGC6 &= ~SIM_SCGC6_CRC_MASK;   // disable clock for CRC module
-
-    // configure SPI0 pins:
-    //     SCK: Port C, Pin 5
-    //     SDI: Port C, Pin 6
-    //     SDO: Port C, Pin 7
-    //     CSN: Port C, Pin 8
-    // HAL.IOs->pins->EEPROM_SCK.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->EEPROM_SI.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->EEPROM_SO.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->EEPROM_NCS.configuration.GPIO_Mode = GPIO_Mode_OUT;
-
-    // HAL.IOs->config->set(&HAL.IOs->pins->EEPROM_SCK);
-    // HAL.IOs->config->set(&HAL.IOs->pins->EEPROM_SI);
-    // HAL.IOs->config->set(&HAL.IOs->pins->EEPROM_SO);
-    // HAL.IOs->config->set(&HAL.IOs->pins->EEPROM_NCS);
-    // HAL.IOs->config->setHigh(&HAL.IOs->pins->EEPROM_NCS);
-
-    // setTMCSPIParameters(SPI0_BASE_PTR);
-
-    // SPI1 -> ch1
-    // -------------------------------------------------------------------------------
-    // SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;  // enable clock for PORT B
-    // SIM_SCGC6 |= SIM_SCGC6_SPI1_MASK;   // enable clock for SPI1
-    // SIM_SCGC6 &= ~SIM_SCGC6_CRC_MASK;   // disable clock for CRC module
-
-    // configure SPI1 pins:
-    //     SCK: Port B, Pin 11
-    //     SDI: Port B, Pin 16
-    //     SDO: Port B, Pin 17
-    //     CSN: Port B, Pin 10
-    // HAL.IOs->pins->SPI1_SCK.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->SPI1_SDI.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->SPI1_SDO.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->SPI1_CSN.configuration.GPIO_Mode = GPIO_Mode_OUT;
-
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI1_SCK);
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI1_SDI);
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI1_SDO);
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI1_CSN);
-    // HAL.IOs->config->setHigh(&HAL.IOs->pins->SPI1_CSN);
-
-    // setTMCSPIParameters(SPI1_BASE_PTR);
-
-    // SPI2 -> ch2
-    // -------------------------------------------------------------------------------
-    // SIM_SCGC5 |= SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTB_MASK | SIM_SCGC5_PORTC_MASK;  // enable clocks
-    // SIM_SCGC3 |= SIM_SCGC3_SPI2_MASK;                                                 // enable clock for SPI2
-    // SIM_SCGC6 &= ~SIM_SCGC6_CRC_MASK;                                                 // disable clock for CRC module
-
-    // // configure SPI2 pins:
-    // //     SCK:  Port B, Pin 21
-    // //     SDI:  Port B, Pin 22
-    // //     SDO:  Port B, Pin 23
-    // //     CSN0: Port C, Pin 0
-    // //     CSN1: Port A, Pin 5
-    // //     CSN2: Port C, Pin 4
-    // HAL.IOs->pins->SPI2_SCK.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->SPI2_SDI.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->SPI2_SDO.configuration.GPIO_Mode = GPIO_Mode_AF2;
-    // HAL.IOs->pins->SPI2_CSN0.configuration.GPIO_Mode = GPIO_Mode_OUT;
-    // HAL.IOs->pins->SPI2_CSN1.configuration.GPIO_Mode = GPIO_Mode_OUT;
-    // HAL.IOs->pins->SPI2_CSN2.configuration.GPIO_Mode = GPIO_Mode_OUT;
-
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI2_SCK);
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI2_SDI);
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI2_SDO);
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI2_CSN0);
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI2_CSN1);
-    // HAL.IOs->config->set(&HAL.IOs->pins->SPI2_CSN2);
-    // HAL.IOs->config->setHigh(&HAL.IOs->pins->SPI2_CSN0);
-    // HAL.IOs->config->setHigh(&HAL.IOs->pins->SPI2_CSN1);
-    // HAL.IOs->config->setHigh(&HAL.IOs->pins->SPI2_CSN2);
-
-    // setTMCSPIParameters(SPI2_BASE_PTR);
-
-    // // configure default SPI channel_1
-    // SPIChannel_1_default = &HAL.SPI->ch1;
-    // SPIChannel_1_default->CSN = &HAL.IOs->pins->SPI1_CSN;
-    // // configure default SPI channel_2
-    // SPIChannel_2_default = &HAL.SPI->ch2;
-    // SPIChannel_2_default->CSN = &HAL.IOs->pins->SPI2_CSN0;
-}
-
-static void hal_init(void)
-{
-    // Cpu.initClocks();
-    // Cpu.initLowLevel();
-    // NVIC_init();
-    // EnableInterrupts;;
-
-    // systick_init();
-    // wait(100);
-
-    IOs.init();
-    // IOMap.init();
-    // LEDs.init();
-    // ADCs.init();
-    SPI.init();
-    // WLAN.init();
-    // RS232.init();
-    // USB.init();
-
-    // Determine HW version
-    // get_hwid();
-}
-
-static void hal_reset(uint8_t ResetPeripherals)
-{
-    // TODO
-}
-
-void ios_init()
-{
-    // Set the Clock divider for core/system clock
-    // 96 MHz / 2 = 48 MHz
-    // SIM_CLKDIV1 |= SIM_CLKDIV1_OUTDIV1(1);
-
-    // SIM_SCGC5 |= (SIM_SCGC5_PORTA_MASK| SIM_SCGC5_PORTB_MASK | SIM_SCGC5_PORTC_MASK |SIM_SCGC5_PORTD_MASK);
-
-    // // Ausgabe des 16Mhz Taktes auf den CLK16 Pin
-    // SIM_SOPT2 &= ~SIM_SOPT2_CLKOUTSEL_MASK;
-    // SIM_SOPT2 |= SIM_SOPT2_CLKOUTSEL(6);
-    // PORTC_PCR3 = PORT_PCR_MUX(5);
-}
-
-bool setup_once()
-{
-
-    // Configure TMC-API HAL
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    uint32_t write_payload = 0x00;
     //
-    SPITypeDef SPI = (SPITypeDef){
-        .ch1 = (SPIChannelTypeDef){
-            // .CSN = &(IOPinTypeDef) {
-            //     .bitWeight = 0
-            // }
-        },
-        .ch2 = (SPIChannelTypeDef){
-            // .CSN = &(IOPinTypeDef) {
-            //     .bitWeight = 1
-            // }
-        }};
-
-    // HAL.IOs->config
-    HAL.init();
-
-    // Configure TMC-API
+    // 0: Positioning mode (using all A, D and V parameters)
+    // 1: Velocity mode to positive VMAX (using AMAX acceleration)
+    // 2: Velocity mode to negative VMAX (using AMAX acceleration)
+    // 3: Hold mode (velocity remains unchanged, unless stop event occurs)
     //
-    ConfigurationTypeDef tmc5041_chip_config_1 = (ConfigurationTypeDef){
-        .reset = &tmc5041_chip_1_reset,
-        .restore = &tmc5041_chip_1_restore};
-    ConfigurationTypeDef tmc5041_chip_config_2 = (ConfigurationTypeDef){
-        .reset = &tmc5041_chip_2_reset,
-        .restore = &tmc5041_chip_2_restore};
-    SPITypeDef spi = (SPITypeDef){
-        .ch1 = (SPIChannelTypeDef){
-            .CSN = &(IOPinTypeDef){
-                .bitWeight = 0},
-            .readWrite = spi_ch1_readWrite,
-            .readWriteArray = spi_ch1_readWriteArray,
-            .reset = reset_ch1},
-        .ch2 = (SPIChannelTypeDef){.CSN = &(IOPinTypeDef){.bitWeight = 1}, .readWrite = spi_ch2_readWrite, .readWriteArray = spi_ch2_readWriteArray, .reset = reset_ch2}};
-    // Channel is just motor number
-    uint8_t channel_0 = 0;
-    uint8_t channel_1 = 1;
-    tmc5041_init(&tmc5041_chip_1, channel_0, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_1, channel_1, &tmc5041_chip_config_1, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_2, channel_0, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
-    tmc5041_init(&tmc5041_chip_2, channel_1, &tmc5041_chip_config_2, tmc5041_defaultRegisterResetState);
+    // RAMPMODE=0
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_RAMPMODE_MASK, TMC5041_RAMPMODE_SHIFT, rampmode);
+    uint8_t rampmode_message[40] = {TMC5041_RAMPMODE(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(rampmode_message, spi_status, 5);
+
+    printf("Set RAMPMODE to %d\n", rampmode);
+}
+
+void tmc5041_set_register_XACTUAL(joint_t * motor, int32 xactual)
+{
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    uint32_t write_payload = 0x00;
+    // XACTUAL
+    write_payload = FIELD_SET(write_payload, TMC5041_XACTUAL_MASK, TMC5041_XACTUAL_SHIFT, xactual);
+    uint8_t xtarget_message[40] = {TMC5041_XACTUAL(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(xtarget_message, spi_status, 5);
+}
+
+int32_t tmc5041_get_register_XACTUAL(joint_t * motor)
+{
+    // XACTUAL: Actual motor position (signed)
+    // return tmc5041_read_register(TMC5041_XACTUAL(motor->motor));
+    return tmc5041_readInt(motor, TMC5041_XACTUAL(motor->motor));
+}
+
+int32_t tmc5041_get_register_VACTUAL(joint_t * motor)
+{
+    // Actual motor velocity from ramp generator (signed)
+    // return tmc5041_read_register(TMC5041_VACTUAL(motor->motor));
+    return tmc5041_readInt(motor, TMC5041_VACTUAL(motor->motor));
+}
+
+spi_status_t tmc5041_set_register_XTARGET(joint_t * motor, int32 xtarget)
+{
+    uint32_t write_payload = 0x00;
+    // Target position for RAMPMODE=0 (signed).
+    // Write a new target position to this register in order to activate the ramp generator positioning in RAMPMODE=0.
+    // Initialize all velocity, acceleration and deceleration parameters before.
+    //
+    // XTARGET
+    write_payload = FIELD_SET(write_payload, TMC5041_XTARGET_MASK, TMC5041_XTARGET_SHIFT, xtarget);
+    uint8_t message[40] = {TMC5041_XTARGET(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(message, message, 5);
+    return parse_spi_status(message);
+}
+
+// Returns true if StallGuard event is triggered
+ramp_stat_register_t tmc5041_get_register_RAMP_STAT(joint_t * motor) {
+    // Reading the register will clear the stall condition and the motor may
+    // re-start motion, unless the motion controller has been stopped.
+    // (Flag and interrupt condition are cleared upon reading)
+    // This bit is ORed to the interrupt output signal
+
+    // int32_t reply = tmc5041_read_register(TMC5041_RAMPSTAT(motor->motor));
+    int32_t reply = tmc5041_readInt(motor, TMC5041_RAMPSTAT(motor->motor));
+
+    ramp_stat_register_t reg;
+    reg.status_sg          = FIELD_GET(reply, TMC5041_STATUS_SG_MASK, TMC5041_STATUS_SG_SHIFT);
+    reg.second_move        = FIELD_GET(reply, TMC5041_SECOND_MOVE_MASK, TMC5041_SECOND_MOVE_SHIFT);
+    reg.t_zerowait_active  = FIELD_GET(reply, TMC5041_T_ZEROWAIT_ACTIVE_MASK, TMC5041_T_ZEROWAIT_ACTIVE_SHIFT);
+    reg.vzero              = FIELD_GET(reply, TMC5041_VZERO_MASK, TMC5041_VZERO_SHIFT);
+    reg.position_reached   = FIELD_GET(reply, TMC5041_POSITION_REACHED_MASK, TMC5041_POSITION_REACHED_SHIFT);
+    reg.velocity_reached   = FIELD_GET(reply, TMC5041_VELOCITY_REACHED_MASK, TMC5041_VELOCITY_REACHED_SHIFT);
+    reg.event_pos_reached  = FIELD_GET(reply, TMC5041_EVENT_POS_REACHED_MASK, TMC5041_EVENT_POS_REACHED_SHIFT);
+    reg.event_stop_sg      = FIELD_GET(reply, TMC5041_EVENT_STOP_SG_MASK, TMC5041_EVENT_STOP_SG_SHIFT);
+    reg.event_stop_r       = FIELD_GET(reply, TMC5041_EVENT_STOP_R_MASK, TMC5041_EVENT_STOP_R_SHIFT);
+    reg.event_stop_l       = FIELD_GET(reply, TMC5041_EVENT_STOP_L_MASK, TMC5041_EVENT_STOP_L_SHIFT);
+    reg.status_latch_r     = FIELD_GET(reply, TMC5041_STATUS_LATCH_R_MASK, TMC5041_STATUS_LATCH_R_SHIFT);
+    reg.status_latch_l     = FIELD_GET(reply, TMC5041_STATUS_LATCH_L_MASK, TMC5041_STATUS_LATCH_L_SHIFT);
+    reg.status_stop_r      = FIELD_GET(reply, TMC5041_STATUS_STOP_R_MASK, TMC5041_STATUS_STOP_R_SHIFT);
+    reg.status_stop_l      = FIELD_GET(reply, TMC5041_STATUS_STOP_L_MASK, TMC5041_STATUS_STOP_L_SHIFT);
+
+    return reg;
+}
+
+// DRV_STATUS register access
+//
+drv_status_register_t tmc5041_get_register_DRV_STATUS(joint_t * motor)
+{
+    int32_t reply = tmc5041_readInt(motor, TMC5041_DRVSTATUS(motor->motor));
+
+    drv_status_register_t reg;
+    reg.standstill = FIELD_GET(reply, TMC5041_STST_MASK, TMC5041_STST_SHIFT);
+    reg.overtemp_warning = FIELD_GET(reply, TMC5041_OTPW_MASK, TMC5041_OTPW_SHIFT);
+    reg.overtemp_alarm = FIELD_GET(reply, TMC5041_OT_MASK, TMC5041_OT_SHIFT);
+    reg.sg_result = FIELD_GET(reply, TMC5041_SG_RESULT_MASK, TMC5041_SG_RESULT_SHIFT);
+    reg.cs_actual = FIELD_GET(reply, TMC5041_CS_ACTUAL_MASK, TMC5041_CS_ACTUAL_SHIFT);
+    reg.sg_status = FIELD_GET(reply, TMC5041_STALLGUARD_MASK, TMC5041_STALLGUARD_SHIFT);
+    reg.full_stepping = FIELD_GET(reply, TMC5041_FSACTIVE_MASK, TMC5041_FSACTIVE_SHIFT);
+    // TODO    
+    // bool open_load_phase_b;
+    // bool open_load_phase_a;
+    // bool ground_short_phase_b;
+    // bool ground_short_phase_a;
+    return reg;
+}
+
+chopconf_register_t tmc5041_get_register_CHOPCONF(joint_t * motor) {
+    int32_t reply = tmc5041_readInt(motor, TMC5041_CHOPCONF(motor->motor));
+
+    chopconf_register_t reg;
+    reg.mres = FIELD_GET(reply, TMC5041_MRES_MASK, TMC5041_MRES_SHIFT);
+
+    return reg;
+}
+
+int32_t tmc5041_get_register_XLATCH(joint_t * motor) {
+    return tmc5041_readInt(motor, TMC5041_XLATCH(motor->motor));
+}
+
+bool set_home(joint_t * motor)
+{
+    // Switch the ramp generator to hold mode
+    tmc5041_set_register_RAMPMODE(motor, TMC5041_MODE_HOLD);
+    // TODO and calculate the difference between the latched position and the actual position.
+    //      For StallGuard based homing or when using hard stop, XACTUAL stops exactly at the home position, so there is no difference (0).
+    // Write the calculated difference into the actual position register.
+    tmc5041_set_register_XACTUAL(motor, 0);
+    tmc5041_set_register_XTARGET(motor, 0);
+    // Now, homing is finished. A move to position 0 will bring back the motor exactly to the switching point.
+    // In case StallGuard was used for homing, a read access to RAMP_STAT clears the 
+    // StallGuard stop event event_stop_sg and releases the motor from the stop condition.
+    tmc5041_get_register_RAMP_STAT(motor);
+    // Switch back into positioning mode
+    tmc5041_set_register_RAMPMODE(motor, TMC5041_MODE_POSITION);
+
+    return TRUE;
+}
+
+void reset_motor(joint_t * motor)
+{
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    uint32_t write_payload = 0x00;
+
+    // Set TOFF=0 to clear registers
+    write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0b0);
+    uint8_t chop_conf[40] = {TMC5041_CHOPCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(chop_conf, spi_status, 5);
+
+    // Reset XACTUAL to 0
+    set_home(motor);
+}
+
+// Taken from TMC5041_eval.c
+// uint32_t moveTo(joint_t * motor, int32_t position)
+// {
+//     // TODO
+// 	// if(TMC5041.vMaxModified[motor])
+// 	// {
+// 	// 	tmc5041_writeInt(motorToIC(motor), TMC5041_VMAX(motor), TMC5041_config->shadowRegister[TMC5041_VMAX(motor)]);
+// 	// 	TMC5041.vMaxModified[motor] = false;
+// 	// }
+
+//     tmc5041_set_register_XTARGET(motor, position);
+
+//     // int32_t write_payload = 0x00;
+//     // write_payload = FIELD_SET(write_payload, TMC5041_XTARGET_MASK, TMC5041_XTARGET_SHIFT, 10000);
+//     // uint8_t xtarget[40] = {TMC5041_XTARGET(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+//     // bcm2835_spi_transfernb(xtarget, xtarget, 5);
+
+// 	// tmc5041_writeInt(motor, TMC5041_XTARGET(motor->motor), position);
+// 	// tmc5041_writeInt(motorToIC(motor), TMC5041_RAMPMODE(motor), TMC5041_MODE_POSITION);
+
+// 	return TMC_ERROR_NONE;
+// }
+
+uint8_t microsteps_to_tmc_mres(uint16_t usteps)
+{
+    // 0 = 256 usteps = 0b0000 (default)
+    // 1 = 128 usteps = 0b0001
+    // 2 =  64 usteps = 0b0010
+    // 3 =  32 usteps = 0b0011
+    // 4 =  16 usteps = 0b0100
+    // 5 =  8 usteps =
+    // 6 =  4 usteps =
+    // 7 =  2 usteps =
+    if (usteps == 256)
+    {
+        return 0;
+    }
+    uint8_t value = 0;
+    usteps = usteps == 0 ? 1 : usteps;
+    while ((usteps & 0x01) == 0)
+    {
+        value++;
+        usteps >>= 1;
+    }
+    return 8 - (value > 8 ? 8 : value);
 }

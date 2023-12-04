@@ -1,12 +1,12 @@
 {
     "files.associations": {
+        "*.comp": "c",
         "*.json.liquid": "json",
         "*.yaml.liquid": "yaml",
         "*.md.liquid": "markdown",
         "*.js.liquid": "liquid-javascript",
         "*.css.liquid": "liquid-css",
         "*.scss.liquid": "liquid-scss",
-        "*.comp": "c",
         "driver.h": "c",
         "typeindex": "c",
         "typeinfo": "c",
@@ -26,6 +26,13 @@
         "spi.h": "c",
         "ios.h": "c",
         "timer.h": "c",
-        "hal.h": "c"
+        "hal.h": "c",
+        "bcm2835.h": "c",
+        "hotshot_init.h": "c",
+        "tmc5041_fields.h": "c",
+        "tmc5041_constants.h": "c",
+        "tmc5041_register.h": "c",
+        "global.h": "c",
+        "random": "c"
     }
 }
