@@ -2,7 +2,7 @@
 
 #define GLOBAL_OK
 
-#define DEBUG
+// #define DEBUG
 
 #define MOTOR_COUNT 4
 

@@ -114,6 +114,18 @@ void tmc5041_set_register_XACTUAL(tmc5041_motor_t * motor, int32 xactual)
     bcm2835_spi_transfernb(xtarget_message, spi_status, 5);
 }
 
+void tmc5041_set_register_IHOLD_IRUN(tmc5041_motor_t * motor, uint32_t ihold, uint32_t irun) {
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    int32_t value = 0x00;
+    value = FIELD_SET(value, TMC5041_IHOLD_MASK, TMC5041_IHOLD_SHIFT, ihold);
+    value = FIELD_SET(value, TMC5041_IRUN_MASK, TMC5041_IRUN_SHIFT, irun);
+
+    tmc5041_writeInt(motor, TMC5041_IHOLD_IRUN(motor->motor), value);
+
+    // uint8_t current[40] = {TMC5041_IHOLD_IRUN(motor->motor) | TMC_WRITE_BIT, value >> 24, value >> 16, value >> 8, value};
+    // bcm2835_spi_transfernb(current, current, 5);
+}
+
 int32_t tmc5041_get_register_XACTUAL(tmc5041_motor_t * motor)
 {
     // XACTUAL: Actual motor position (signed)
@@ -228,31 +240,9 @@ bool tmc5041_motor_set_home(tmc5041_motor_t * motor)
 void tmc5041_motor_reset(tmc5041_motor_t * motor)
 {
     // Stop chopper
-    tmc5041_motor_halt(motor);
+    tmc5041_motor_power_off(motor);
     // Reset XACTUAL to 0
     tmc5041_motor_set_home(motor);
-}
-
-void tmc5041_motor_halt(tmc5041_motor_t * motor)
-{
-
-    #ifdef DEBUG
-    printf("tmc5041_motor_halt: Halting motor\n");
-    #endif
-
-    // TODO Go to hold current instead of turning off chopper?
-    // We can hold by setting XTARGET = XACTUAL
-
-    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
-    uint32_t write_payload = 0x00;
-    // Set TOFF=0 to clear registers
-    write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0b0);
-    uint8_t chop_conf[40] = {TMC5041_CHOPCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(chop_conf, spi_status, 5);
-
-    #ifdef DEBUG
-    printf("tmc5041_motor_halt: Done halting motor\n");
-    #endif
 }
 
 uint8_t microsteps_to_tmc_mres(uint16_t usteps)
@@ -390,17 +380,18 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 
     // Current Setting
     //
-    write_payload = 0x00;
-    // IRUN: Current scale when motor is running (scaling factor N/32 i.e. 1/32, 2/32, … 31/32)
-    // For high precision motor operation, work with a current scaling factor in the range 16 to 31,
-    // because scaling down the current values reduces the effective microstep resolution by making microsteps coarser.
-    write_payload = FIELD_SET(write_payload, TMC5041_IRUN_MASK, TMC5041_IRUN_SHIFT, irun);
-    // IHOLD: Identical to IRUN, but for motor in stand still.
-    write_payload = FIELD_SET(write_payload, TMC5041_IHOLD_MASK, TMC5041_IHOLD_SHIFT, ihold);
-    // IHOLDDELAY: 0 = instant IHOLD
-    write_payload = FIELD_SET(write_payload, TMC5041_IHOLDDELAY_MASK, TMC5041_IHOLDDELAY_SHIFT, iholddelay);
-    uint8_t current[40] = {TMC5041_IHOLD_IRUN(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(current, spi_status, 5);
+    // write_payload = 0x00;
+    // // IRUN: Current scale when motor is running (scaling factor N/32 i.e. 1/32, 2/32, … 31/32)
+    // // For high precision motor operation, work with a current scaling factor in the range 16 to 31,
+    // // because scaling down the current values reduces the effective microstep resolution by making microsteps coarser.
+    // write_payload = FIELD_SET(write_payload, TMC5041_IRUN_MASK, TMC5041_IRUN_SHIFT, irun);
+    // // IHOLD: Identical to IRUN, but for motor in stand still.
+    // write_payload = FIELD_SET(write_payload, TMC5041_IHOLD_MASK, TMC5041_IHOLD_SHIFT, ihold);
+    // // IHOLDDELAY: 0 = instant IHOLD
+    // write_payload = FIELD_SET(write_payload, TMC5041_IHOLDDELAY_MASK, TMC5041_IHOLDDELAY_SHIFT, iholddelay);
+    // uint8_t current[40] = {TMC5041_IHOLD_IRUN(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    // bcm2835_spi_transfernb(current, spi_status, 5);
+    tmc5041_set_register_IHOLD_IRUN(motor, ihold, irun);
 
     // Chopper configuration
     //
@@ -611,6 +602,24 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
         printf("End spi conversation\n");
         rpi_spi_unselect();
 }
+
+void tmc5041_motor_power_off(tmc5041_motor_t * motor)
+{
+    int32_t chopconf = tmc5041_readInt(motor, TMC5041_CHOPCONF(motor->motor));
+    chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0);
+    tmc5041_writeInt(motor, TMC5041_CHOPCONF(motor->motor), chopconf);
+}
+
+void tmc5041_motor_power_on(tmc5041_motor_t * motor)
+{
+    // Power motor up after tmc5041_motor_off()
+    // tmc5041_set_register_IHOLD_IRUN(motor, *motor->hold_current_cmd, *motor->run_current_cmd);
+
+    int32_t chopconf = tmc5041_readInt(motor, TMC5041_CHOPCONF(motor->motor));
+    chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0b0100);
+    tmc5041_writeInt(motor, TMC5041_CHOPCONF(motor->motor), chopconf);
+}
+
 
 void tmc5041_motor_end(tmc5041_motor_t * motor)
 {

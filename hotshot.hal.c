@@ -8,11 +8,73 @@
 #include "rpi.h"
 #include "hotshot.hal.h"
 
+bool hotshot_joint_init(joint_t * joint)
+{
+    #ifdef DEBUG
+    printf("hotshot_joint_init: pitch=%d\n", *joint->pitch_cmd);
+    printf("hotshot_joint_init: teeth=%d\n", *joint->teeth_cmd);
+    printf("hotshot_joint_init: microsteps_cmd=%d\n", *joint->microsteps_cmd);
+    #endif
+
+    // TODO this should be calculated on the fly so pin changes will take effect
+    // FIXME Remove magic number 200
+    uint32_t microstep_per_mm = microsteps_per_mm(
+        200, (*joint->pitch_cmd) * (*joint->teeth_cmd), *joint->microsteps_cmd);
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: microstep_per_mm=%d\n", microstep_per_mm);
+    #endif
+
+    joint->microstep_per_mm = microstep_per_mm;
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: joint->microstep_per_mm=%d\n", joint->microstep_per_mm );
+    #endif
+
+    // float64_t tmc_max_velocity_cmd = fabs(*joint->max_velocity_cmd) * microstep_per_mm;
+    uint32_t tmc_max_velocity_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_velocity_cmd);
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: tmc_max_velocity_cmd=%d\n", tmc_max_velocity_cmd);
+    #endif
+
+    joint->tmc.max_velocity_cmd = tmc_max_velocity_cmd;
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: joint->tmc.max_velocity_cmd=%f\n", joint->tmc.max_velocity_cmd);
+    #endif
+
+    uint32_t tmc_max_acceleration_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_acceleration_cmd);
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: tmc_max_acceleration_cmd=%d\n", tmc_max_acceleration_cmd);
+    #endif
+
+    joint->tmc.max_acceleration_cmd = tmc_max_acceleration_cmd;
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: joint->tmc.max_acceleration_cmd=%d\n", joint->tmc.max_acceleration_cmd);
+    #endif
+
+    tmc5041_motor_init(&joint->tmc);
+}
+
+bool hotshot_init(joint_t * joints, uint8_t motor_count)
+{
+    for (uint8_t i = 0; i < motor_count; i++) {
+        hotshot_joint_init(&joints[i]);
+    }
+    return FALSE;
+}
+
 void handle_joint(joint_t * joint) {
 
-    // #ifdef DEBUG
-    // printf("handle_joint chip=%d motor=%d\n", joint->tmc.chip, joint->tmc.motor);
-    // #endif
+    #ifdef DEBUG
+    printf("handle_joint chip=%d motor=%d is_enabled=%d\n", 
+        joint->tmc.chip, joint->tmc.motor, *joint->is_enabled_cmd);
+    #endif
+
+    rpi_spi_select(joint->tmc.chip.chip);
 
     if (*joint->is_enabled_cmd) {
 
@@ -21,7 +83,14 @@ void handle_joint(joint_t * joint) {
             joint->tmc.chip, joint->tmc.motor);
         #endif
 
-        rpi_spi_select(joint->tmc.chip.chip);
+        // TODO do register setup here
+        if (! joint->is_setup) {
+            hotshot_joint_init(joint);
+            joint->is_setup = TRUE;
+        }
+
+        // TODO do this inside guard?
+        tmc5041_motor_power_on(&joint->tmc);
 
         // Check switches
         //
@@ -74,7 +143,8 @@ void handle_joint(joint_t * joint) {
                 // TODO shut off torch
                 
                 // Stop motion controller or joint will twitch every time we read RAMP_STAT
-                tmc5041_motor_halt(&joint->tmc);
+                // TODO we should probably just set XTARGET=XACTUAL and leave chopper on
+                tmc5041_motor_power_off(&joint->tmc);
 
                 *joint->torch_breakaway_fb = TRUE;
 
@@ -152,8 +222,6 @@ void handle_joint(joint_t * joint) {
         chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(&joint->tmc);
         *joint->tmc.microstep_resolution_fb = chopconf.mres;
 
-        rpi_spi_unselect();
-
         #ifdef DEBUG
         printf("handle_joint(%d, %d): Done handling enabled joint\n", 
             joint->tmc.chip, joint->tmc.motor);
@@ -162,82 +230,46 @@ void handle_joint(joint_t * joint) {
     } else {
         // Joint is not enabled in LinuxCNC
 
+        #ifdef DEBUG
+        printf("handle_joint(%d, %d): Joint is not enabled\n", 
+            joint->tmc.chip, joint->tmc.motor);
+        #endif
+
+        // joint->is_setup = FALSE;
+
+        // Cut power to joint
+        // tmc5041_motor_end(&joint->tmc);
+        tmc5041_motor_power_off(&joint->tmc);
+
         // Cut power to joint
         // Can only do this when we config_motor inside joint->is_enabled condition
         // TODO reset_motor(&joints[0]);
-        joint->is_on = FALSE;
+        // joint->is_on = FALSE;
 
         // Clear torch breakaway
         // TODO we should really do this when we transition from unenabled to enabled power
-        *joint->torch_breakaway_fb = FALSE;
+        // *joint->torch_breakaway_fb = FALSE;
     }
+
+    rpi_spi_unselect();
 }
 
 void handle_joints(joint_t * joint, uint8_t motor_count) {
     // Do something with each joint
+
+    #ifdef DEBUG
+    printf("handle_joints(%d, %d): Handling joints motor_count=%d\n", 
+        joint->tmc.chip, joint->tmc.motor, motor_count);
+    #endif
+
     for (uint8_t i = 0; i < motor_count; i++) {
         handle_joint(&joint[i]);
     }
-}
-
-bool hotshot_joint_init(joint_t * joint)
-{
-    #ifdef DEBUG
-    printf("hotshot_joint_init: pitch=%d\n", *joint->pitch_cmd);
-    printf("hotshot_joint_init: teeth=%d\n", *joint->teeth_cmd);
-    printf("hotshot_joint_init: microsteps_cmd=%d\n", *joint->microsteps_cmd);
-    #endif
-
-    // TODO this should be calculated on the fly so pin changes will take effect
-    // FIXME Remove magic number 200
-    uint32_t microstep_per_mm = microsteps_per_mm(
-        200, (*joint->pitch_cmd) * (*joint->teeth_cmd), *joint->microsteps_cmd);
 
     #ifdef DEBUG
-    printf("hotshot_joint_init: microstep_per_mm=%d\n", microstep_per_mm);
+    printf("handle_joints(%d, %d): Done handling joints motor_count=%d\n", 
+        joint->tmc.chip, joint->tmc.motor, motor_count);
     #endif
-
-    joint->microstep_per_mm = microstep_per_mm;
-
-    #ifdef DEBUG
-    printf("hotshot_joint_init: joint->microstep_per_mm=%d\n", joint->microstep_per_mm );
-    #endif
-
-    // float64_t tmc_max_velocity_cmd = fabs(*joint->max_velocity_cmd) * microstep_per_mm;
-    uint32_t tmc_max_velocity_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_velocity_cmd);
-
-    #ifdef DEBUG
-    printf("hotshot_joint_init: tmc_max_velocity_cmd=%d\n", tmc_max_velocity_cmd);
-    #endif
-
-    joint->tmc.max_velocity_cmd = tmc_max_velocity_cmd;
-
-    #ifdef DEBUG
-    printf("hotshot_joint_init: joint->tmc.max_velocity_cmd=%f\n", joint->tmc.max_velocity_cmd);
-    #endif
-
-    uint32_t tmc_max_acceleration_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_acceleration_cmd);
-
-    #ifdef DEBUG
-    printf("hotshot_joint_init: tmc_max_acceleration_cmd=%d\n", tmc_max_acceleration_cmd);
-    #endif
-
-    joint->tmc.max_acceleration_cmd = tmc_max_acceleration_cmd;
-
-    #ifdef DEBUG
-    printf("hotshot_joint_init: joint->tmc.max_acceleration_cmd=%d\n", joint->tmc.max_acceleration_cmd);
-    #endif
-
-    tmc5041_motor_init(&joint->tmc);
-}
-
-bool hotshot_init(joint_t * joints, uint8_t motor_count)
-{
-    rpi_init();
-    for (uint8_t i = 0; i < motor_count; i++) {
-        hotshot_joint_init(&joints[i]);
-    }
-    return FALSE;
 }
 
 void hotshot_end(joint_t * joint, uint8_t motor_count)

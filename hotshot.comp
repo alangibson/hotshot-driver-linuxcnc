@@ -211,9 +211,18 @@ joint_t motors[MOTOR_COUNT];
 // main function
 FUNCTION(_)
 {
+
+    #ifdef DEBUG
+    printf("_: Entering needs_setup=%d\n", needs_setup);
+    #endif
+
     // Set up motors exactly once.
     if (needs_setup) {
-\
+
+        #ifdef DEBUG
+        printf("Wiring motor configuration to pins\n");
+        #endif
+
         // X
         #undef axis_x_enable
         #undef axis_x_is_homing
@@ -422,13 +431,28 @@ FUNCTION(_)
             }
         };
 
-        needs_setup = hotshot_init(motors, MOTOR_COUNT);
+        #ifdef DEBUG
+        printf("Done wiring motor configuration to pins\n");
+        #endif
+
+        rpi_init();
+
+        // needs_setup = hotshot_init(motors, MOTOR_COUNT);
+        needs_setup = FALSE;
     }
 
     handle_joints(motors, MOTOR_COUNT);
+
+    #ifdef DEBUG
+    printf("_: Exiting needs_setup=%d\n", needs_setup);
+    #endif
 }
 
 FUNCTION(sensors) {
+
+    #ifdef DEBUG
+    printf("sensors: Entering\n");
+    #endif
 
     rpi_spi_select(BCM2835_SPI_CS1);
 
@@ -522,6 +546,10 @@ FUNCTION(sensors) {
     {
         bcm2835_gpio_clr(PIN_TORCH_ON);
     }
+
+    #ifdef DEBUG
+    printf("sensors: Exiting\n");
+    #endif
 }
 
 EXTRA_CLEANUP()

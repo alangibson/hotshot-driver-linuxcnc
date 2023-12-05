@@ -14,6 +14,7 @@ typedef float64_t   pin_velocity_t;
 
 typedef struct {
     tmc5041_motor_t                 tmc;
+    bool                            is_setup;
     bool                            is_on;
     float                           mm_per_rev;
     uint32_t                        microstep_per_mm;

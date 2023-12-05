@@ -113,4 +113,5 @@ drv_status_register_t tmc5041_get_register_DRV_STATUS(tmc5041_motor_t * motor);
 chopconf_register_t tmc5041_get_register_CHOPCONF(tmc5041_motor_t * motor);
 bool tmc5041_motor_set_home(tmc5041_motor_t * motor);
 void tmc5041_motor_end(tmc5041_motor_t * motor);
-void tmc5041_motor_halt(tmc5041_motor_t * motor);
+void tmc5041_motor_power_on(tmc5041_motor_t * motor);
+void tmc5041_motor_power_off(tmc5041_motor_t * motor);
