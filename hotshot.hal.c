@@ -2,187 +2,249 @@
 
 #include "stdio.h"
 #include "stdbool.h"
+#include "math.h"
 #include "global.h"
 #include "bcm2835.h"
 #include "rpi.h"
 #include "hotshot.hal.h"
 
-void handle_joint(joint_t * motor) {
+void handle_joint(joint_t * joint) {
 
-    if (*motor->is_enabled) {
+    // #ifdef DEBUG
+    // printf("handle_joint chip=%d motor=%d\n", joint->tmc.chip, joint->tmc.motor);
+    // #endif
+
+    if (*joint->is_enabled_cmd) {
 
         #ifdef DEBUG
-        rtapi_print("joint x is enabled. chip=%d motor=%d pitch=%d teeth=%d\n", 
-            motor->chip, motor->motor, motor->pitch, motor->teeth);
+        printf("handle_joint(%d, %d): Start handling enabled joint\n", 
+            joint->tmc.chip, joint->tmc.motor);
         #endif
 
-        rpi_spi_select(motor->chip);
-
+        rpi_spi_select(joint->tmc.chip.chip);
 
         // Check switches
         //
         // Note: Reading RAMP_STAT clears sg_stop
-        ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(&motor->tmc);
-        // Note: status_sg and event_stop_sg appear to be the same
-        *motor->sg_stop_fb = ramp_stat.event_stop_sg;
-        // *motor->sg_stop_fb = ramp_stat.status_sg;
+        ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(&joint->tmc);
+        *joint->sg_stop_fb = ramp_stat.event_stop_sg;
         // TODO
         // axis_x_tmc_position_reached_fb = ramp_stat.position_reached;
         // axis_x_tmc_t_zerowait_active_fb = ramp_stat.t_zerowait_active;
         // axis_x_tmc_velocity_reached_fb = ramp_stat.velocity_reached;
-        // printf("status_sg=%d\n", *motor->sg_stop_fb);
+        // printf("status_sg=%d\n", *joint->sg_stop_fb);
 
         #ifdef DEBUG
-        rtapi_print("ramp_stat axis_x_sg_stop_fb %d \n", (*motor->sg_stop_fb));
+        printf("handle_joint(%d, %d): StallGuard is sg_stop_fb=%d \n", 
+            joint->tmc.chip, joint->tmc.motor, *joint->sg_stop_fb);
         #endif
 
         // Handle StallGuard state
         //
-        if (*motor->sg_stop_fb) {
+        if (*joint->sg_stop_fb) {
             // StallGuard has been triggered
 
             #ifdef DEBUG
-            rtapi_print("SG triggered sg_stop_cmd=%d sg_thresh_cmd=%d\n", 
-                motor->tmc_sg_stop_cmd, motor->tmc_sg_thresh_cmd);
+            printf("handle_joint(%d, %d): StallGuard triggered sg_stop_cmd=%d sg_thresh_cmd=%d\n", 
+                joint->tmc.chip, joint->tmc.motor, *joint->tmc.sg_stop_cmd, *joint->tmc.sg_thresh_cmd);
+            printf("handle_joint(%d, %d): Disable axis\n",
+                joint->tmc.chip, joint->tmc.motor);
             #endif
 
-            if (motor->is_homing) {
+            // *joint->is_enabled_cmd = FALSE;
+             *joint->estop_fb = TRUE;
+
+            if (*joint->is_homing_cmd) {
                 // We are homing and we have hit a Stallguard stop event, so trigger home switch
 
                 #ifdef DEBUG
-                rtapi_print("Setting home\n");
+                printf("handle_joint(%d, %d): Setting home position\n",
+                    joint->tmc.chip, joint->tmc.motor);
                 #endif
 
-                motor->home_sw = tmc5041_motor_set_home(&motor->tmc);
+                joint->home_sw = tmc5041_motor_set_home(&joint->tmc);
             } else {
                 // We've hit a Stallguard stop, but we're not homing
 
+                #ifdef DEBUG
+                printf("handle_joint(%d, %d): Triggering torch breakaway\n",
+                    joint->tmc.chip, joint->tmc.motor);
+                #endif
+
                 // TODO shut off torch
                 
-                // Stop motion controller or motor will twitch every time we read RAMP_STAT
-                tmc5041_motor_halt(&motor->tmc);
+                // Stop motion controller or joint will twitch every time we read RAMP_STAT
+                tmc5041_motor_halt(&joint->tmc);
 
-                *motor->torch_breakaway_fb = TRUE;
+                *joint->torch_breakaway_fb = TRUE;
 
                 // TODO "breakaway" for the x axis should indicate negative limit switch is triggered
                 // There is currently no negative limit switch for X and YL/YR
             }             
         } else {
-            // No active StallGuard switches, so move motor and reset all switches
+            // No active StallGuard switches, so move joint and reset all switches
 
             #ifdef DEBUG
-            rtapi_print("Moving motor to %f\n", (*motor->position_cmd));
+            printf("handle_joint(%d, %d): Moving joint to position_cmd=%f\n", 
+                joint->tmc.chip, joint->tmc.motor, *joint->position_cmd);
             #endif
 
-            // Move motor
-            //
-            spi_status_t spi_status = follow(motor);
-
-            #ifdef DEBUG
-            rtapi_print("Followed position to %f\n", spi_status.xactual_mm);
-            #endif
-
-            // FIXME
-            // *motor->position_fb = spi_status.xactual_mm;
-
-            #ifdef DEBUG
-            rtapi_print("position_fb is %f\n", *motor->position_fb);
-            #endif
-
-            *motor->position_fb = tmc5041_get_register_XACTUAL(&motor->tmc);
-
-            #ifdef DEBUG
-            rtapi_print("Motor actual position now %f\n", *motor->position_fb);
-            #endif
+            // Move joint
+            spi_status_t spi_status = follow(joint);
 
             // Ensure switches aren't triggered
             //
-            motor->home_sw = FALSE;
+            joint->home_sw = FALSE;
             // FIXME
-            *motor->torch_breakaway_fb = FALSE;
+            *joint->torch_breakaway_fb = FALSE;
 
             #ifdef DEBUG
-            rtapi_print("Finished resetting switches\n");
+            printf("handle_joint(%d, %d): Finished resetting switches\n",
+                joint->tmc.chip, joint->tmc.motor);
             #endif
         }
 
         #ifdef DEBUG
-        rtapi_print("Get velocity\n");
+        printf("handle_joint(%d, %d): Get velocity\n",
+            joint->tmc.chip, joint->tmc.motor);
         #endif
 
         // Get velocity
         //
-        *motor->tmc.velocity_fb = tmc5041_get_register_VACTUAL(&motor->tmc);
-        float vactual_mm = (float)(*motor->tmc.velocity_fb) / (float)(*motor->microstep_per_mm);
-        *motor->velocity_fb = vactual_mm;
+        int32_t vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
+
+        #ifdef DEBUG
+        printf("handle_joint(%d, %d): vactual=%d vmax=%f\n", 
+            joint->tmc.chip, joint->tmc.motor, vactual, joint->tmc.max_velocity_cmd);
+        #endif
+
+        *joint->tmc.velocity_fb = vactual;
+
+        // float vactual_mm = (float)(*joint->tmc.velocity_fb) / (float)joint->microstep_per_mm;
+        float64_t vactual_mm = microsteps_to_mm(joint->microstep_per_mm, *joint->tmc.velocity_fb);
+        *joint->velocity_fb = vactual_mm;
        
         #ifdef DEBUG
-        rtapi_print("vactual_mm is %f\n", vactual_mm);
-        rtapi_print("Get driver state\n");
+        printf("handle_joint(%d, %d): vactual_mm=%f vmax_mm=%f\n", 
+            joint->tmc.chip, joint->tmc.motor, vactual_mm, *joint->max_velocity_cmd);
+        printf("handle_joint(%d, %d): Get driver state\n",
+            joint->tmc.chip, joint->tmc.motor);
         #endif
 
         // Get driver state
         // 
-        drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&motor->tmc);
-        *motor->tmc.motor_standstill_fb = drv_status.standstill;
-        *motor->tmc.motor_full_stepping_fb = drv_status.full_stepping;
-        *motor->tmc.motor_overtemp_warning_fb = drv_status.overtemp_warning;
-        *motor->tmc.motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
-        *motor->tmc.motor_load_fb = drv_status.sg_result;
-        *motor->tmc.motor_current_fb = drv_status.cs_actual;
-        *motor->tmc.motor_stall_fb = drv_status.sg_status;
+        drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&joint->tmc);
+        *joint->tmc.motor_standstill_fb = drv_status.standstill;
+        *joint->tmc.motor_full_stepping_fb = drv_status.full_stepping;
+        *joint->tmc.motor_overtemp_warning_fb = drv_status.overtemp_warning;
+        *joint->tmc.motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
+        *joint->tmc.motor_load_fb = drv_status.sg_result;
+        *joint->tmc.motor_current_fb = drv_status.cs_actual;
+        *joint->tmc.motor_stall_fb = drv_status.sg_status;
 
         #ifdef DEBUG
-        rtapi_print("vactual_mm is %f\n", vactual_mm);
-        rtapi_print("Get chopper state\n");
+        printf("handle_joint(%d, %d): Get chopper state\n",
+            joint->tmc.chip, joint->tmc.motor);
         #endif
 
         // Get chopper state
         //
-        chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(&motor->tmc);
-        *motor->tmc.microstep_resolution_fb = chopconf.mres;
-
-        #ifdef DEBUG
-        rtapi_print("Done handling joint\n");
-        #endif
+        chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(&joint->tmc);
+        *joint->tmc.microstep_resolution_fb = chopconf.mres;
 
         rpi_spi_unselect();
+
+        #ifdef DEBUG
+        printf("handle_joint(%d, %d): Done handling enabled joint\n", 
+            joint->tmc.chip, joint->tmc.motor);
+        #endif
+
     } else {
         // Joint is not enabled in LinuxCNC
 
-        // Cut power to motor
-        // Can only do this when we config_motor inside motor->is_enabled condition
-        // TODO reset_motor(&motors[0]);
-        motor->is_on = FALSE;
+        // Cut power to joint
+        // Can only do this when we config_motor inside joint->is_enabled condition
+        // TODO reset_motor(&joints[0]);
+        joint->is_on = FALSE;
 
         // Clear torch breakaway
         // TODO we should really do this when we transition from unenabled to enabled power
-        *motor->torch_breakaway_fb = FALSE;
+        *joint->torch_breakaway_fb = FALSE;
     }
 }
 
-void handle_joints(joint_t * motors, uint8_t motor_count) {
+void handle_joints(joint_t * joint, uint8_t motor_count) {
     // Do something with each joint
     for (uint8_t i = 0; i < motor_count; i++) {
-        handle_joint(&motors[i]);
+        handle_joint(&joint[i]);
     }
 }
 
-bool hotshot_init(joint_t * motors, uint8_t motor_count)
+bool hotshot_joint_init(joint_t * joint)
+{
+    #ifdef DEBUG
+    printf("hotshot_joint_init: pitch=%d\n", *joint->pitch_cmd);
+    printf("hotshot_joint_init: teeth=%d\n", *joint->teeth_cmd);
+    printf("hotshot_joint_init: microsteps_cmd=%d\n", *joint->microsteps_cmd);
+    #endif
+
+    // TODO this should be calculated on the fly so pin changes will take effect
+    // FIXME Remove magic number 200
+    uint32_t microstep_per_mm = microsteps_per_mm(
+        200, (*joint->pitch_cmd) * (*joint->teeth_cmd), *joint->microsteps_cmd);
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: microstep_per_mm=%d\n", microstep_per_mm);
+    #endif
+
+    joint->microstep_per_mm = microstep_per_mm;
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: joint->microstep_per_mm=%d\n", joint->microstep_per_mm );
+    #endif
+
+    // float64_t tmc_max_velocity_cmd = fabs(*joint->max_velocity_cmd) * microstep_per_mm;
+    uint32_t tmc_max_velocity_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_velocity_cmd);
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: tmc_max_velocity_cmd=%d\n", tmc_max_velocity_cmd);
+    #endif
+
+    joint->tmc.max_velocity_cmd = tmc_max_velocity_cmd;
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: joint->tmc.max_velocity_cmd=%f\n", joint->tmc.max_velocity_cmd);
+    #endif
+
+    uint32_t tmc_max_acceleration_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_acceleration_cmd);
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: tmc_max_acceleration_cmd=%d\n", tmc_max_acceleration_cmd);
+    #endif
+
+    joint->tmc.max_acceleration_cmd = tmc_max_acceleration_cmd;
+
+    #ifdef DEBUG
+    printf("hotshot_joint_init: joint->tmc.max_acceleration_cmd=%d\n", joint->tmc.max_acceleration_cmd);
+    #endif
+
+    tmc5041_motor_init(&joint->tmc);
+}
+
+bool hotshot_init(joint_t * joints, uint8_t motor_count)
 {
     rpi_init();
-    // tmc5041_init(motors, MOTOR_COUNT);
     for (uint8_t i = 0; i < motor_count; i++) {
-        tmc5041_motor_init(&motors[i].tmc);
+        hotshot_joint_init(&joints[i]);
     }
     return FALSE;
 }
 
-void hotshot_end(joint_t * motors, uint8_t motor_count)
+void hotshot_end(joint_t * joint, uint8_t motor_count)
 {
-    // tmc5041_end(motors, MOTOR_COUNT);
+    // tmc5041_end(joint, MOTOR_COUNT);
     for (uint8_t i = 0; i < motor_count; i++) {
-        tmc5041_motor_end(&motors[i].tmc);
+        tmc5041_motor_end(&joint[i].tmc);
     }
     rpi_end();
 }

@@ -58,15 +58,15 @@ net plasmac:ohmic-sense-in      <= hotshot.0.ohmic-probe
 
 setp                hotshot.0.axis-x-max-velocity-cmd       [AXIS_X]MAX_VELOCITY
 setp                hotshot.0.axis-x-max-acceleration-cmd   [AXIS_X]MAX_ACCELERATION
-setp                hotshot.0.axis-x-microsteps-cmd         256
-setp                hotshot.0.axis-x-tmc-run-current-cmd    30
-setp                hotshot.0.axis-x-tmc-hold-current-cmd   3
-setp                hotshot.0.axis-x-tmc-sg-thresh-cmd      8
-setp                hotshot.0.axis-x-tmc-sg-stop-cmd        1
 setp                hotshot.0.axis-x-chip                   0
 setp                hotshot.0.axis-x-motor                  0
 setp                hotshot.0.axis-x-pitch                  2
 setp                hotshot.0.axis-x-teeth                  20
+setp                hotshot.0.axis-x-microsteps-cmd         256
+setp                hotshot.0.axis-x-tmc-run-current-cmd    23
+setp                hotshot.0.axis-x-tmc-hold-current-cmd   3
+setp                hotshot.0.axis-x-tmc-sg-thresh-cmd      5
+setp                hotshot.0.axis-x-tmc-sg-stop-cmd        0
 setp                hotshot.0.axis-x-tmc-cs-thresh-cmd      50000
 net x-pos-cmd       joint.0.motor-pos-cmd                   => hotshot.0.axis-x-position-cmd
 net x-pos-fb        hotshot.0.axis-x-position-fb            => joint.0.motor-pos-fb
@@ -76,15 +76,15 @@ net x-home-sw       hotshot.0.axis-x-home-sw                => joint.0.home-sw-i
 
 setp                hotshot.0.axis-yl-max-velocity-cmd      [AXIS_Y]MAX_VELOCITY
 setp                hotshot.0.axis-yl-max-acceleration-cmd  [AXIS_Y]MAX_ACCELERATION
-setp                hotshot.0.axis-yl-microsteps-cmd        256
-setp                hotshot.0.axis-yl-tmc-run-current-cmd   30
-setp                hotshot.0.axis-yl-tmc-hold-current-cmd  3
-setp                hotshot.0.axis-yl-tmc-sg-thresh-cmd     4
-setp                hotshot.0.axis-yl-tmc-sg-stop-cmd       1
 setp                hotshot.0.axis-yl-chip                  0
 setp                hotshot.0.axis-yl-motor                 1
 setp                hotshot.0.axis-yl-pitch                 2
 setp                hotshot.0.axis-yl-teeth                 20
+setp                hotshot.0.axis-yl-microsteps-cmd        256
+setp                hotshot.0.axis-yl-tmc-run-current-cmd   23
+setp                hotshot.0.axis-yl-tmc-hold-current-cmd  3
+setp                hotshot.0.axis-yl-tmc-sg-thresh-cmd     4
+setp                hotshot.0.axis-yl-tmc-sg-stop-cmd       0
 setp                hotshot.0.axis-yl-tmc-cs-thresh-cmd     50000
 net y-pos-cmd       joint.1.motor-pos-cmd                   => hotshot.0.axis-yl-position-cmd
 net y-pos-fb        hotshot.0.axis-yl-position-fb           => joint.1.motor-pos-fb
@@ -94,15 +94,15 @@ net y-home-sw       hotshot.0.axis-yl-home-sw               => joint.1.home-sw-i
 
 setp                hotshot.0.axis-yr-max-velocity-cmd      [AXIS_Y]MAX_VELOCITY
 setp                hotshot.0.axis-yr-max-acceleration-cmd  [AXIS_Y]MAX_ACCELERATION
-setp                hotshot.0.axis-yr-microsteps-cmd        256
-setp                hotshot.0.axis-yr-tmc-run-current-cmd   30
-setp                hotshot.0.axis-yr-tmc-hold-current-cmd  3
-setp                hotshot.0.axis-yr-tmc-sg-thresh-cmd     4
-setp                hotshot.0.axis-yr-tmc-sg-stop-cmd       1
 setp                hotshot.0.axis-yr-chip                  1
 setp                hotshot.0.axis-yr-motor                 0
 setp                hotshot.0.axis-yr-pitch                 2
 setp                hotshot.0.axis-yr-teeth                 20
+setp                hotshot.0.axis-yr-microsteps-cmd        256
+setp                hotshot.0.axis-yr-tmc-run-current-cmd   23
+setp                hotshot.0.axis-yr-tmc-hold-current-cmd  3
+setp                hotshot.0.axis-yr-tmc-sg-thresh-cmd     4
+setp                hotshot.0.axis-yr-tmc-sg-stop-cmd       0
 setp                hotshot.0.axis-yr-tmc-cs-thresh-cmd     50000
 net y2-pos-cmd      joint.2.motor-pos-cmd                   => hotshot.0.axis-yr-position-cmd
 net y2-pos-fb       hotshot.0.axis-yr-position-fb           => joint.2.motor-pos-fb
@@ -112,15 +112,15 @@ net y2-home-sw      hotshot.0.axis-yr-home-sw               => joint.2.home-sw-i
 
 setp                hotshot.0.axis-z-max-velocity-cmd       [AXIS_Z]MAX_VELOCITY
 setp                hotshot.0.axis-z-max-acceleration-cmd   [AXIS_Z]MAX_ACCELERATION
-setp                hotshot.0.axis-z-microsteps-cmd         256
-setp                hotshot.0.axis-z-tmc-run-current-cmd    23
-setp                hotshot.0.axis-z-tmc-hold-current-cmd   3
-setp                hotshot.0.axis-z-tmc-sg-thresh-cmd      4
-setp                hotshot.0.axis-z-tmc-sg-stop-cmd        1
 setp                hotshot.0.axis-z-chip                   1
 setp                hotshot.0.axis-z-motor                  1
 setp                hotshot.0.axis-z-pitch                  8
 setp                hotshot.0.axis-z-teeth                  1
+setp                hotshot.0.axis-z-microsteps-cmd         256
+setp                hotshot.0.axis-z-tmc-run-current-cmd    23
+setp                hotshot.0.axis-z-tmc-hold-current-cmd   3
+setp                hotshot.0.axis-z-tmc-sg-thresh-cmd      4
+setp                hotshot.0.axis-z-tmc-sg-stop-cmd        0
 setp                hotshot.0.axis-z-tmc-cs-thresh-cmd      50000
 net z-pos-cmd       joint.3.motor-pos-cmd                   => hotshot.0.axis-z-position-cmd
 net z-pos-fb        hotshot.0.axis-z-position-fb            => joint.3.motor-pos-fb
@@ -131,10 +131,10 @@ net z-neg-lim-sw    hotshot.0.axis-z-neg-limit-sw           => joint.3.neg-lim-s
 
 # net estop-out   <= iocontrol.0.user-enable-out
 # net estop-out   => iocontrol.0.emc-enable-in
-net estop-ext     hotshot.0.estop-fb            => iocontrol.0.emc-enable-in
-net estop-out     iocontrol.0.user-enable-out   => hotshot.0.estop-cmd
-net estop-out     => hotshot.0.estop-cmd
+net estop-ext     hotshot.0.machine-estop-fb                => iocontrol.0.emc-enable-in
+net estop-out     iocontrol.0.user-enable-out               => hotshot.0.machine-estop-cmd
+net estop-out     => hotshot.0.machine-estop-cmd
 
-net tool-number <= iocontrol.0.tool-prep-number
-net tool-change-loopback iocontrol.0.tool-change => iocontrol.0.tool-changed
-net tool-prepare-loopback iocontrol.0.tool-prepare => iocontrol.0.tool-prepared
+net tool-number             <= iocontrol.0.tool-prep-number
+net tool-change-loopback    iocontrol.0.tool-change         => iocontrol.0.tool-changed
+net tool-prepare-loopback   iocontrol.0.tool-prepare        => iocontrol.0.tool-prepared

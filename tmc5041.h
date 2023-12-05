@@ -81,8 +81,8 @@ typedef struct {
     volatile uint32_t               * run_current_cmd;
     volatile uint32_t               * hold_current_cmd;
     volatile sg_thresh_t        	* sg_thresh_cmd;
-    volatile float64_t              * max_velocity_cmd;
-    volatile uint32_t               * max_acceleration_cmd;
+    uint32_t                       max_velocity_cmd;
+    uint32_t                        max_acceleration_cmd;
     volatile tmc_position_t     	* position_fb;
     volatile tmc_velocity_t     	* velocity_fb;
     volatile bool                   * motor_standstill_fb;

@@ -191,43 +191,18 @@ pin out float axis_yl_tmc_max_velocity_fb;
 pin out float axis_yr_tmc_max_velocity_fb;
 pin out float axis_z_tmc_max_velocity_fb;
 
-pin out bit axis_x_motor_standstill_fb;
-pin out bit axis_x_motor_full_stepping_fb;
-pin out bit axis_x_motor_overtemp_warning_fb;
-pin out bit axis_x_motor_overtemp_alarm_fb;
-pin out s32 axis_x_motor_load_fb;
-pin out u32 axis_x_motor_current_fb;
-pin out bit axis_x_motor_stall_fb;
-pin out u32 axis_x_microstep_resolution_fb;
-
-pin out bit estop-fb;
-pin in bit estop-cmd;
-pin out bit abort-fb;
+pin out bit machine_estop_fb;
+pin in bit machine_estop_cmd;
 
 ;;
 
 #include "stdlib.h"
 #include "stdio.h"
 #include "math.h"
-// #include <errno.h>
-// #include <fcntl.h>
-// #include <sys/mman.h>
-// #include <string.h>
-// #include <time.h>
-// #include <unistd.h>
-// #include <math.h>
-// #include <sys/types.h>
 #include <rtapi.h>
-// #include "tmc/ic/TMC5041/TMC5041.h"
 #include "bcm2835.h"
 #include "rpi.h"
 #include "hotshot.hal.h"
-
-// #include "bcm2835.c"
-// #include "rpi.c"
-// #include "tmc5041.c"
-// #include "hotshot.lib.c"
-// #include "hotshot.hal.c"
 
 bool needs_setup = TRUE;
 // 0 = X, 1 = YL, 2 = YR, 3 = Z
@@ -238,349 +213,214 @@ FUNCTION(_)
 {
     // Set up motors exactly once.
     if (needs_setup) {
-
-
-        tmc5041_chip_t chip0 = (tmc5041_chip_t) {
-            .chip = BCM2835_SPI_CS0
-        };
-
-        tmc5041_chip_t chip1 = (tmc5041_chip_t) {
-            .chip = BCM2835_SPI_CS1
-        };
-
+\
         // X
         #undef axis_x_enable
         #undef axis_x_is_homing
         #undef axis_x_position_cmd
+        #undef axis_x_microsteps_cmd
+        #undef axis_x_max_acceleration_cmd
+        #undef axis_x_max_velocity_cmd
         #undef axis_x_tmc_sg_stop_cmd
         #undef axis_x_tmc_sg_thresh_cmd
         #undef axis_x_tmc_run_current_cmd
         #undef axis_x_tmc_hold_current_cmd
         #undef axis_x_tmc_cs_thresh_cmd
-        // TODO this should be calculated on the fly so pin changes will take effect
-        uint32_t axis_x_microstep_per_mm = microsteps_per_mm(
-            200, axis_x_pitch * axis_x_teeth, axis_x_microsteps_cmd);
         #undef axis_x_pitch
         #undef axis_x_teeth
         motors[0] = (joint_t) {
-            // Statically set in INI and then set via setp
-            .max_velocity_cmd       = axis_x_max_velocity_cmd,
-            .max_acceleration_cmd   = axis_x_max_acceleration_cmd,
-            
-            // Set via setp
-            .pitch                  = __comp_inst->axis_x_pitch,
-            .teeth                  = __comp_inst->axis_x_teeth,
-            .microstep_per_mm       = &axis_x_microstep_per_mm,
-            // .microsteps_cmd         = axis_x_microsteps_cmd,
-            // .mm_per_rev             = axis_x_pitch * axis_x_teeth,
-            
-
-            // Set dynamically by HAL
-            .is_enabled             = __comp_inst->axis_x_enable,
-            .is_homing              = __comp_inst->axis_x_is_homing,
-            .position_cmd           = __comp_inst->axis_x_position_cmd,
-
-            // Set dynamically by Hotshot
-            .position_fb            = &axis_x_position_fb,
-            .velocity_fb            = &axis_x_velocity_fb,
-            .sg_stop_fb             = &axis_x_sg_stop_fb,
-            .home_sw_fb             = &axis_x_home_sw,
-            .torch_breakaway_fb     = &torch_breakaway,
-            
+            .max_velocity_cmd               = __comp_inst->axis_x_max_velocity_cmd,
+            .max_acceleration_cmd           = __comp_inst->axis_x_max_acceleration_cmd,
+            .pitch_cmd                      = __comp_inst->axis_x_pitch,
+            .teeth_cmd                      = __comp_inst->axis_x_teeth,
+            .microsteps_cmd                 = __comp_inst->axis_x_microsteps_cmd,
+            .is_enabled_cmd                 = __comp_inst->axis_x_enable,
+            .is_homing_cmd                  = __comp_inst->axis_x_is_homing,
+            .position_cmd                   = __comp_inst->axis_x_position_cmd,
+            .position_fb                    = &axis_x_position_fb,
+            .velocity_fb                    = &axis_x_velocity_fb,
+            .sg_stop_fb                     = &axis_x_sg_stop_fb,
+            .home_sw_fb                     = &axis_x_home_sw,
+            .estop_fb                       = &machine_estop_fb,
+            .torch_breakaway_fb             = &torch_breakaway,
             .tmc = (tmc5041_motor_t) {
-                // Statically set in code
-                .chip = chip0,
-                .motor = 0,
-
-                // Set via setp
-                .run_current_cmd        = __comp_inst->axis_x_tmc_run_current_cmd,
-                .hold_current_cmd       = __comp_inst->axis_x_tmc_hold_current_cmd,
-                .cs_thresh_cmd          = __comp_inst->axis_x_tmc_cs_thresh_cmd,
-                .sg_stop_cmd            = __comp_inst->axis_x_tmc_sg_stop_cmd,
-                .sg_thresh_cmd          = __comp_inst->axis_x_tmc_sg_thresh_cmd,
-
-                // Set dynamically by Hotshot 
+                .chip = (tmc5041_chip_t) {
+                    .chip = axis_x_chip
+                },
+                .motor = axis_x_motor,
+                .run_current_cmd            = __comp_inst->axis_x_tmc_run_current_cmd,
+                .hold_current_cmd           = __comp_inst->axis_x_tmc_hold_current_cmd,
+                .cs_thresh_cmd              = __comp_inst->axis_x_tmc_cs_thresh_cmd,
+                .sg_stop_cmd                = __comp_inst->axis_x_tmc_sg_stop_cmd,
+                .sg_thresh_cmd              = __comp_inst->axis_x_tmc_sg_thresh_cmd,
                 .position_fb                = &axis_x_tmc_position_fb,
                 .velocity_fb                = &axis_x_tmc_velocity_fb,
-                .motor_standstill_fb        = &axis_x_motor_standstill_fb,
-
-                .motor_full_stepping_fb     = &axis_x_motor_full_stepping_fb,
-                .motor_overtemp_warning_fb  = &axis_x_motor_overtemp_warning_fb,
-                .motor_overtemp_alarm_fb    = &axis_x_motor_overtemp_alarm_fb,
-                .motor_load_fb              = &axis_x_motor_load_fb,
-                .motor_current_fb           = &axis_x_motor_current_fb,
-                .motor_stall_fb             = &axis_x_motor_stall_fb,
-                .microstep_resolution_fb    = &axis_x_microstep_resolution_fb,
-
-                // FIXME these should be derived 
-                // .max_velocity_cmd           = &axis_x_tmc_max_velocity_cmd,
-                // .max_acceleration_cmd       = &axis_x_tmc_max_acceleration_cmd,
-
-                // Set dynamically by Hotshot
-                // .max_velocity_fb        = NULL,
-                // .max_acceleration_fb    = NULL
+                .motor_standstill_fb        = &axis_x_tmc_motor_standstill_fb,
+                .motor_full_stepping_fb     = &axis_x_tmc_motor_full_stepping_fb,
+                .motor_overtemp_warning_fb  = &axis_x_tmc_motor_overtemp_warning_fb,
+                .motor_overtemp_alarm_fb    = &axis_x_tmc_motor_overtemp_alarm_fb,
+                .motor_load_fb              = &axis_x_tmc_motor_load_fb,
+                .motor_current_fb           = &axis_x_tmc_motor_current_fb,
+                .motor_stall_fb             = &axis_x_tmc_motor_stall_fb,
+                .microstep_resolution_fb    = &axis_x_tmc_microstep_resolution_fb,
             }
         };
-        // FIXME these should be set somewhere else
-        float64_t tmc_max_velocity_cmd = fabs(axis_x_max_velocity_cmd) * axis_x_microstep_per_mm;
-        uint32_t tmc_max_acceleration_cmd = mm_to_microsteps(axis_x_microstep_per_mm, axis_x_max_acceleration_cmd);
-        motors[0].tmc.max_velocity_cmd        = &tmc_max_velocity_cmd;
-        motors[0].tmc.max_acceleration_cmd    = &tmc_max_acceleration_cmd;
-
-        // uint32_t axis_x_microstep_per_mm = microsteps_per_mm(
-        //     200, axis_x_pitch * axis_x_teeth, axis_x_microsteps_cmd);
-        // tmc5041_motor_t tmc5041_motors_x = (tmc5041_motor_t) {
-        //     .chip                   = chip0,
-        //     .motor                  = 0,
-        //     .run_current_cmd        = &axis_x_tmc_run_current_cmd,
-        //     .hold_current_cmd       = &axis_x_tmc_hold_current_cmd,
-        //     .max_velocity_cmd       = &axis_x_tmc_max_velocity_cmd,
-        //     .max_acceleration_cmd   = &axis_x_tmc_max_acceleration_cmd,
-        //     .position_fb           = &axis_x_tmc_position_fb,
-        //     .velocity_cmd           = &axis_x_tmc_velocity_cmd,
-        //     .sg_stop_cmd            = &axis_x_tmc_sg_stop_cmd,
-        //     .cs_thresh_cmd          = &axis_x_tmc_cs_thresh_cmd,
-        //     .sg_thresh_cmd          = &axis_x_tmc_sg_thresh_cmd,
-        //     .max_velocity_fb        = (float)fabs(axis_x_max_velocity_cmd) * axis_x_microstep_per_mm;
-        //     .max_acceleration_fb    = mm_to_microsteps(axis_x_microstep_per_mm, axis_x_max_acceleration_cmd);
-        // };
-        // motors[0] = (joint_t) {
-        //     // .chip                   = axis_x_chip,
-        //     // .motor                  = axis_x_motor,
-        //     .pitch                  = axis_x_pitch,
-        //     .teeth                  = axis_x_teeth,
-        //     .is_enabled             = __comp_inst->axis_x_enable,
-        //     .is_homing              = __comp_inst->axis_x_is_homing,
-        //     .position_cmd           = __comp_inst->axis_x_position_cmd,
-        //     .position_fb            = &axis_x_position_fb,
-        //     .max_velocity_cmd       = axis_x_max_velocity_cmd,
-        //     .velocity_fb            = &axis_x_velocity_fb,
-        //     .max_acceleration_cmd   = axis_x_max_acceleration_cmd,
-        //     .microsteps_cmd         = axis_x_microsteps_cmd,
-        //     .mm_per_rev             = axis_x_pitch * axis_x_teeth,
-        //     .microstep_per_mm       = axis_x_microstep_per_mm,
-        //     .home_sw_fb             = &axis_x_home_sw,
-        //     .torch_breakaway_fb     = &torch_breakaway,
-
-        //     .tmc                    = tmc5041_motors_x,
-
-        //     // .sg_stop_fb                         = &axis_x_sg_stop_fb,
-        //     // .tmc_run_current_cmd                = axis_x_tmc_run_current_cmd,
-        //     // .tmc_hold_current_cmd               = axis_x_tmc_hold_current_cmd,
-        //     // .tmc_sg_stop_cmd                    = __comp_inst->axis_x_tmc_sg_stop_cmd,
-        //     // .tmc_sg_thresh_cmd                  = __comp_inst->axis_x_tmc_sg_thresh_cmd,
-        //     // .tmc_mres                           = microsteps_to_tmc_mres(axis_x_microsteps_cmd),
-        //     // .tmc_cs_thresh                      = axis_x_tmc_cs_thresh_cmd,
-        //     // .tmc_max_velocity_fb                = &axis_x_tmc_max_velocity_fb,
-        //     // .tmc_max_acceleration_fb            = &axis_x_tmc_max_acceleration_fb,
-        //     // .tmc_position_fb                    = &axis_x_tmc_position_fb,
-        //     // .tmc_velocity_fb                    = &axis_x_tmc_velocity_fb,
-        //     // .tmc_motor_standstill_fb            = &axis_x_tmc_motor_standstill_fb,
-        //     // .tmc_motor_full_stepping_fb         = &axis_x_tmc_motor_full_stepping_fb,
-        //     // .tmc_motor_overtemp_warning_fb      = &axis_x_tmc_motor_overtemp_warning_fb,
-        //     // .tmc_motor_overtemp_alarm_fb        = &axis_x_tmc_motor_overtemp_alarm_fb,
-        //     // .tmc_motor_load_fb                  = &axis_x_tmc_motor_load_fb,
-        //     // .tmc_motor_current_fb               = &axis_x_tmc_motor_current_fb,
-        //     // .tmc_motor_stall_fb                 = &axis_x_tmc_motor_stall_fb,
-        //     // .tmc_microstep_resolution_fb        = &axis_x_tmc_microstep_resolution_fb,
-        // };
-        // // *motors[0].tmc_max_velocity_fb = (float)fabs(axis_x_max_velocity_cmd) * axis_x_microstep_per_mm;
-        // // *motors[0].tmc_max_acceleration_fb = mm_to_microsteps(axis_x_microstep_per_mm, axis_x_max_acceleration_cmd);
 
         // YL
-        // #undef axis_yl_enable
-        // #undef axis_yl_is_homing
-        // #undef axis_yl_position_cmd
-        // #undef axis_yl_tmc_sg_stop_cmd
-        // #undef axis_yl_tmc_sg_thresh_cmd
-        // uint32_t axis_yl_microstep_per_mm = microsteps_per_mm(200, axis_yl_pitch * axis_yl_teeth, axis_yl_microsteps_cmd);
-        // tmc5041_motor_t tmc5041_motors_yl = (tmc5041_motor_t) {
-        //     .chip                   = chip0,
-        //     .motor                  = 1,
-        //     .run_current_cmd        = &axis_yl_tmc_run_current_cmd,
-        //     .hold_current_cmd       = &axis_yl_tmc_hold_current_cmd,
-        //     .max_velocity_cmd       = &axis_yl_tmc_max_velocity_cmd,
-        //     .max_acceleration_cmd   = &axis_yl_tmc_max_acceleration_cmd,
-        //     .position_fb           = &axis_yl_tmc_position_fb,
-        //     .velocity_cmd           = &axis_yl_tmc_velocity_cmd,
-        //     .sg_stop_cmd            = &axis_yl_tmc_sg_stop_cmd,
-        //     .cs_thresh_cmd          = &axis_yl_tmc_cs_thresh_cmd,
-        //     .sg_thresh_cmd          = &axis_yl_tmc_sg_thresh_cmd,
-        //     .max_velocity_fb        = (float)fabs(axis_yl_max_velocity_cmd) * axis_yl_microstep_per_mm;
-        //     .max_acceleration_fb    = mm_to_microsteps(axis_yl_microstep_per_mm, axis_yl_max_acceleration_cmd);
-        // };
-        // motors[1] = (joint_t) {
-        //     .chip                   = axis_yl_chip,
-        //     .motor                  = axis_yl_motor,
-        //     .pitch                  = axis_yl_pitch,
-        //     .teeth                  = axis_yl_teeth,
-        //     .is_enabled             = __comp_inst->axis_yl_enable,
-        //     .is_homing              = __comp_inst->axis_yl_is_homing,
-        //     .position_cmd           = __comp_inst->axis_yl_position_cmd,
-        //     .position_fb            = &axis_yl_position_fb,
-        //     .max_velocity_cmd       = axis_yl_max_velocity_cmd,
-        //     .velocity_fb            = &axis_yl_velocity_fb,
-        //     .max_acceleration_cmd   = axis_yl_max_acceleration_cmd,
-        //     .microsteps_cmd         = axis_yl_microsteps_cmd,
-        //     .mm_per_rev             = axis_yl_pitch * axis_yl_teeth,
-        //     .microstep_per_mm       = axis_yl_microstep_per_mm,
-        //     .sg_stop_fb             = &axis_yl_sg_stop_fb,
-        //     .home_sw_fb             = &axis_yl_home_sw,
-        //     .torch_breakaway_fb     = &torch_breakaway,
-
-        //     .tmc                    = tmc5041_motors_yl,
-
-        //     // .tmc_run_current_cmd                = axis_yl_tmc_run_current_cmd,
-        //     // .tmc_hold_current_cmd               = axis_yl_tmc_hold_current_cmd,
-        //     // .tmc_sg_stop_cmd                    = __comp_inst->axis_yl_tmc_sg_stop_cmd,
-        //     // .tmc_sg_thresh_cmd                  = __comp_inst->axis_yl_tmc_sg_thresh_cmd,
-        //     // .tmc_mres                           = microsteps_to_tmc_mres(axis_yl_microsteps_cmd),
-        //     // .tmc_cs_thresh                      = axis_yl_tmc_cs_thresh_cmd,
-        //     // .tmc_max_velocity_fb                = &axis_yl_tmc_max_velocity_fb,
-        //     // .tmc_max_acceleration_fb            = &axis_yl_tmc_max_acceleration_fb,
-        //     // .tmc_position_fb                    = &axis_yl_tmc_position_fb,
-        //     // .tmc_velocity_fb                    = &axis_yl_tmc_velocity_fb,
-        //     // .tmc_motor_standstill_fb            = &axis_yl_tmc_motor_standstill_fb,
-        //     // .tmc_motor_full_stepping_fb         = &axis_yl_tmc_motor_full_stepping_fb,
-        //     // .tmc_motor_overtemp_warning_fb      = &axis_yl_tmc_motor_overtemp_warning_fb,
-        //     // .tmc_motor_overtemp_alarm_fb        = &axis_yl_tmc_motor_overtemp_alarm_fb,
-        //     // .tmc_motor_load_fb                  = &axis_yl_tmc_motor_load_fb,
-        //     // .tmc_motor_current_fb               = &axis_yl_tmc_motor_current_fb,
-        //     // .tmc_motor_stall_fb                 = &axis_yl_tmc_motor_stall_fb,
-        //     // .tmc_microstep_resolution_fb        = &axis_yl_tmc_microstep_resolution_fb,
-        // };
-        // // *motors[1].tmc_max_velocity_fb = (float)fabs(axis_yl_max_velocity_cmd) * axis_yl_microstep_per_mm;
-        // // *motors[1].tmc_max_acceleration_fb = mm_to_microsteps(axis_yl_microstep_per_mm, axis_yl_max_acceleration_cmd);
+        #undef axis_yl_enable
+        #undef axis_yl_is_homing
+        #undef axis_yl_position_cmd
+        #undef axis_yl_microsteps_cmd
+        #undef axis_yl_max_acceleration_cmd
+        #undef axis_yl_max_velocity_cmd
+        #undef axis_yl_tmc_sg_stop_cmd
+        #undef axis_yl_tmc_sg_thresh_cmd
+        #undef axis_yl_tmc_run_current_cmd
+        #undef axis_yl_tmc_hold_current_cmd
+        #undef axis_yl_tmc_cs_thresh_cmd
+        #undef axis_yl_pitch
+        #undef axis_yl_teeth
+        motors[1] = (joint_t) {
+            .max_velocity_cmd               = __comp_inst->axis_yl_max_velocity_cmd,
+            .max_acceleration_cmd           = __comp_inst->axis_yl_max_acceleration_cmd,
+            .pitch_cmd                      = __comp_inst->axis_yl_pitch,
+            .teeth_cmd                      = __comp_inst->axis_yl_teeth,
+            .microsteps_cmd                 = __comp_inst->axis_yl_microsteps_cmd,
+            .is_enabled_cmd                 = __comp_inst->axis_yl_enable,
+            .is_homing_cmd                  = __comp_inst->axis_yl_is_homing,
+            .position_cmd                   = __comp_inst->axis_yl_position_cmd,
+            .position_fb                    = &axis_yl_position_fb,
+            .velocity_fb                    = &axis_yl_velocity_fb,
+            .sg_stop_fb                     = &axis_yl_sg_stop_fb,
+            .home_sw_fb                     = &axis_yl_home_sw,
+            .estop_fb                       = &machine_estop_fb,
+            .torch_breakaway_fb             = &torch_breakaway,
+            .tmc = (tmc5041_motor_t) {
+                .chip = (tmc5041_chip_t) {
+                    .chip = axis_yl_chip
+                },
+                .motor = axis_yl_motor,
+                .run_current_cmd            = __comp_inst->axis_yl_tmc_run_current_cmd,
+                .hold_current_cmd           = __comp_inst->axis_yl_tmc_hold_current_cmd,
+                .cs_thresh_cmd              = __comp_inst->axis_yl_tmc_cs_thresh_cmd,
+                .sg_stop_cmd                = __comp_inst->axis_yl_tmc_sg_stop_cmd,
+                .sg_thresh_cmd              = __comp_inst->axis_yl_tmc_sg_thresh_cmd,
+                .position_fb                = &axis_yl_tmc_position_fb,
+                .velocity_fb                = &axis_yl_tmc_velocity_fb,
+                .motor_standstill_fb        = &axis_yl_tmc_motor_standstill_fb,
+                .motor_full_stepping_fb     = &axis_yl_tmc_motor_full_stepping_fb,
+                .motor_overtemp_warning_fb  = &axis_yl_tmc_motor_overtemp_warning_fb,
+                .motor_overtemp_alarm_fb    = &axis_yl_tmc_motor_overtemp_alarm_fb,
+                .motor_load_fb              = &axis_yl_tmc_motor_load_fb,
+                .motor_current_fb           = &axis_yl_tmc_motor_current_fb,
+                .motor_stall_fb             = &axis_yl_tmc_motor_stall_fb,
+                .microstep_resolution_fb    = &axis_yl_tmc_microstep_resolution_fb,
+            }
+        };
 
         // YR
-        // #undef axis_yr_enable
-        // #undef axis_yr_is_homing
-        // #undef axis_yr_position_cmd
-        // #undef axis_yr_tmc_sg_stop_cmd
-        // #undef axis_yr_tmc_sg_thresh_cmd
-        // uint32_t axis_yr_microstep_per_mm = microsteps_per_mm(200, axis_yr_pitch * axis_yr_teeth, axis_yr_microsteps_cmd);
-        // tmc5041_motor_t tmc5041_motors_yr = (tmc5041_motor_t) {
-        //     .chip                   = chip0,
-        //     .motor                  = 1,
-        //     .run_current_cmd        = &axis_yr_tmc_run_current_cmd,
-        //     .hold_current_cmd       = &axis_yr_tmc_hold_current_cmd,
-        //     .max_velocity_cmd       = &axis_yr_tmc_max_velocity_cmd,
-        //     .max_acceleration_cmd   = &axis_yr_tmc_max_acceleration_cmd,
-        //     .position_fb           = &axis_yr_tmc_position_fb,
-        //     .velocity_cmd           = &axis_yr_tmc_velocity_cmd,
-        //     .sg_stop_cmd            = &axis_yr_tmc_sg_stop_cmd,
-        //     .cs_thresh_cmd          = &axis_yr_tmc_cs_thresh_cmd,
-        //     .sg_thresh_cmd          = &axis_yr_tmc_sg_thresh_cmd,
-        //     .max_velocity_fb        = (float)fabs(axis_yr_max_velocity_cmd) * axis_yr_microstep_per_mm;
-        //     .max_acceleration_fb    = mm_to_microsteps(axis_yr_microstep_per_mm, axis_yr_max_acceleration_cmd);
-        // };
-        // motors[2] = (joint_t) {
-        //     .chip                   = axis_yr_chip,
-        //     .motor                  = axis_yr_motor,
-        //     .pitch                  = axis_yr_pitch,
-        //     .teeth                  = axis_yr_teeth,
-        //     .is_enabled             = __comp_inst->axis_yr_enable,
-        //     .is_homing              = __comp_inst->axis_yr_is_homing,
-        //     .position_cmd           = __comp_inst->axis_yr_position_cmd,
-        //     .position_fb            = &axis_yr_position_fb,
-        //     .max_velocity_cmd       = axis_yr_max_velocity_cmd,
-        //     .velocity_fb            = &axis_yr_velocity_fb,
-        //     .max_acceleration_cmd   = axis_yr_max_acceleration_cmd,
-        //     .microsteps_cmd         = axis_yr_microsteps_cmd,
-        //     .mm_per_rev             = axis_yr_pitch * axis_yr_teeth,
-        //     .microstep_per_mm       = axis_yr_microstep_per_mm,
-        //     .sg_stop_fb             = &axis_yr_sg_stop_fb,
-        //     .home_sw_fb             = &axis_yr_home_sw,
-        //     .torch_breakaway_fb     = &torch_breakaway,
-
-        //     .tmc                    = tmc5041_motors_yr,
-
-        //     // .tmc_run_current_cmd                = axis_yr_tmc_run_current_cmd,
-        //     // .tmc_hold_current_cmd               = axis_yr_tmc_hold_current_cmd,
-        //     // .tmc_sg_stop_cmd                    = __comp_inst->axis_yr_tmc_sg_stop_cmd,
-        //     // .tmc_sg_thresh_cmd                  = __comp_inst->axis_yr_tmc_sg_thresh_cmd,
-        //     // .tmc_mres                           = microsteps_to_tmc_mres(axis_yr_microsteps_cmd),
-        //     // .tmc_cs_thresh                      = axis_yr_tmc_cs_thresh_cmd,
-        //     // .tmc_max_velocity_fb                = &axis_yr_tmc_max_velocity_fb,
-        //     // .tmc_max_acceleration_fb            = &axis_yr_tmc_max_acceleration_fb,
-        //     // .tmc_position_fb                    = &axis_yr_tmc_position_fb,
-        //     // .tmc_velocity_fb                    = &axis_yr_tmc_velocity_fb,
-        //     // .tmc_motor_standstill_fb            = &axis_yr_tmc_motor_standstill_fb,
-        //     // .tmc_motor_full_stepping_fb         = &axis_yr_tmc_motor_full_stepping_fb,
-        //     // .tmc_motor_overtemp_warning_fb      = &axis_yr_tmc_motor_overtemp_warning_fb,
-        //     // .tmc_motor_overtemp_alarm_fb        = &axis_yr_tmc_motor_overtemp_alarm_fb,
-        //     // .tmc_motor_load_fb                  = &axis_yr_tmc_motor_load_fb,
-        //     // .tmc_motor_current_fb               = &axis_yr_tmc_motor_current_fb,
-        //     // .tmc_motor_stall_fb                 = &axis_yr_tmc_motor_stall_fb,
-        //     // .tmc_microstep_resolution_fb        = &axis_yr_tmc_microstep_resolution_fb,
-        // };
-        // // *motors[2].tmc_max_velocity_fb = (float)fabs(axis_yr_max_velocity_cmd) * axis_yr_microstep_per_mm;
-        // // *motors[2].tmc_max_acceleration_fb = mm_to_microsteps(axis_yr_microstep_per_mm, axis_yr_max_acceleration_cmd);
+        #undef axis_yr_enable
+        #undef axis_yr_is_homing
+        #undef axis_yr_position_cmd
+        #undef axis_yr_microsteps_cmd
+        #undef axis_yr_max_acceleration_cmd
+        #undef axis_yr_max_velocity_cmd
+        #undef axis_yr_tmc_sg_stop_cmd
+        #undef axis_yr_tmc_sg_thresh_cmd
+        #undef axis_yr_tmc_run_current_cmd
+        #undef axis_yr_tmc_hold_current_cmd
+        #undef axis_yr_tmc_cs_thresh_cmd
+        #undef axis_yr_pitch
+        #undef axis_yr_teeth
+        motors[2] = (joint_t) {
+            .max_velocity_cmd               = __comp_inst->axis_yr_max_velocity_cmd,
+            .max_acceleration_cmd           = __comp_inst->axis_yr_max_acceleration_cmd,
+            .pitch_cmd                      = __comp_inst->axis_yr_pitch,
+            .teeth_cmd                      = __comp_inst->axis_yr_teeth,
+            .microsteps_cmd                 = __comp_inst->axis_yr_microsteps_cmd,
+            .is_enabled_cmd                 = __comp_inst->axis_yr_enable,
+            .is_homing_cmd                  = __comp_inst->axis_yr_is_homing,
+            .position_cmd                   = __comp_inst->axis_yr_position_cmd,
+            .position_fb                    = &axis_yr_position_fb,
+            .velocity_fb                    = &axis_yr_velocity_fb,
+            .sg_stop_fb                     = &axis_yr_sg_stop_fb,
+            .home_sw_fb                     = &axis_yr_home_sw,
+            .estop_fb                       = &machine_estop_fb,
+            .torch_breakaway_fb             = &torch_breakaway,
+            .tmc = (tmc5041_motor_t) {
+                .chip = (tmc5041_chip_t) {
+                    .chip = axis_yr_chip
+                },
+                .motor = axis_yr_motor,
+                .run_current_cmd            = __comp_inst->axis_yr_tmc_run_current_cmd,
+                .hold_current_cmd           = __comp_inst->axis_yr_tmc_hold_current_cmd,
+                .cs_thresh_cmd              = __comp_inst->axis_yr_tmc_cs_thresh_cmd,
+                .sg_stop_cmd                = __comp_inst->axis_yr_tmc_sg_stop_cmd,
+                .sg_thresh_cmd              = __comp_inst->axis_yr_tmc_sg_thresh_cmd,
+                .position_fb                = &axis_yr_tmc_position_fb,
+                .velocity_fb                = &axis_yr_tmc_velocity_fb,
+                .motor_standstill_fb        = &axis_yr_tmc_motor_standstill_fb,
+                .motor_full_stepping_fb     = &axis_yr_tmc_motor_full_stepping_fb,
+                .motor_overtemp_warning_fb  = &axis_yr_tmc_motor_overtemp_warning_fb,
+                .motor_overtemp_alarm_fb    = &axis_yr_tmc_motor_overtemp_alarm_fb,
+                .motor_load_fb              = &axis_yr_tmc_motor_load_fb,
+                .motor_current_fb           = &axis_yr_tmc_motor_current_fb,
+                .motor_stall_fb             = &axis_yr_tmc_motor_stall_fb,
+                .microstep_resolution_fb    = &axis_yr_tmc_microstep_resolution_fb,
+            }
+        };
 
         // Z
-        // #undef axis_z_enable
-        // #undef axis_z_is_homing
-        // #undef axis_z_position_cmd
-        // #undef axis_z_tmc_sg_stop_cmd
-        // #undef axis_z_tmc_sg_thresh_cmd
-        // uint32_t axis_z_microstep_per_mm = microsteps_per_mm(200, axis_z_pitch * axis_z_teeth, axis_z_microsteps_cmd);
-        // tmc5041_motor_t tmc5041_motors_z = (tmc5041_motor_t) {
-        //     .chip                   = chip0,
-        //     .motor                  = 1,
-        //     .run_current_cmd        = &axis_z_tmc_run_current_cmd,
-        //     .hold_current_cmd       = &axis_z_tmc_hold_current_cmd,
-        //     .max_velocity_cmd       = &axis_z_tmc_max_velocity_cmd,
-        //     .max_acceleration_cmd   = &axis_z_tmc_max_acceleration_cmd,
-        //     .position_fb           = &axis_z_tmc_position_fb,
-        //     .velocity_cmd           = &axis_z_tmc_velocity_cmd,
-        //     .sg_stop_cmd            = &axis_z_tmc_sg_stop_cmd,
-        //     .cs_thresh_cmd          = &axis_z_tmc_cs_thresh_cmd,
-        //     .sg_thresh_cmd          = &axis_z_tmc_sg_thresh_cmd,
-        //     .max_velocity_fb        = (float)fabs(axis_z_max_velocity_cmd) * axis_z_microstep_per_mm;
-        //     .max_acceleration_fb    = mm_to_microsteps(axis_z_microstep_per_mm, axis_z_max_acceleration_cmd);
-        // };
-        // motors[3] = (joint_t) {
-        //     .chip                   = axis_z_chip,
-        //     .motor                  = axis_z_motor,
-        //     .pitch                  = axis_z_pitch,
-        //     .teeth                  = axis_z_teeth,
-        //     .is_enabled             = __comp_inst->axis_z_enable,
-        //     .is_homing              = __comp_inst->axis_z_is_homing,
-        //     .position_cmd           = __comp_inst->axis_z_position_cmd,
-        //     .position_fb            = &axis_z_position_fb,
-        //     .max_velocity_cmd       = axis_z_max_velocity_cmd,
-        //     .velocity_fb            = &axis_z_velocity_fb,
-        //     .max_acceleration_cmd   = axis_z_max_acceleration_cmd,
-        //     .microsteps_cmd         = axis_z_microsteps_cmd,
-        //     .mm_per_rev             = axis_z_pitch * axis_z_teeth,
-        //     .microstep_per_mm       = axis_z_microstep_per_mm,
-        //     .sg_stop_fb             = &axis_z_sg_stop_fb,
-        //     .home_sw_fb             = &axis_z_home_sw,
-        //     .torch_breakaway_fb     = &torch_breakaway,
-
-        //     .tmc                    = tmc5041_motors_z,
-
-        //     // .tmc_run_current_cmd                = axis_z_tmc_run_current_cmd,
-        //     // .tmc_hold_current_cmd               = axis_z_tmc_hold_current_cmd,
-        //     // .tmc_sg_stop_cmd                    = __comp_inst->axis_z_tmc_sg_stop_cmd,
-        //     // .tmc_sg_thresh_cmd                  = __comp_inst->axis_z_tmc_sg_thresh_cmd,
-        //     // .tmc_mres                           = microsteps_to_tmc_mres(axis_z_microsteps_cmd),
-        //     // .tmc_cs_thresh                      = axis_z_tmc_cs_thresh_cmd,
-        //     // .tmc_max_velocity_fb                = &axis_z_tmc_max_velocity_fb,
-        //     // .tmc_max_acceleration_fb            = &axis_z_tmc_max_acceleration_fb,
-        //     // .tmc_position_fb                    = &axis_z_tmc_position_fb,
-        //     // .tmc_velocity_fb                    = &axis_z_tmc_velocity_fb,
-        //     // .tmc_motor_standstill_fb            = &axis_z_tmc_motor_standstill_fb,
-        //     // .tmc_motor_full_stepping_fb         = &axis_z_tmc_motor_full_stepping_fb,
-        //     // .tmc_motor_overtemp_warning_fb      = &axis_z_tmc_motor_overtemp_warning_fb,
-        //     // .tmc_motor_overtemp_alarm_fb        = &axis_z_tmc_motor_overtemp_alarm_fb,
-        //     // .tmc_motor_load_fb                  = &axis_z_tmc_motor_load_fb,
-        //     // .tmc_motor_current_fb               = &axis_z_tmc_motor_current_fb,
-        //     // .tmc_motor_stall_fb                 = &axis_z_tmc_motor_stall_fb,
-        //     // .tmc_microstep_resolution_fb        = &axis_z_tmc_microstep_resolution_fb,
-        // };
-        // // *motors[3].tmc_max_velocity_fb = (float)fabs(axis_z_max_velocity_cmd) * microsteps_per_mm(200, axis_z_pitch * axis_z_teeth, axis_z_microsteps_cmd);
-        // // *motors[3].tmc_max_acceleration_fb = mm_to_microsteps(axis_z_microstep_per_mm, axis_z_max_acceleration_cmd);
+        #undef axis_z_enable
+        #undef axis_z_is_homing
+        #undef axis_z_position_cmd
+        #undef axis_z_microsteps_cmd
+        #undef axis_z_max_acceleration_cmd
+        #undef axis_z_max_velocity_cmd
+        #undef axis_z_tmc_sg_stop_cmd
+        #undef axis_z_tmc_sg_thresh_cmd
+        #undef axis_z_tmc_run_current_cmd
+        #undef axis_z_tmc_hold_current_cmd
+        #undef axis_z_tmc_cs_thresh_cmd
+        #undef axis_z_pitch
+        #undef axis_z_teeth
+        motors[3] = (joint_t) {
+            .max_velocity_cmd               = __comp_inst->axis_z_max_velocity_cmd,
+            .max_acceleration_cmd           = __comp_inst->axis_z_max_acceleration_cmd,
+            .pitch_cmd                      = __comp_inst->axis_z_pitch,
+            .teeth_cmd                      = __comp_inst->axis_z_teeth,
+            .microsteps_cmd                 = __comp_inst->axis_z_microsteps_cmd,
+            .is_enabled_cmd                 = __comp_inst->axis_z_enable,
+            .is_homing_cmd                  = __comp_inst->axis_z_is_homing,
+            .position_cmd                   = __comp_inst->axis_z_position_cmd,
+            .position_fb                    = &axis_z_position_fb,
+            .velocity_fb                    = &axis_z_velocity_fb,
+            .sg_stop_fb                     = &axis_z_sg_stop_fb,
+            .home_sw_fb                     = &axis_z_home_sw,
+            .estop_fb                       = &machine_estop_fb,
+            .torch_breakaway_fb             = &torch_breakaway,
+            .tmc = (tmc5041_motor_t) {
+                .chip = (tmc5041_chip_t) {
+                    .chip = axis_z_chip
+                },
+                .motor = axis_z_motor,
+                .run_current_cmd            = __comp_inst->axis_z_tmc_run_current_cmd,
+                .hold_current_cmd           = __comp_inst->axis_z_tmc_hold_current_cmd,
+                .cs_thresh_cmd              = __comp_inst->axis_z_tmc_cs_thresh_cmd,
+                .sg_stop_cmd                = __comp_inst->axis_z_tmc_sg_stop_cmd,
+                .sg_thresh_cmd              = __comp_inst->axis_z_tmc_sg_thresh_cmd,
+                .position_fb                = &axis_z_tmc_position_fb,
+                .velocity_fb                = &axis_z_tmc_velocity_fb,
+                .motor_standstill_fb        = &axis_z_tmc_motor_standstill_fb,
+                .motor_full_stepping_fb     = &axis_z_tmc_motor_full_stepping_fb,
+                .motor_overtemp_warning_fb  = &axis_z_tmc_motor_overtemp_warning_fb,
+                .motor_overtemp_alarm_fb    = &axis_z_tmc_motor_overtemp_alarm_fb,
+                .motor_load_fb              = &axis_z_tmc_motor_load_fb,
+                .motor_current_fb           = &axis_z_tmc_motor_current_fb,
+                .motor_stall_fb             = &axis_z_tmc_motor_stall_fb,
+                .microstep_resolution_fb    = &axis_z_tmc_microstep_resolution_fb,
+            }
+        };
 
         needs_setup = hotshot_init(motors, MOTOR_COUNT);
     }
@@ -594,8 +434,8 @@ FUNCTION(sensors) {
 
     // TODO go into estop mode on estop-cmd?
 
-    // TODO maybe set abort-fb
-    abort_fb = FALSE;
+    // // TODO maybe set abort-fb
+    // abort_fb = FALSE;
 
     // Read in arc voltage and set arc_voltage pin
     float V_ref = 5;
@@ -649,14 +489,14 @@ FUNCTION(sensors) {
     // Read in ohmic probe contact state and set ohmic_probe pin bit
     // estop is wired fail safe, i.e. active low.
     // However, PlasmaC expects FALSE to indicate active estop
-    uint8_t estop_fb_level = bcm2835_gpio_lev(PIN_ESTOP);
-    if (estop_fb_level == HIGH)
+    uint8_t estop_level = bcm2835_gpio_lev(PIN_ESTOP);
+    if (estop_level == HIGH)
     {
-        estop_fb = TRUE;
+        machine_estop_fb = TRUE;
     }
     else
     {
-        estop_fb = FALSE;
+        machine_estop_fb = FALSE;
     }
 
     // Read in ohmic_enable pin and enable/disable ohmic sensor relay
@@ -690,52 +530,4 @@ EXTRA_CLEANUP()
 }
 
 // HAL Module
-// ============================================================================
-
-// ============================================================================
-// Test
-
-// FUNCTION(calibrate)                                                                                                                                              
-// {
-//     float vtarget_mm_per_sec    = axis_x_max_velocity_cmd;
-//     float xtarget_mm            = 0.0;   // absolute position along an axis
-//     start_spi_conversation(motors[0]);
-//     // Start movement
-//     //
-//     tmc5041_set_register_RAMPMODE(motors[0], 1); // velocity mode
-//     move_motor(motors[0], xtarget_mm);
-//     // Get calibration info
-//     //
-//     int64_t xactual = tmc5041_get_register_XACTUAL(motors[0]);
-//     float xactualmm = xactual_mm(motors[0]);
-//     float vmax = mm_to_microsteps(motors[0].microstep_per_mm, axis_x_max_velocity_cmd);
-//     ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(motors[0]);
-//     bool get_home_switch = get_home_switch_state(motors[0], 0);
-//     bool get_neg_limit_switch = get_neg_limit_switch_state(motors[0], vtarget_mm_per_sec);
-//     drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(motors[0]);
-//     uint16_t sg_result = drv_status.sg_result;
-//     uint8_t cs_actual = drv_status.cs_actual;
-//     bool sg_status = drv_status.sg_status;
-//     axis_x_home_sw = get_home_switch;
-//     axis_x_neg_limit_sw = get_neg_limit_switch;
-//     axis_x_position_fb = xactualmm;
-//     axis_x_load = sg_result;
-//     axis_x_current = cs_actual;
-//     axis_x_stall = sg_status;
-//     // And echo it
-//     //
-//     rtapi_print("hotshot (%d:%d): Calibrate\n", motors[0].chip, motors[0].motor);
-//     rtapi_print("    axis_x_max_velocity_cmd=%f, vmax=%f, axis_x_max_acceleration_cmd=%f\n", 
-//         axis_x_max_velocity_cmd, vmax, axis_x_max_acceleration_cmd);
-//     rtapi_print("    xactual_mm=%f, xactual=%d\n", 
-//         xactualmm, xactual);
-//     rtapi_print("    axis_x_load=%d, axis_x_current=%d, axis_x_stall=%d\n", 
-//         sg_result, cs_actual, sg_status);
-//     rtapi_print("    event_stop_sg=%d\n", ramp_stat.event_stop_sg);
-//     rtapi_print("    axis_x_home_sw=%d, axis_x_neg_limit_sw=%d\n", 
-//         get_home_switch, get_neg_limit_switch);
-//     end_spi_conversation();
-// }
-
-// Test
 // ============================================================================

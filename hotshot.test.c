@@ -1,6 +1,7 @@
 #include "stdio.h"
-#include <signal.h>
+#include "signal.h"
 #include "time.h"
+#include "assert.h"
 #include "tmc/helpers/Types.h"
 #include "global.h"
 #include "rpi.h"
@@ -23,7 +24,48 @@ void handleCtrlC(int signal) {
     ctrlCPressed = true;
 }
 
+void unitTests() {
+    
+    uint32_t pitch_cmd = 2;
+    uint32_t teeth_cmd = 20;
+    uint32_t microsteps_cmd = 256;
+    uint32_t steps_per_rev = 200;
+    uint32_t microstep_per_mm = microsteps_per_mm(
+        steps_per_rev, pitch_cmd * teeth_cmd, microsteps_cmd);
+    assert(microstep_per_mm == 1280);
+
+    microstep_per_mm = 1280;
+    float64_t mm = 100;
+    int64_t mm_to_microstep = mm_to_microsteps(microstep_per_mm, mm);
+    assert(mm_to_microstep == 128000);
+
+    microstep_per_mm = 1280;
+    mm = -100;
+    mm_to_microstep = mm_to_microsteps(microstep_per_mm, mm);
+    assert(mm_to_microstep == -128000);
+
+    microstep_per_mm = 1280;
+    mm = -100.33;
+    mm_to_microstep = mm_to_microsteps(microstep_per_mm, mm);
+    assert(mm_to_microstep == -128422); // float would be -128422.4
+
+    microstep_per_mm = 1280;
+    int32_t microsteps = 100;
+    float64_t microstep_to_mm = microsteps_to_mm(microstep_per_mm, microsteps);
+    assert(microstep_to_mm == 0.078125);
+
+    microstep_per_mm = 1280;
+    microsteps = -100;
+    microstep_to_mm = microsteps_to_mm(microstep_per_mm, microsteps);
+    assert(microstep_to_mm == -0.078125);
+}
+
 int main() {
+    printf("Running unit tests\n");
+    unitTests();
+    printf("Unit tests passed\n");
+    exit(0);
+
     printf("Entering main\n");
 
     // Set up the Ctrl+C signal handler
@@ -54,12 +96,12 @@ int main() {
 
                 // Statically set in INI and then set via setp
                 // FIXME not being used
-                float axis_x_max_velocity_cmd       = 400;
-                float axis_x_max_acceleration_cmd   = 100;
+                float64_t axis_x_max_velocity_cmd       = 400;
+                float64_t axis_x_max_acceleration_cmd   = 100;
                 // Set via setp
                 uint32_t axis_x_pitch               = 2;
                 uint32_t axis_x_teeth               = 20;
-                uint32_t axis_x_microstep_per_mm    = 256;
+                uint32_t axis_x_microsteps_cmd      = 256;
                 // Set dynamically by HAL
                 bool axis_x_enable                  = TRUE;
                 bool axis_x_is_homing               = FALSE;
@@ -101,20 +143,21 @@ int main() {
                 };
                 motors[0] = (joint_t) {
                     // Statically set in INI and then set via setp
-                    .max_velocity_cmd       = axis_x_max_velocity_cmd,
-                    .max_acceleration_cmd   = axis_x_max_acceleration_cmd,
+                    .max_velocity_cmd       = &axis_x_max_velocity_cmd,
+                    .max_acceleration_cmd   = &axis_x_max_acceleration_cmd,
                     
                     // Set via setp
-                    .pitch                  = &axis_x_pitch,
-                    .teeth                  = &axis_x_teeth,
-                    .microstep_per_mm       = &axis_x_microstep_per_mm,
-                    // .microsteps_cmd         = axis_x_microsteps_cmd,
+                    .pitch_cmd              = &axis_x_pitch,
+                    .teeth_cmd              = &axis_x_teeth,
+                    .microsteps_cmd         = &axis_x_microsteps_cmd,
+                    // .microstep_per_mm       = &axis_x_microstep_per_mm,
+                    
                     // .mm_per_rev             = axis_x_pitch * axis_x_teeth,
                     
 
                     // Set dynamically by HAL
-                    .is_enabled             = &axis_x_enable,
-                    .is_homing              = &axis_x_is_homing,
+                    .is_enabled_cmd         = &axis_x_enable,
+                    .is_homing_cmd          = &axis_x_is_homing,
                     .position_cmd           = &axis_x_position_cmd,
                     
                     // Set dynamically by Hotshot
@@ -150,8 +193,8 @@ int main() {
                         .motor_stall_fb             = &axis_x_motor_stall_fb,
                         .microstep_resolution_fb    = &axis_x_microstep_resolution_fb,
 
-                        .max_velocity_cmd           = &axis_x_tmc_max_velocity_cmd,
-                        .max_acceleration_cmd       = &axis_x_tmc_max_acceleration_cmd,
+                        .max_velocity_cmd           = axis_x_tmc_max_velocity_cmd,
+                        .max_acceleration_cmd       = axis_x_tmc_max_acceleration_cmd,
 
                         // Set dynamically by Hotshot
                         // .max_velocity_fb        = NULL,
@@ -180,7 +223,7 @@ int main() {
 
             // Fake setting position_cmd pin like HAL would
             *motors[0].position_cmd = xtarget;
-            *motors[0].is_enabled = 1;
+            *motors[0].is_enabled_cmd = 1;
             // *motors[0].sg_stop_fb = 0;
 
             handle_joints(motors, MOTOR_COUNT);
@@ -205,6 +248,10 @@ int main() {
                 printf("    undervoltage=%d\n", FIELD_GET(gstat, TMC5041_UV_CP_MASK, TMC5041_UV_CP_SHIFT));
 
                 printf("chip=%d motor=%d\n", motors[i].tmc.chip.chip, motors[i].tmc.motor);
+
+                printf("PINS\n");
+                printf("    position_fb=%d\n", *motors[i].position_fb);
+                printf("    tmc_position_fb=%d\n", *motors[i].tmc.position_fb);
 
                 // printf("SPI_STATUS motor=%d\n", motors[i].tmc.motor);
                 // printf("    driver_error1=%d\n", spi_status.driver_error1);

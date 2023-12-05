@@ -5,27 +5,67 @@
 #include "bcm2835.h"
 #include "hotshot.h"
 
-int64_t mm_to_microsteps(uint32_t microstep_per_mm, float mm)
+int64_t mm_to_microsteps(uint32_t microstep_per_mm, float64_t mm)
 {
     return mm * microstep_per_mm;
 }
 
-uint32_t microsteps_per_mm(uint32_t fullsteps_per_rev, float linear_mm_per_rev, uint32_t microsteps)
+float64_t microsteps_to_mm(uint32_t microsteps_per_mm, int32_t microsteps) {
+    return microsteps / (float64_t)microsteps_per_mm;
+}
+
+uint32_t microsteps_per_mm(uint32_t fullsteps_per_rev, float64_t linear_mm_per_rev, uint32_t microsteps)
 {
     return (fullsteps_per_rev * microsteps) / linear_mm_per_rev;
 }
 
-spi_status_t follow(joint_t * motor)
+spi_status_t follow(joint_t * joint)
 {
     // XTARGET: Target position for ramp mode
     // Calculate target position and velocity
     // Implicitly round to lower since were converting from float to int
-    int32 xtarget = (*motor->position_cmd) * (*motor->microstep_per_mm);
-    spi_status_t spi_status = tmc5041_set_register_XTARGET(&motor->tmc, xtarget);
+    int32 xtarget = (*joint->position_cmd) * joint->microstep_per_mm;
 
-    // TODO return xactual_mm
-    // int64_t xactual_value = tmc5041_get_register_XACTUAL(&motor->tmc);
-    // spi_status.xactual_mm = (float)xactual_value / (float)(*motor->microstep_per_mm);
+    #ifdef DEBUG
+    printf("follow(%d, %d): xtarget=%d\n", 
+        joint->tmc.chip, joint->tmc.motor, xtarget);
+    printf("follow(%d, %d): Microsteps %d float cast=%f\n", 
+        joint->tmc.chip, joint->tmc.motor,
+        joint->microstep_per_mm, (float)joint->microstep_per_mm);
+    #endif
+
+    spi_status_t spi_status = tmc5041_set_register_XTARGET(&joint->tmc, xtarget);
+
+    #ifdef DEBUG
+    printf("follow(%d, %d): position_fb was position_fb=%f\n", 
+        joint->tmc.chip, joint->tmc.motor, *joint->position_fb);
+    #endif
+
+    int32_t xactual = tmc5041_get_register_XACTUAL(&joint->tmc);
+
+    #ifdef DEBUG
+    printf("follow(%d, %d): Got xactual=%d\n", 
+        joint->tmc.chip, joint->tmc.motor, xactual);
+    #endif
+
+    *joint->tmc.position_fb = xactual;
+
+    // Convert to machine unit
+    float xactual_mm = microsteps_to_mm(joint->microstep_per_mm, *joint->tmc.position_fb);
+
+    #ifdef DEBUG
+    printf("follow(%d, %d): joint actual position now xactual_mm=%f\n", 
+        joint->tmc.chip, joint->tmc.motor, xactual_mm);
+    #endif
+
+    *joint->position_fb = xactual_mm;
+
+    #ifdef DEBUG
+    printf("follow(%d, %d): joint actual position now xactual=%f\n", 
+        joint->tmc.chip, joint->tmc.motor, *joint->tmc.position_fb);
+    printf("follow(%d, %d): joint actual position now xactual_mm=%f\n", 
+        joint->tmc.chip, joint->tmc.motor, *joint->position_fb);
+    #endif
 
     return spi_status;
 }

@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "bcm2835.h"
 #include "rpi.h"
+#include "tmc/helpers/Macros.h"
 #include "tmc5041.h"
 
 // ----------------------------------------------------------------------------
@@ -36,22 +37,13 @@ int32_t tmc5041_writeInt(tmc5041_motor_t * motor, uint8_t address, int32_t value
 
 int32_t tmc5041_readInt(tmc5041_motor_t * motor, uint8_t address)
 {
-    // return tmc5041_read_register(address);
-
-    // Remove shadow register bit
-	// address = TMC_ADDRESS(address);
-
-	// // register not readable -> shadow register copy
-	// // if(!TMC_IS_READABLE(tmc5041->registerAccess[address]))
-	// // 	return tmc5041->config->shadowRegister[address];
-
 	uint8_t data[5] = { 0, 0, 0, 0, 0 };
 
 	data[0] = address;
-	tmc5041_readWriteArray(motor->chip.chip, data, 5);
+	tmc5041_readWriteArray(motor->chip.chip, &data[0], 5);
 
 	data[0] = address;
-	tmc5041_readWriteArray(motor->chip.chip, data, 5);
+	tmc5041_readWriteArray(motor->chip.chip, &data[0], 5);
 
 	return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | (data[3] << 8) | data[4];
 }
@@ -82,13 +74,13 @@ void log_spi_status(tmc5041_motor_t * motor, uint8_t spi_status[40])
     bool driver_error1      = spi_status[0] & 0b00000010;
     bool reset_flag         = spi_status[0] & 0b00000001;
     #ifdef DEBUG
-    rtapi_print("hotshot (%d:%d): spi_status: status_stop_l2=%x status_stop_l1=%x velocity_reached2=%x velocity_reached1=%x driver_error2=%x driver_error1=%x reset_flag=%x\n",
+    printf("hotshot (%d:%d): spi_status: status_stop_l2=%x status_stop_l1=%x velocity_reached2=%x velocity_reached1=%x driver_error2=%x driver_error1=%x reset_flag=%x\n",
         motor->chip, motor->motor, status_stop_l2, status_stop_l1, velocity_reached2, velocity_reached1, driver_error2, driver_error1, reset_flag);
     #endif
     // Reset by reading GSTAT
     // TODO handle resets
     if (driver_error2 || driver_error1 || reset_flag) {
-    //     rtapi_print("hotshot: WARNING resetting driver");
+    //     printf("hotshot: WARNING resetting driver");
         printf("hotshot: WARNING needs driver reset");
     //     config_chip();
     }
@@ -132,8 +124,8 @@ int32_t tmc5041_get_register_XACTUAL(tmc5041_motor_t * motor)
 int32_t tmc5041_get_register_VACTUAL(tmc5041_motor_t * motor)
 {
     // Actual motor velocity from ramp generator (signed)
-    // return tmc5041_read_register(TMC5041_VACTUAL(motor->motor));
-    return tmc5041_readInt(motor, TMC5041_VACTUAL(motor->motor));
+    int32_t value = tmc5041_readInt(motor, TMC5041_VACTUAL(motor->motor));
+    return CAST_Sn_TO_S32(value, 24);
 }
 
 spi_status_t tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget)
@@ -241,8 +233,13 @@ void tmc5041_motor_reset(tmc5041_motor_t * motor)
     tmc5041_motor_set_home(motor);
 }
 
-void tmc5041_motor_halt(tmc5041_motor_t * motor) {
-    
+void tmc5041_motor_halt(tmc5041_motor_t * motor)
+{
+
+    #ifdef DEBUG
+    printf("tmc5041_motor_halt: Halting motor\n");
+    #endif
+
     // TODO Go to hold current instead of turning off chopper?
     // We can hold by setting XTARGET = XACTUAL
 
@@ -253,6 +250,9 @@ void tmc5041_motor_halt(tmc5041_motor_t * motor) {
     uint8_t chop_conf[40] = {TMC5041_CHOPCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(chop_conf, spi_status, 5);
 
+    #ifdef DEBUG
+    printf("tmc5041_motor_halt: Done halting motor\n");
+    #endif
 }
 
 uint8_t microsteps_to_tmc_mres(uint16_t usteps)
@@ -293,6 +293,24 @@ void tmc5041_chip_init()
 
 void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 {
+
+    #ifdef DEBUG
+    printf("tmc5041_motor_set_config_registers:\n");
+    printf("    IHOLD_IRUN irun=%d ihold=%d\n",
+        *motor->run_current_cmd,
+        *motor->hold_current_cmd);
+    printf("    RAMP amax=%d\n",
+        motor->max_acceleration_cmd);
+    printf("    CHOPCONF vmax=%f, mres=%d\n", 
+        motor->max_velocity_cmd, motor->mres);
+    printf("    COOLCONF sgt=%d\n",
+        *motor->sg_thresh_cmd);
+    printf("    SW_MODE: sg_stop=%d\n", 
+        *motor->sg_stop_cmd);
+    printf("    VCOOLTHRS vcoolthrs=%d\n", 
+        *motor->cs_thresh_cmd);
+    #endif
+
     static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
     uint32_t write_payload = 0x00;
 
@@ -306,9 +324,7 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     // operation velocity for StealthChop.
     // Hint: May be adapted to disable CoolStep during acceleration and deceleration phase by setting identical to VMAX.
     // Enable CoolStep and StallGuard at 5mm per second
-    // uint32_t vcoolthrs = mm_to_microsteps(motor->microstep_per_mm, 10);
     // TMC5041 data sheet uses 30 RPM (20 mm/sec on X axis)
-    // uint32_t vcoolthrs = 1600*2; // ( 30 * 200 * 16 ) / 60
     uint32_t vcoolthrs = *motor->cs_thresh_cmd;
     // This velocity setting allows velocity dependent switching into
     // a different chopper mode and fullstepping to maximize torque.
@@ -321,8 +337,7 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     uint8_t vstop = 10;
     // V1=0 disables A1 and D1 phase, use AMAX, DMAX only
     uint32_t v1 = 0;
-    // uint16_t amax = mm_to_microsteps(motor->microstep_per_mm, motor->max_acceleration_cmd);
-    uint16_t amax = *motor->max_acceleration_cmd;
+    uint16_t amax = motor->max_acceleration_cmd;
     uint16_t a1 = amax * 2;
     uint16_t dmax = amax;
     // Do not set DI=0 in positioning mode, even if V1=0!
@@ -342,8 +357,8 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 
     // Chopper Configuration
     //
-    uint16_t vhighchm = *motor->max_velocity_cmd;
-    uint16_t vhighfs = *motor->max_velocity_cmd;
+    uint16_t vhighchm = motor->max_velocity_cmd;
+    uint16_t vhighfs = motor->max_velocity_cmd;
     uint8_t tbl = 0b10;
     uint8_t hend = 0b0;
     uint8_t hstrt = 0b100;
@@ -363,8 +378,7 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     // Target velocity should be in absolute units
     // float abs_vtarget_mm_per_sec = fabs(motor->max_velocity_cmd);
     // VMAX: Motion ramp target velocity
-    // int32_t vmax = abs_vtarget_mm_per_sec * motor->microstep_per_mm; // in microsteps per second
-    int32_t vmax = *motor->max_velocity_cmd;
+    int32_t vmax = motor->max_velocity_cmd;
 
     // Switch mode
     bool en_softstop = 0;
@@ -561,38 +575,37 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 
 void tmc5041_motor_init(tmc5041_motor_t * motor)
 {
-        
         printf("Configuring motor: chip=%d, motor=%d\n", motor->chip.chip, motor->motor);
         
         #ifdef DEBUG
-        rtapi_print("start spi convo\n");
-        rtapi_print("Motor is %d %d %d %d\n", 
-            motor->chip, motor->motor, motor->pitch, motor->teeth);
+        printf("start spi convo\n");
+        printf("Motor is %d %d\n", 
+            motor->chip, motor->motor);
         #endif
 
         #ifdef DEBUG
-        rtapi_print("start spi convo with chip %d\n", motor->chip);
+        printf("start spi convo with chip %d\n", motor->chip);
         #endif
 
         printf("Start spi conversation\n");
         rpi_spi_select(motor->chip.chip);
 
         #ifdef DEBUG
-        rtapi_print("Reset motor\n");
+        printf("Reset motor\n");
         #endif
 
         printf("Reset motor conversation\n");
         tmc5041_motor_reset(motor);
 
         #ifdef DEBUG
-        rtapi_print("Config motor\n");
+        printf("Config motor\n");
         #endif
 
         printf("Config motor registers\n");
         tmc5041_motor_set_config_registers(motor);
 
         #ifdef DEBUG
-        rtapi_print("end spi convo\n");
+        printf("end spi convo\n");
         #endif
 
         printf("End spi conversation\n");
@@ -609,7 +622,7 @@ void tmc5041_motor_end(tmc5041_motor_t * motor)
 void tmc5041_init(tmc5041_motor_t * motors, size_t motor_count)
 {
     #ifdef DEBUG
-    rtapi_print("enter config_tmc5041\n");
+    printf("enter config_tmc5041\n");
     #endif
 
     // Configure chip and motors
@@ -619,34 +632,33 @@ void tmc5041_init(tmc5041_motor_t * motors, size_t motor_count)
         printf("Configuring motor: chip=%d, motor=%d\n", motors[i].chip.chip, motors[i].motor);
         
         #ifdef DEBUG
-        rtapi_print("start spi convo\n");
-        rtapi_print("Motor is %d %d %d %d\n", 
-            motors[i].chip, motors[i].motor, motors[i].pitch, motors[i].teeth);
+        printf("start spi convo\n");
+        printf("Motor is %d %d\n", 
+            motors[i].chip, motors[i].motor);
         #endif
 
         #ifdef DEBUG
-        rtapi_print("start spi convo with chip %d\n", motors[i].chip);
+        printf("start spi convo with chip %d\n", motors[i].chip);
         #endif
 
         printf("Start spi conversation\n");
         rpi_spi_select(motors[i].chip.chip);
 
         #ifdef DEBUG
-        rtapi_print("Reset motor\n");
+        printf("Reset motor\n");
         #endif
 
         printf("Reset motor conversation\n");
         tmc5041_motor_reset(&motors[i]);
 
         #ifdef DEBUG
-        rtapi_print("Config motor\n");
+        printf("Config motor tmc5041_motor_init\n");
         #endif
-
-        printf("Config motor\n");
+        
         tmc5041_motor_init(&motors[i]);
 
         #ifdef DEBUG
-        rtapi_print("end spi convo\n");
+        printf("end spi convo\n");
         #endif
 
         printf("End spi conversation\n");
@@ -654,7 +666,7 @@ void tmc5041_init(tmc5041_motor_t * motors, size_t motor_count)
     }
 
     #ifdef DEBUG
-    rtapi_print("exit config_tmc5041\n");
+    printf("exit config_tmc5041\n");
     #endif
 }
 

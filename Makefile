@@ -17,23 +17,31 @@ complex-objs := bcm2835.o rpi.o tmc5041.o hotshot.lib.o hotshot.hal.o
 include Makefile.modinc
 
 clean:
-	$(Q)rm *.o *.so *.ver *.tmp 2>/dev/null || true
+	$(Q)rm *.o *.so *.ver *.tmp *.sym hotshot.test 2>/dev/null || true
 
 bcm2835.o:
-	$(Q)gcc bcm2835.c -o bcm2835.o -c
+	$(Q)gcc -Werror bcm2835.c -o bcm2835.o -c
 
 rpi.o: bcm2835.o
-	$(Q)gcc rpi.c -o rpi.o -c
+	$(Q)gcc -Werror rpi.c -o rpi.o -c
 
 tmc5041.o: rpi.o
-	$(Q)gcc -I . tmc5041.c -o tmc5041.o -c
+	$(Q)gcc -Werror -I . -I /usr/include/linuxcnc -DRTAPI tmc5041.c -o tmc5041.o -c
 
 hotshot.lib.o: tmc5041.o
-	$(Q)gcc -I . hotshot.lib.c -o hotshot.lib.o -c
+	$(Q)gcc -Werror -I . hotshot.lib.c -o hotshot.lib.o -c
 
 hotshot.hal.o: hotshot.lib.o
-	$(Q)gcc -I . hotshot.hal.c -o hotshot.hal.o -c
+	$(Q)gcc -Werror -I . -I /usr/include/linuxcnc -DRTAPI hotshot.hal.c -o hotshot.hal.o -c
 
 hotshot.o: hotshot.hal.o 
 	$(Q)halcompile --preprocess hotshot.comp
-	$(Q)gcc -DRTAPI -I . -I /usr/include/linuxcnc hotshot.c -o hotshot.o -c
+	$(Q)gcc -DRTAPI -Werror -I . -I /usr/include/linuxcnc hotshot.c -o hotshot.o -c
+
+hotshot.test: hotshot.hal.o
+	$(Q)gcc -DRTAPI -Werror -I . hotshot.test.c -o hotshot.test.o -c
+	$(Q)gcc -Werror -o hotshot.test $(complex-objs) hotshot.test.o
+
+test: hotshot.test
+	echo "Make sure you sudo or you will get a segmentation fault!"
+	./hotshot.test
