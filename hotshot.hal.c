@@ -11,15 +11,14 @@
 bool hotshot_joint_init(joint_t * joint)
 {
     #ifdef DEBUG
-    printf("hotshot_joint_init: pitch=%d\n", *joint->pitch_cmd);
-    printf("hotshot_joint_init: teeth=%d\n", *joint->teeth_cmd);
+    printf("hotshot_joint_init: pitch=%d teeth=%d\n", *joint->pitch_cmd, *joint->teeth_cmd);
     printf("hotshot_joint_init: microsteps_cmd=%d\n", *joint->microsteps_cmd);
     #endif
 
-    // TODO this should be calculated on the fly so pin changes will take effect
-    // FIXME Remove magic number 200
     uint32_t microstep_per_mm = microsteps_per_mm(
-        200, (*joint->pitch_cmd) * (*joint->teeth_cmd), *joint->microsteps_cmd);
+        *joint->motor_fullsteps_per_rev_cmd, 
+        (*joint->pitch_cmd) * (*joint->teeth_cmd), 
+        *joint->microsteps_cmd);
 
     #ifdef DEBUG
     printf("hotshot_joint_init: microstep_per_mm=%d\n", microstep_per_mm);
@@ -31,18 +30,17 @@ bool hotshot_joint_init(joint_t * joint)
     printf("hotshot_joint_init: joint->microstep_per_mm=%d\n", joint->microstep_per_mm );
     #endif
 
-    // float64_t tmc_max_velocity_cmd = fabs(*joint->max_velocity_cmd) * microstep_per_mm;
-    uint32_t tmc_max_velocity_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_velocity_cmd);
+    // uint32_t tmc_max_velocity_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_velocity_cmd);
+    // joint->tmc.max_velocity_cmd = tmc_max_velocity_cmd;
 
-    #ifdef DEBUG
-    printf("hotshot_joint_init: tmc_max_velocity_cmd=%d\n", tmc_max_velocity_cmd);
-    #endif
+    // #ifdef DEBUG
+    // printf("hotshot_joint_init: tmc_max_velocity_cmd=%d, joint->tmc.max_velocity_cmd=%d\n", 
+    //     tmc_max_velocity_cmd, joint->tmc.max_velocity_cmd);
+    // #endif
 
-    joint->tmc.max_velocity_cmd = tmc_max_velocity_cmd;
-
-    #ifdef DEBUG
-    printf("hotshot_joint_init: joint->tmc.max_velocity_cmd=%f\n", joint->tmc.max_velocity_cmd);
-    #endif
+    // #ifdef DEBUG
+    // printf("hotshot_joint_init: joint->tmc.max_velocity_cmd=%d\n", joint->tmc.max_velocity_cmd);
+    // #endif
 
     uint32_t tmc_max_acceleration_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_acceleration_cmd);
 
@@ -55,6 +53,26 @@ bool hotshot_joint_init(joint_t * joint)
     #ifdef DEBUG
     printf("hotshot_joint_init: joint->tmc.max_acceleration_cmd=%d\n", joint->tmc.max_acceleration_cmd);
     #endif
+
+    *joint->tmc.ramp_a1_cmd = tmc_max_acceleration_cmd * 2;
+
+    *joint->tmc.ramp_dmax_cmd = tmc_max_acceleration_cmd;
+
+    joint->tmc.ramp_d1_cmd = joint->tmc.ramp_a1_cmd;
+
+    // #ifdef DEBUG
+    // printf("hotshot_joint_init: amax=%d ramp_a1_cmd=%d, ramp_dmax_cmd=%d, ramp_d1_cmd=%d\n", 
+    //     *joint->tmc.ramp_vstart_cmd, joint->tmc.max_velocity_cmd);
+    // #endif
+
+    // For positioning mode, VSTART must == VMAX
+    // joint->tmc.ramp_vstart_cmd = &joint->tmc.max_velocity_cmd;
+    // joint->tmc.ramp_vstop_cmd = &joint->tmc.max_velocity_cmd;
+
+    // #ifdef DEBUG
+    // printf("hotshot_joint_init: VSTART=%d VMAX=%d\n", 
+    //     *joint->tmc.ramp_vstart_cmd, joint->tmc.max_velocity_cmd);
+    // #endif
 
     tmc5041_motor_init(&joint->tmc);
 }
@@ -69,21 +87,20 @@ bool hotshot_init(joint_t * joints, uint8_t motor_count)
 
 void handle_joint(joint_t * joint) {
 
-    #ifdef DEBUG
-    printf("handle_joint chip=%d motor=%d is_enabled=%d\n", 
-        joint->tmc.chip, joint->tmc.motor, *joint->is_enabled_cmd);
-    #endif
+    // #ifdef DEBUG
+    // printf("handle_joint chip=%d motor=%d is_enabled=%d\n", 
+    //     joint->tmc.chip, joint->tmc.motor, *joint->is_enabled_cmd);
+    // #endif
 
     rpi_spi_select(joint->tmc.chip.chip);
 
     if (*joint->is_enabled_cmd) {
 
         #ifdef DEBUG
-        printf("handle_joint(%d, %d): Start handling enabled joint\n", 
+        printf("handle_joint(%d, %d): Start handling enabled joint --------------------\n", 
             joint->tmc.chip, joint->tmc.motor);
         #endif
 
-        // TODO do register setup here
         if (! joint->is_setup) {
             hotshot_joint_init(joint);
             joint->is_setup = TRUE;
@@ -103,10 +120,10 @@ void handle_joint(joint_t * joint) {
         // axis_x_tmc_velocity_reached_fb = ramp_stat.velocity_reached;
         // printf("status_sg=%d\n", *joint->sg_stop_fb);
 
-        #ifdef DEBUG
-        printf("handle_joint(%d, %d): StallGuard is sg_stop_fb=%d \n", 
-            joint->tmc.chip, joint->tmc.motor, *joint->sg_stop_fb);
-        #endif
+        // #ifdef DEBUG
+        // printf("handle_joint(%d, %d): StallGuard is sg_stop_fb=%d \n", 
+        //     joint->tmc.chip, joint->tmc.motor, *joint->sg_stop_fb);
+        // #endif
 
         // Handle StallGuard state
         //
@@ -154,13 +171,13 @@ void handle_joint(joint_t * joint) {
         } else {
             // No active StallGuard switches, so move joint and reset all switches
 
-            #ifdef DEBUG
-            printf("handle_joint(%d, %d): Moving joint to position_cmd=%f\n", 
-                joint->tmc.chip, joint->tmc.motor, *joint->position_cmd);
-            #endif
+            // #ifdef DEBUG
+            // printf("handle_joint(%d, %d): Moving joint to position_cmd=%f\n", 
+            //     joint->tmc.chip, joint->tmc.motor, *joint->position_cmd);
+            // #endif
 
             // Move joint
-            spi_status_t spi_status = follow(joint);
+            follow(joint);
 
             // Ensure switches aren't triggered
             //
@@ -168,38 +185,17 @@ void handle_joint(joint_t * joint) {
             // FIXME
             *joint->torch_breakaway_fb = FALSE;
 
-            #ifdef DEBUG
-            printf("handle_joint(%d, %d): Finished resetting switches\n",
-                joint->tmc.chip, joint->tmc.motor);
-            #endif
+            // #ifdef DEBUG
+            // printf("handle_joint(%d, %d): Finished resetting switches\n",
+            //     joint->tmc.chip, joint->tmc.motor);
+            // #endif
         }
 
-        #ifdef DEBUG
-        printf("handle_joint(%d, %d): Get velocity\n",
-            joint->tmc.chip, joint->tmc.motor);
-        #endif
+        // #ifdef DEBUG
+        // printf("handle_joint(%d, %d): Get velocity\n",
+        //     joint->tmc.chip, joint->tmc.motor);
+        // #endif
 
-        // Get velocity
-        //
-        int32_t vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
-
-        #ifdef DEBUG
-        printf("handle_joint(%d, %d): vactual=%d vmax=%f\n", 
-            joint->tmc.chip, joint->tmc.motor, vactual, joint->tmc.max_velocity_cmd);
-        #endif
-
-        *joint->tmc.velocity_fb = vactual;
-
-        // float vactual_mm = (float)(*joint->tmc.velocity_fb) / (float)joint->microstep_per_mm;
-        float64_t vactual_mm = microsteps_to_mm(joint->microstep_per_mm, *joint->tmc.velocity_fb);
-        *joint->velocity_fb = vactual_mm;
-       
-        #ifdef DEBUG
-        printf("handle_joint(%d, %d): vactual_mm=%f vmax_mm=%f\n", 
-            joint->tmc.chip, joint->tmc.motor, vactual_mm, *joint->max_velocity_cmd);
-        printf("handle_joint(%d, %d): Get driver state\n",
-            joint->tmc.chip, joint->tmc.motor);
-        #endif
 
         // Get driver state
         // 
@@ -212,28 +208,28 @@ void handle_joint(joint_t * joint) {
         *joint->tmc.motor_current_fb = drv_status.cs_actual;
         *joint->tmc.motor_stall_fb = drv_status.sg_status;
 
-        #ifdef DEBUG
-        printf("handle_joint(%d, %d): Get chopper state\n",
-            joint->tmc.chip, joint->tmc.motor);
-        #endif
+        // #ifdef DEBUG
+        // printf("handle_joint(%d, %d): Get chopper state\n",
+        //     joint->tmc.chip, joint->tmc.motor);
+        // #endif
 
         // Get chopper state
         //
         chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(&joint->tmc);
         *joint->tmc.microstep_resolution_fb = chopconf.mres;
 
-        #ifdef DEBUG
-        printf("handle_joint(%d, %d): Done handling enabled joint\n", 
-            joint->tmc.chip, joint->tmc.motor);
-        #endif
+        // #ifdef DEBUG
+        // printf("handle_joint(%d, %d): Done handling enabled joint\n", 
+        //     joint->tmc.chip, joint->tmc.motor);
+        // #endif
 
     } else {
         // Joint is not enabled in LinuxCNC
 
-        #ifdef DEBUG
-        printf("handle_joint(%d, %d): Joint is not enabled\n", 
-            joint->tmc.chip, joint->tmc.motor);
-        #endif
+        // #ifdef DEBUG
+        // printf("handle_joint(%d, %d): Joint is not enabled\n", 
+        //     joint->tmc.chip, joint->tmc.motor);
+        // #endif
 
         // joint->is_setup = FALSE;
 
@@ -257,19 +253,19 @@ void handle_joint(joint_t * joint) {
 void handle_joints(joint_t * joint, uint8_t motor_count) {
     // Do something with each joint
 
-    #ifdef DEBUG
-    printf("handle_joints(%d, %d): Handling joints motor_count=%d\n", 
-        joint->tmc.chip, joint->tmc.motor, motor_count);
-    #endif
+    // #ifdef DEBUG
+    // printf("handle_joints(%d, %d): Handling joints motor_count=%d\n", 
+    //     joint->tmc.chip, joint->tmc.motor, motor_count);
+    // #endif
 
     for (uint8_t i = 0; i < motor_count; i++) {
         handle_joint(&joint[i]);
     }
 
-    #ifdef DEBUG
-    printf("handle_joints(%d, %d): Done handling joints motor_count=%d\n", 
-        joint->tmc.chip, joint->tmc.motor, motor_count);
-    #endif
+    // #ifdef DEBUG
+    // printf("handle_joints(%d, %d): Done handling joints motor_count=%d\n", 
+    //     joint->tmc.chip, joint->tmc.motor, motor_count);
+    // #endif
 }
 
 void hotshot_end(joint_t * joint, uint8_t motor_count)

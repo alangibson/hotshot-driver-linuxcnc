@@ -21,9 +21,11 @@ typedef struct {
     uint32_t                        cs_thresh_cmd;              // coolStep threshold in machine units / time
     volatile uint32_t               * pitch_cmd;
     volatile uint32_t               * teeth_cmd;
+    volatile uint32_t               * motor_fullsteps_per_rev_cmd;
     volatile pin_enable_t           * is_enabled_cmd;
     volatile bool                   * is_homing_cmd;
     volatile pin_position_t         * position_cmd;             // position in machine units (mm or inch)
+    volatile pin_velocity_t         * velocity_cmd;
     volatile float64_t              * max_velocity_cmd;         // maximum velocity
     volatile float64_t              * max_acceleration_cmd;     // maximum acceleration
     volatile uint32_t               * microsteps_cmd;           // desired microsteps (1/microsteps_cmd)
@@ -40,4 +42,7 @@ typedef struct {
     volatile pin_position_t         * position_fb;
     volatile pin_velocity_t         * velocity_fb;
     volatile bool                   * estop_fb;
+    int32_t                         last_xtarget;
+    float64_t                       last_position_fb;
+    int32_t                         last_move_distance;
 } joint_t;

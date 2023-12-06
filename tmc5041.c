@@ -291,8 +291,8 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
         *motor->hold_current_cmd);
     printf("    RAMP amax=%d\n",
         motor->max_acceleration_cmd);
-    printf("    CHOPCONF vmax=%f, mres=%d\n", 
-        motor->max_velocity_cmd, motor->mres);
+    printf("    CHOPCONF vmax=%d, mres=%d\n", 
+        motor->velocity_cmd, motor->mres);
     printf("    COOLCONF sgt=%d\n",
         *motor->sg_thresh_cmd);
     printf("    SW_MODE: sg_stop=%d\n", 
@@ -304,97 +304,28 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
     uint32_t write_payload = 0x00;
 
-    // Ramp Generator Motion Control Register Set
-    //
-    uint8_t irun = *motor->run_current_cmd;
-    uint8_t ihold = *motor->hold_current_cmd;
-    uint8_t iholddelay = 1;
-    // This is the lower threshold velocity for switching on smart
-    // energy CoolStep and StallGuard feature. Further it is the upper
-    // operation velocity for StealthChop.
-    // Hint: May be adapted to disable CoolStep during acceleration and deceleration phase by setting identical to VMAX.
-    // Enable CoolStep and StallGuard at 5mm per second
-    // TMC5041 data sheet uses 30 RPM (20 mm/sec on X axis)
-    uint32_t vcoolthrs = *motor->cs_thresh_cmd;
-    // This velocity setting allows velocity dependent switching into
-    // a different chopper mode and fullstepping to maximize torque.
-    uint32_t vhigh = 64000;
-
-    // Ramp Generator Motion Control Register Set
-    //
-    uint8_t rampmode = 0; // positioning mode
-    uint8_t vstart = 0;
-    uint8_t vstop = 10;
-    // V1=0 disables A1 and D1 phase, use AMAX, DMAX only
-    uint32_t v1 = 0;
-    uint16_t amax = motor->max_acceleration_cmd;
-    uint16_t a1 = amax * 2;
-    uint16_t dmax = amax;
-    // Do not set DI=0 in positioning mode, even if V1=0!
-    uint16_t d1 = a1;
-    uint8_t tzerowait = 0;
-
-    // Coolstep
-    //
-    uint8_t sfilt = 0;
-    uint8_t seimin = 0;
-    uint8_t sedn = 0;
-    uint8_t seup = 0;
-    // When the load increases, SG falls below SEMIN, and CoolStep increases the current.
-    // When the load decreases, SG rises above (SEMIN + SEMAX + 1) * 32, and the current is reduced.
-    uint8_t semin = 3; // coolstep activated when SG < SEMIN*32
-    uint8_t semax = 10; // coolstep deactivated when SG >= (SEMIN+SEMAX+1)*32
-
-    // Chopper Configuration
-    //
-    uint16_t vhighchm = motor->max_velocity_cmd;
-    uint16_t vhighfs = motor->max_velocity_cmd;
-    uint8_t tbl = 0b10;
-    uint8_t hend = 0b0;
-    uint8_t hstrt = 0b100;
-    uint8_t toff = 0b0100;
-    uint8_t mres = motor->mres;
-    // 0: Low sensitivity, high sense resistor voltage
-    // 1: High sensitivity, low sense resistor voltage
-    uint8_t vsense = 0;
-    // 0 Standard mode (SpreadCycle)
-    uint8_t chm = 0;
-
-    // Stallguard parameters
-    //
-    sg_thresh_t sg_thresh = *motor->sg_thresh_cmd;
-
-    // Calculate max velocity
-    // Target velocity should be in absolute units
-    // float abs_vtarget_mm_per_sec = fabs(motor->max_velocity_cmd);
-    // VMAX: Motion ramp target velocity
-    int32_t vmax = motor->max_velocity_cmd;
-
-    // Switch mode
-    bool en_softstop = 0;
-    bool sg_stop = *motor->sg_stop_cmd;
-
     //
     // Power Configuration
     //
 
-    // Current Setting
+    // IHOLD_IRUN: Current Setting
     //
-    // write_payload = 0x00;
-    // // IRUN: Current scale when motor is running (scaling factor N/32 i.e. 1/32, 2/32, … 31/32)
-    // // For high precision motor operation, work with a current scaling factor in the range 16 to 31,
-    // // because scaling down the current values reduces the effective microstep resolution by making microsteps coarser.
-    // write_payload = FIELD_SET(write_payload, TMC5041_IRUN_MASK, TMC5041_IRUN_SHIFT, irun);
-    // // IHOLD: Identical to IRUN, but for motor in stand still.
-    // write_payload = FIELD_SET(write_payload, TMC5041_IHOLD_MASK, TMC5041_IHOLD_SHIFT, ihold);
-    // // IHOLDDELAY: 0 = instant IHOLD
-    // write_payload = FIELD_SET(write_payload, TMC5041_IHOLDDELAY_MASK, TMC5041_IHOLDDELAY_SHIFT, iholddelay);
-    // uint8_t current[40] = {TMC5041_IHOLD_IRUN(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    // bcm2835_spi_transfernb(current, spi_status, 5);
-    tmc5041_set_register_IHOLD_IRUN(motor, ihold, irun);
+    write_payload = 0x00;
+    // IRUN: Current scale when motor is running (scaling factor N/32 i.e. 1/32, 2/32, … 31/32)
+    // For high precision motor operation, work with a current scaling factor in the range 16 to 31,
+    // because scaling down the current values reduces the effective microstep resolution by making microsteps coarser.
+    write_payload = FIELD_SET(write_payload, TMC5041_IRUN_MASK, TMC5041_IRUN_SHIFT, *motor->run_current_cmd);
+    // IHOLD: Identical to IRUN, but for motor in stand still.
+    write_payload = FIELD_SET(write_payload, TMC5041_IHOLD_MASK, TMC5041_IHOLD_SHIFT, *motor->hold_current_cmd);
+    // IHOLDDELAY: 0 = instant IHOLD
+    write_payload = FIELD_SET(write_payload, TMC5041_IHOLDDELAY_MASK, TMC5041_IHOLDDELAY_SHIFT, *motor->current_hold_delay_cmd);
+    uint8_t current[40] = {TMC5041_IHOLD_IRUN(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(current, spi_status, 5);
 
+    //
     // Chopper configuration
     //
+
     // PWMCONF: StealthChop Configuration
     //
     // write_payload = 0x00;
@@ -408,78 +339,102 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     // write_payload = FIELD_SET(write_payload, TMC5041_PWM_FREQ_MASK, TMC5041_PWM_FREQ_SHIFT, pwm_freq);
     // uint8_t pwmconf[40] = {TMC5041_PWMCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     // bcm2835_spi_transfernb(pwmconf, spi_status, 5);
-    //
+    
     // CHOPCONF: Chopper Configuration (i.e. SpreadCycle)
     //
     write_payload = 0x00;
     // MRES: micro step resolution
-    write_payload = FIELD_SET(write_payload, TMC5041_MRES_MASK, TMC5041_MRES_SHIFT, mres);
+    write_payload = FIELD_SET(write_payload, TMC5041_MRES_MASK, TMC5041_MRES_SHIFT, motor->mres);
     // vhighchm: high velocity chopper mode
-    write_payload = FIELD_SET(write_payload, TMC5041_VHIGHCHM_MASK, TMC5041_VHIGHCHM_SHIFT, vhighchm);
+    write_payload = FIELD_SET(write_payload, TMC5041_VHIGHCHM_MASK, TMC5041_VHIGHCHM_SHIFT, *motor->chop_vhighchm_cmd);
     // vhighfs: high velocity fullstep selection
-    write_payload = FIELD_SET(write_payload, TMC5041_VHIGHFS_MASK, TMC5041_VHIGHFS_SHIFT, vhighfs);
+    write_payload = FIELD_SET(write_payload, TMC5041_VHIGHFS_MASK, TMC5041_VHIGHFS_SHIFT, *motor->chop_vhighfs_cmd);
     // VSENSE: sense resistor voltage based current scaling
-    write_payload = FIELD_SET(write_payload, TMC5041_VSENSE_MASK, TMC5041_VSENSE_SHIFT, vsense);
+    //  0: Low sensitivity, high sense resistor voltage
+    //  1: High sensitivity, low sense resistor voltage
+    write_payload = FIELD_SET(write_payload, TMC5041_VSENSE_MASK, TMC5041_VSENSE_SHIFT, *motor->chop_vsense_cmd);
     // TBL: blank time select
-    write_payload = FIELD_SET(write_payload, TMC5041_TBL_MASK, TMC5041_TBL_SHIFT, tbl);
+    write_payload = FIELD_SET(write_payload, TMC5041_TBL_MASK, TMC5041_TBL_SHIFT, *motor->chop_tbl_cmd);
     // CHM: chopper mode 
-    write_payload = FIELD_SET(write_payload, TMC5041_CHM_MASK, TMC5041_CHM_SHIFT, chm);
+    write_payload = FIELD_SET(write_payload, TMC5041_CHM_MASK, TMC5041_CHM_SHIFT, *motor->chop_mode_cmd);
     // TODO rndtf
     // TODO disfdcc
     // HEND: hysteresis low value OFFSET sine wave offset
-    write_payload = FIELD_SET(write_payload, TMC5041_HEND_MASK, TMC5041_HEND_SHIFT, hend);
+    write_payload = FIELD_SET(write_payload, TMC5041_HEND_MASK, TMC5041_HEND_SHIFT, *motor->chop_hend_cmd);
     // HSTRT: hysteresis start value added to HEND
-    write_payload = FIELD_SET(write_payload, TMC5041_HSTRT_MASK, TMC5041_HSTRT_SHIFT, hstrt);
+    write_payload = FIELD_SET(write_payload, TMC5041_HSTRT_MASK, TMC5041_HSTRT_SHIFT, *motor->chop_hstrt_cmd);
     // TOFF: off time and driver enable
-    write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, toff);
+    write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, *motor->chop_toff_cmd);
     uint8_t chop_conf[40] = {TMC5041_CHOPCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(chop_conf, spi_status, 5);
 
-    //
-    // CoolStep and StallGuard2 configuration
-    //
-
     // VCOOLTHRS
+    //
+    // This is the lower threshold velocity for switching on smart
+    // energy CoolStep and StallGuard feature. Further it is the upper
+    // operation velocity for StealthChop.
+    // Hint: May be adapted to disable CoolStep during acceleration and deceleration phase by setting identical to VMAX.
+    // Enable CoolStep and StallGuard at 5mm per second
+    // TMC5041 data sheet uses 30 RPM (20 mm/sec on X axis)
     //
     // Lower ramp generator velocity threshold. Below this velocity CoolStep and StallGuard becomes disabled (not used
     // in Step/Dir mode). Adapt to the lower limit of the velocity range where StallGuard2 gives a stable result
     //
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_VCOOLTHRS_MASK, TMC5041_VCOOLTHRS_SHIFT, vcoolthrs);
+    write_payload = FIELD_SET(write_payload, TMC5041_VCOOLTHRS_MASK, TMC5041_VCOOLTHRS_SHIFT, *motor->cs_thresh_cmd);
     uint8_t vcoolthrs_message[40] = {TMC5041_VCOOLTHRS(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(vcoolthrs_message, spi_status, 5);
 
     // VHIGH
+    //
+    // This is the lower threshold velocity for switching on smart
+    // energy CoolStep and StallGuard feature. Further it is the upper
+    // operation velocity for StealthChop.
+    // Hint: May be adapted to disable CoolStep during acceleration and deceleration phase by setting identical to VMAX.
+    // Enable CoolStep and StallGuard at 5mm per second
+    // TMC5041 data sheet uses 30 RPM (20 mm/sec on X axis)
+    // 
+    // This velocity setting allows velocity dependent switching into
+    // a different chopper mode and fullstepping to maximize torque.
     // 
     // Upper ramp generator velocity threshold value. Above this velocity CoolStep becomes disabled
     // (not used in Step/Dir mode). Adapt to the velocity range where StallGuard2 gives a stable result.
     //
     write_payload = 0x00;
     // VHIGH: Set high values for both
-    write_payload = FIELD_SET(write_payload, TMC5041_VHIGH_MASK, TMC5041_VHIGH_SHIFT, vhigh);
+    write_payload = FIELD_SET(write_payload, TMC5041_VHIGH_MASK, TMC5041_VHIGH_SHIFT, *motor->chop_vhigh_cmd);
     uint8_t vhigh_message[40] = {TMC5041_VHIGH(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(vhigh_message, spi_status, 5);
 
     // COOLCONF: Smart Energy Control CoolStep and StallGuard2
     //
+    // When the load increases, SG falls below SEMIN, and CoolStep increases the current.
+    // When the load decreases, SG rises above (SEMIN + SEMAX + 1) * 32, and the current is reduced.
+    //
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_SFILT_MASK, TMC5041_SFILT_SHIFT, sfilt);
-    write_payload = FIELD_SET(write_payload, TMC5041_SGT_MASK, TMC5041_SGT_SHIFT, sg_thresh);
-    write_payload = FIELD_SET(write_payload, TMC5041_SEIMIN_MASK, TMC5041_SEIMIN_SHIFT, seimin);
-    write_payload = FIELD_SET(write_payload, TMC5041_SEDN_MASK, TMC5041_SEDN_SHIFT, sedn);
-    write_payload = FIELD_SET(write_payload, TMC5041_SEMAX_MASK, TMC5041_SEMAX_SHIFT, semax);
-    write_payload = FIELD_SET(write_payload, TMC5041_SEUP_MASK, TMC5041_SEUP_SHIFT, seup);
-    write_payload = FIELD_SET(write_payload, TMC5041_SEMIN_MASK, TMC5041_SEMIN_SHIFT, semin);
+    write_payload = FIELD_SET(write_payload, TMC5041_SFILT_MASK, TMC5041_SFILT_SHIFT, *motor->coolstep_sfilt_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_SGT_MASK, TMC5041_SGT_SHIFT, *motor->sg_thresh_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEIMIN_MASK, TMC5041_SEIMIN_SHIFT, *motor->coolstep_seimin_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEUP_MASK, TMC5041_SEUP_SHIFT, *motor->coolstep_seup_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEDN_MASK, TMC5041_SEDN_SHIFT, *motor->coolstep_sedn_cmd);
+    // coolstep deactivated when SG >= (SEMIN+SEMAX+1)*32
+    write_payload = FIELD_SET(write_payload, TMC5041_SEMAX_MASK, TMC5041_SEMAX_SHIFT, *motor->coolstep_semax_cmd);
+    // coolstep activated when SG < SEMIN*32
+    write_payload = FIELD_SET(write_payload, TMC5041_SEMIN_MASK, TMC5041_SEMIN_SHIFT, *motor->coolstep_semin_cmd);
     uint8_t coolconf[40] = {TMC5041_COOLCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(coolconf, spi_status, 5);
+
+    //
+    // Switch Configuration
+    //
 
     // SW_MODE: Reference Switch & StallGuard2 Event Configuration Register
     //
     write_payload = 0x00;
     // Attention: Do not use soft stop in combination with StallGuard2.
-    write_payload = FIELD_SET(write_payload, TMC5041_EN_SOFTSTOP_MASK, TMC5041_EN_SOFTSTOP_SHIFT, en_softstop);
+    write_payload = FIELD_SET(write_payload, TMC5041_EN_SOFTSTOP_MASK, TMC5041_EN_SOFTSTOP_SHIFT, *motor->sw_en_softstop);
     // Note: set VCOOLTHRS to a suitable value before enabling this
-    write_payload = FIELD_SET(write_payload, TMC5041_SG_STOP_MASK, TMC5041_SG_STOP_SHIFT, sg_stop);
+    write_payload = FIELD_SET(write_payload, TMC5041_SG_STOP_MASK, TMC5041_SG_STOP_SHIFT, *motor->sg_stop_cmd);
     write_payload = FIELD_SET(write_payload, TMC5041_LATCH_R_INACTIVE_MASK, TMC5041_LATCH_R_INACTIVE_SHIFT, 0);
     write_payload = FIELD_SET(write_payload, TMC5041_LATCH_R_ACTIVE_MASK, TMC5041_LATCH_R_ACTIVE_SHIFT, 1);
     write_payload = FIELD_SET(write_payload, TMC5041_LATCH_L_INACTIVE_MASK, TMC5041_LATCH_L_INACTIVE_SHIFT, 0);
@@ -497,71 +452,99 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     //
 
     // VSTART
+    //
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_VSTART_MASK, TMC5041_VSTART_SHIFT, vstart);
+    write_payload = FIELD_SET(write_payload, TMC5041_VSTART_MASK, TMC5041_VSTART_SHIFT, *motor->ramp_vstart_cmd);
     uint8_t vstart_message[40] = {TMC5041_VSTART(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(vstart_message, spi_status, 5);
 
     // VSTOP
+    //
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_VSTOP_MASK, TMC5041_VSTOP_SHIFT, vstop);
+    write_payload = FIELD_SET(write_payload, TMC5041_VSTOP_MASK, TMC5041_VSTOP_SHIFT, *motor->ramp_vstop_cmd);
     uint8_t vstop_message[40] = {TMC5041_VSTOP(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(vstop_message, spi_status, 5);
 
     // V1
+    //
+    // V1=0 disables A1 and D1 phase, use AMAX, DMAX only
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_V1__MASK, TMC5041_V1__SHIFT, v1);
+    write_payload = FIELD_SET(write_payload, TMC5041_V1__MASK, TMC5041_V1__SHIFT, *motor->ramp_v1_cmd);
     uint8_t v1_message[40] = {TMC5041_V1(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(v1_message, spi_status, 5);
 
     // A1
+    //
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_A1_MASK, TMC5041_A1_SHIFT, a1);
+    write_payload = FIELD_SET(write_payload, TMC5041_A1_MASK, TMC5041_A1_SHIFT, *motor->ramp_a1_cmd);
     uint8_t a1_message[40] = {TMC5041_A1(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(a1_message, spi_status, 5);
 
+    // AMAX
+    //
     // Maximum acceleration/deceleration [µsteps / ta²]
     //
     // This is the acceleration and deceleration value for velocity mode.
     // In position mode (RAMP=0), must be lower than A1 (???)
     //
-    // AMAX
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_AMAX_MASK, TMC5041_AMAX_SHIFT, amax);
+    write_payload = FIELD_SET(write_payload, TMC5041_AMAX_MASK, TMC5041_AMAX_SHIFT, motor->max_acceleration_cmd);
     uint8_t amax_message[40] = {TMC5041_AMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(amax_message, spi_status, 5);
 
-    // DMAX = AMAX
+    // DMAX
+    //
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_DMAX_MASK, TMC5041_DMAX_SHIFT, dmax);
+    write_payload = FIELD_SET(write_payload, TMC5041_DMAX_MASK, TMC5041_DMAX_SHIFT, *motor->ramp_dmax_cmd);
     uint8_t dmax_message[40] = {TMC5041_DMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(dmax_message, spi_status, 5);
 
-    // D1 = A1
+    // D1
+    //
+    // D1 should normally equal A1
+    // Do not set DI=0 in positioning mode, even if V1=0!
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_D1_MASK, TMC5041_D1_SHIFT, d1);
+    write_payload = FIELD_SET(write_payload, TMC5041_D1_MASK, TMC5041_D1_SHIFT, *motor->ramp_d1_cmd);
     uint8_t d1_message[40] = {TMC5041_D1(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(d1_message, spi_status, 5);
 
     // TZEROWAIT
     write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_TZEROWAIT_MASK, TMC5041_TZEROWAIT_SHIFT, tzerowait);
+    write_payload = FIELD_SET(write_payload, TMC5041_TZEROWAIT_MASK, TMC5041_TZEROWAIT_SHIFT, *motor->ramp_tzerowait_cmd);
     uint8_t tzerowait_message[40] = {TMC5041_TZEROWAIT(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(tzerowait_message, spi_status, 5);
 
+    // Ramp mode
     //
-    // Target velocity
+    tmc5041_set_register_RAMPMODE(motor, *motor->ramp_mode_cmd);
+}
+
+void tmc5041_set_register_VMAX(tmc5041_motor_t * motor, int32_t vmax) 
+{
+    // VMAX: Motion ramp target velocity
     //
     // This is the target velocity [in µsteps / t] in velocity mode. It can be changed any time during a motion
     //
-    // VMAX
-    write_payload = 0x00;
+    int32_t write_payload = 0x00;
     write_payload = FIELD_SET(write_payload, TMC5041_VMAX_MASK, TMC5041_VMAX_SHIFT, vmax);
     uint8_t vmax_message[40] = {TMC5041_VMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vmax_message, spi_status, 5);
+    bcm2835_spi_transfernb(vmax_message, vmax_message, 5);
+}
 
-    // Ramp mode
-    tmc5041_set_register_RAMPMODE(motor, rampmode);
+void tmc5041_set_register_VSTART(tmc5041_motor_t * motor, int32_t vstart) 
+{
+    int32_t write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VSTART_MASK, TMC5041_VSTART_SHIFT, vstart);
+    uint8_t vstart_message[40] = {TMC5041_VSTART(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vstart_message, vstart_message, 5);
+}
+
+void tmc5041_set_register_VSTOP(tmc5041_motor_t * motor, int32_t vstop) 
+{
+    int32_t write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VSTOP_MASK, TMC5041_VSTOP_SHIFT, vstop);
+    uint8_t vstop_message[40] = {TMC5041_VSTOP(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vstop_message, vstop_message, 5);
 }
 
 void tmc5041_motor_init(tmc5041_motor_t * motor)

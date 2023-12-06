@@ -1,0 +1,45 @@
+# Halshow settings
+# This file is generated automatically.
+wm geometry . 1920x1017+-543+36
+placeFrames 0.3
+set ::ratio 0.3
+set ::old_w_leftf 160
+set ::watchlist {
+    pin+hotshot.0.axis-x-tmc-motor-current-fb
+    pin+hotshot.0.axis-x-tmc-motor-full-stepping-fb
+    pin+hotshot.0.axis-x-tmc-motor-load-fb
+    pin+hotshot.0.axis-x-tmc-motor-stall-fb
+    pin+hotshot.0.axis-x-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-x-velocity-fb
+    pin+hotshot.0.axis-x-neg-limit-sw
+    pin+hotshot.0.axis-x-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-x-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-x-position-fb
+    pin+hotshot.0.axis-x-sg-stop-fb
+    pin+hotshot.0.axis-x-tmc-velocity-fb
+    pin+hotshot.0.axis-x-microsteps-cmd
+    pin+hotshot.0.axis-x-tmc-position-fb
+    pin+hotshot.0.axis-x-tmc-run-current-cmd
+    pin+hotshot.0.axis-x-tmc-cs-thresh-cmd
+    pin+hotshot.0.axis-x-tmc-microstep-resolution-fb
+    pin+hotshot.0.torch-breakaway
+    pin+hotshot.0.axis-x-position-cmd
+    pin+hotshot.0.axis-x-enable
+    pin+hotshot.0.axis-x-is-homing
+    pin+hotshot.0.axis-x-max-acceleration-cmd
+    pin+hotshot.0.axis-x-max-velocity-cmd
+    pin+hotshot.0.axis-x-tmc-max-acceleration-fb
+    pin+hotshot.0.axis-x-tmc-max-velocity-fb
+    pin+hotshot.0.axis-x-tmc-velocity-reached-fb
+    pin+hotshot.0.axis-x-tmc-ramp-vstart-cmd
+    pin+hotshot.0.axis-z-tmc-max-velocity-fb
+    pin+hotshot.0.axis-yr-tmc-max-velocity-fb
+    pin+motion.current-vel
+}
+set ::workmode watchhal
+set ::watchInterval 100
+set ::col1_width 100
+set ::ffmts 
+set ::ifmts 
+set ::alwaysOnTop 0
+set ::autoSaveWatchlist 1

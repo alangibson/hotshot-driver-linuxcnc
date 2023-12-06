@@ -153,3 +153,13 @@ X axis = 0
 Y axis = 0
 Delay = 0
 
+[CONVERSATIONAL]
+Preamble = G21 G64P0.25 G40 G49 G80 G90 G92.1 G94 G97
+Postamble = G21 G64P0.25 G40 G49 G80 G90 G92.1 G94 G97
+Origin = 0
+Leadin = 0
+Leadout = 0
+Hole diameter = 32
+Hole speed = 60
+Grid Size = 0
+

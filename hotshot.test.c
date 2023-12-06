@@ -64,7 +64,6 @@ int main() {
     printf("Running unit tests\n");
     unitTests();
     printf("Unit tests passed\n");
-    exit(0);
 
     printf("Entering main\n");
 
