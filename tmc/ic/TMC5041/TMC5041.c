@@ -93,10 +93,14 @@ static void tmc5041_writeConfiguration(TMC5041TypeDef *tmc5041)
 	}
 }
 
+#include "stdio.h"
+
 void tmc5041_periodicJob(TMC5041TypeDef *tmc5041, uint32_t tick)
 {
 	int32_t xActual;
 	uint32_t tickDiff;
+
+	printf("tmc5041_periodicJob: state=%d\n", tmc5041->config->state);
 
 	if(tmc5041->config->state != CONFIG_READY)
 	{
@@ -104,12 +108,23 @@ void tmc5041_periodicJob(TMC5041TypeDef *tmc5041, uint32_t tick)
 		return;
 	}
 
+	printf("tmc5041_periodicJob: oldTick=%d tick=%d\n", tmc5041->oldTick, tick);
+
 	if((tickDiff = tick - tmc5041->oldTick) >= 5)
 	{
+
+		printf("tmc5041_periodicJob: tickDiff=%d\n", tickDiff);
+
 		int32_t i;
 		for (i = 0; i < TMC5041_MOTORS; i++)
 		{
+
+			printf("tmc5041_periodicJob: tmc5041_readInt() motor=%d\n", i);
+
 			xActual = tmc5041_readInt(tmc5041, TMC5041_XACTUAL(i));
+
+			printf("tmc5041_periodicJob: xactual=%d\n", xActual);
+
 			tmc5041->config->shadowRegister[TMC5041_XACTUAL(i)] = xActual;
 			tmc5041->velocity[i] = (int32_t) ((float) (abs(xActual-tmc5041->oldX[i]) / (float) tickDiff) * (float) 1048.576);
 			tmc5041->oldX[i] = xActual;

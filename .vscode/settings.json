@@ -17,6 +17,15 @@
         "initializer_list": "c",
         "regex": "c",
         "utility": "c",
-        "tmc5041.h": "c"
+        "tmc5041.h": "c",
+        "board.h": "c",
+        "derivative.h": "c",
+        "tmcmotioncontroller.h": "c",
+        "constants.h": "c",
+        "hotshot.h": "c",
+        "spi.h": "c",
+        "ios.h": "c",
+        "timer.h": "c",
+        "hal.h": "c"
     }
 }

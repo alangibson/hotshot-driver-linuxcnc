@@ -1,4 +1,3 @@
-#include "tmc/ic/TMC5041/TMC5041.h"
 
 // RAMPMODE:
 // 0: Positioning mode (using all A, D and V parameters)
@@ -154,3 +153,5 @@ float thc_voltage(uint8_t chip, float V_ref);
 void log_move(joint_t * motor, float position_cmd, float max_velocity_cmd, float position_fb);
 
 ramp_stat_register_t tmc5041_get_register_RAMP_STAT(joint_t * motor);
+
+bool setup_once();
