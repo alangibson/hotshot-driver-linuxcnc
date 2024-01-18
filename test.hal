@@ -1,0 +1,3 @@
+loadrt hotshot
+
+addf hotshot.0.calibrate servo-thread

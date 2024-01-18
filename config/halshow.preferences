@@ -1,0 +1,43 @@
+# Halshow settings
+# This file is generated automatically.
+wm geometry . 1600x837+169+258
+placeFrames 0.29974811083123426
+set ::ratio 0.29974811083123426
+set ::old_w_leftf 476
+set ::watchlist {
+    pin+plasmac.arc-ok-high
+    pin+plasmac.arc-ok-in
+    pin+plasmac.arc-ok-low
+    pin+plasmac.arc-ok-out
+    sig+plasmac:arc-ok
+    pin+plasmac.arc-voltage-in
+    pin+plasmac.arc-voltage-offset
+    pin+plasmac.arc-voltage-out
+    pin+plasmac.ignore-arc-ok-0
+    param+db_arc-ok.tmax
+    pin+qtplasmac.arc_ok_high-f
+    pin+qtplasmac.arc_ok_high-s
+    pin+qtplasmac.arc_ok_low-f
+    pin+qtplasmac.arc_ok_low-s
+    sig+plasmac:arc_ok_out
+    sig+plasmac:arc-ok-low
+    sig+plasmac:arc-ok-in
+    sig+plasmac:arc-ok-high
+    pin+plasmac.homed
+    sig+machine-is-enabled
+    sig+machine-is-on
+    pin+plasmac.ohmic-enable
+    sig+plasmac:ohmic-probe
+    sig+plasmac:ohmic-enable
+    sig+plasmac:ohmic-probe-enable
+    sig+plasmac:ohmic-probe-offset
+    sig+plasmac:ohmic-probe-out
+    sig+plasmac:ohmic-sense-in
+}
+set ::workmode showhal
+set ::watchInterval 100
+set ::col1_width 100
+set ::ffmts 
+set ::ifmts 
+set ::alwaysOnTop 0
+set ::autoSaveWatchlist 1

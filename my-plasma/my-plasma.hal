@@ -1,0 +1,140 @@
+#
+# Note: All plasmac:* signals are defined in /usr/share/linuxcnc/hallib/qtplasmac_comp.hal
+#
+
+loadrt [KINS]KINEMATICS
+loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS num_spindles=[TRAJ]SPINDLES
+loadrt plasmac
+loadrt hotshot
+
+addf motion-command-handler servo-thread
+addf motion-controller      servo-thread
+addf plasmac                servo-thread
+addf hotshot.0              servo-thread
+addf hotshot.0.sensors      servo-thread
+
+# ---PLASMA INPUT DEBOUNCE---
+loadrt dbounce names=db_breakaway,db_float,db_ohmic,db_arc-ok
+addf db_float     servo-thread
+addf db_ohmic     servo-thread
+addf db_breakaway servo-thread
+addf db_arc-ok    servo-thread
+
+# ---JOINT ASSOCIATED WITH THE Z AXIS---
+# net plasmac:axis-x-position     joint.0.motor-pos-fb    =>  plasmac.axis-x-position
+# net plasmac:axis-y-position      axis.y.pos-cmd    =>  plasmac.axis-y-position
+net plasmac:axis-z-position     joint.3.pos-fb     => plasmac.axis-z-position
+
+# ---PLASMA INPUTS---
+# ---all modes---
+net plasmac:float-switch   => db_float.in
+net plasmac:breakaway      => db_breakaway.in
+net plasmac:ohmic-probe    => db_ohmic.in
+net plasmac:ohmic-sense-in => plasmac.ohmic-sense-in
+# ---modes 0 & 1
+net plasmac:arc-voltage-in => plasmac.arc-voltage-in
+# ---modes 1 & 2
+net plasmac:arc-ok-in      => db_arc-ok.in
+# ---mode 2
+net plasmac:move-up        => plasmac.move-up
+net plasmac:move-down      => plasmac.move-down
+
+# ---PLASMA OUTPUTS---
+# ---all modes---
+net plasmac:ohmic-enable   <= plasmac.ohmic-enable
+net plasmac:scribe-arm     <= plasmac.scribe-arm
+net plasmac:scribe-on      <= plasmac.scribe-on
+
+# Arc voltage
+setp plasmac.lowpass-frequency 100
+net plasmac:arc-voltage-in      <= hotshot.0.arc-voltage
+
+net plasmac:torch-on            => hotshot.0.torch-on
+net plasmac:ohmic-enable        => hotshot.0.ohmic-enable
+net plasmac:arc-ok-in           <= hotshot.0.arc-ok
+net plasmac:breakaway           <= hotshot.0.torch-breakaway
+net plasmac:ohmic-probe         <= plasmac.ohmic-sense-out
+net plasmac:ohmic-sense-in      <= hotshot.0.ohmic-probe
+
+setp                hotshot.0.axis-x-max-velocity-cmd       [AXIS_X]MAX_VELOCITY
+setp                hotshot.0.axis-x-max-acceleration-cmd   [AXIS_X]MAX_ACCELERATION
+setp                hotshot.0.axis-x-microsteps-cmd         256
+setp                hotshot.0.axis-x-tmc-run-current-cmd    30
+setp                hotshot.0.axis-x-tmc-hold-current-cmd   3
+setp                hotshot.0.axis-x-tmc-sg-thresh-cmd      8
+setp                hotshot.0.axis-x-tmc-sg-stop-cmd        1
+setp                hotshot.0.axis-x-chip                   0
+setp                hotshot.0.axis-x-motor                  0
+setp                hotshot.0.axis-x-pitch                  2
+setp                hotshot.0.axis-x-teeth                  20
+setp                hotshot.0.axis-x-tmc-cs-thresh-cmd      50000
+net x-pos-cmd       joint.0.motor-pos-cmd                   => hotshot.0.axis-x-position-cmd
+net x-pos-fb        hotshot.0.axis-x-position-fb            => joint.0.motor-pos-fb
+net x-enable        joint.0.amp-enable-out                  => hotshot.0.axis-x-enable
+net x-homing        joint.0.homing                          => hotshot.0.axis-x-is-homing
+net x-home-sw       hotshot.0.axis-x-home-sw                => joint.0.home-sw-in
+
+setp                hotshot.0.axis-yl-max-velocity-cmd      [AXIS_Y]MAX_VELOCITY
+setp                hotshot.0.axis-yl-max-acceleration-cmd  [AXIS_Y]MAX_ACCELERATION
+setp                hotshot.0.axis-yl-microsteps-cmd        256
+setp                hotshot.0.axis-yl-tmc-run-current-cmd   30
+setp                hotshot.0.axis-yl-tmc-hold-current-cmd  3
+setp                hotshot.0.axis-yl-tmc-sg-thresh-cmd     4
+setp                hotshot.0.axis-yl-tmc-sg-stop-cmd       1
+setp                hotshot.0.axis-yl-chip                  0
+setp                hotshot.0.axis-yl-motor                 1
+setp                hotshot.0.axis-yl-pitch                 2
+setp                hotshot.0.axis-yl-teeth                 20
+setp                hotshot.0.axis-yl-tmc-cs-thresh-cmd     50000
+net y-pos-cmd       joint.1.motor-pos-cmd                   => hotshot.0.axis-yl-position-cmd
+net y-pos-fb        hotshot.0.axis-yl-position-fb           => joint.1.motor-pos-fb
+net y-enable        joint.1.amp-enable-out                  => hotshot.0.axis-yl-enable
+net y-homing        joint.1.homing                          => hotshot.0.axis-yl-is-homing
+net y-home-sw       hotshot.0.axis-yl-home-sw               => joint.1.home-sw-in
+
+setp                hotshot.0.axis-yr-max-velocity-cmd      [AXIS_Y]MAX_VELOCITY
+setp                hotshot.0.axis-yr-max-acceleration-cmd  [AXIS_Y]MAX_ACCELERATION
+setp                hotshot.0.axis-yr-microsteps-cmd        256
+setp                hotshot.0.axis-yr-tmc-run-current-cmd   30
+setp                hotshot.0.axis-yr-tmc-hold-current-cmd  3
+setp                hotshot.0.axis-yr-tmc-sg-thresh-cmd     4
+setp                hotshot.0.axis-yr-tmc-sg-stop-cmd       1
+setp                hotshot.0.axis-yr-chip                  1
+setp                hotshot.0.axis-yr-motor                 0
+setp                hotshot.0.axis-yr-pitch                 2
+setp                hotshot.0.axis-yr-teeth                 20
+setp                hotshot.0.axis-yr-tmc-cs-thresh-cmd     50000
+net y2-pos-cmd      joint.2.motor-pos-cmd                   => hotshot.0.axis-yr-position-cmd
+net y2-pos-fb       hotshot.0.axis-yr-position-fb           => joint.2.motor-pos-fb
+net y2-enable       joint.2.amp-enable-out                  => hotshot.0.axis-yr-enable
+net y2-homing       joint.2.homing                          => hotshot.0.axis-yr-is-homing
+net y2-home-sw      hotshot.0.axis-yr-home-sw               => joint.2.home-sw-in
+
+setp                hotshot.0.axis-z-max-velocity-cmd       [AXIS_Z]MAX_VELOCITY
+setp                hotshot.0.axis-z-max-acceleration-cmd   [AXIS_Z]MAX_ACCELERATION
+setp                hotshot.0.axis-z-microsteps-cmd         256
+setp                hotshot.0.axis-z-tmc-run-current-cmd    23
+setp                hotshot.0.axis-z-tmc-hold-current-cmd   3
+setp                hotshot.0.axis-z-tmc-sg-thresh-cmd      4
+setp                hotshot.0.axis-z-tmc-sg-stop-cmd        1
+setp                hotshot.0.axis-z-chip                   1
+setp                hotshot.0.axis-z-motor                  1
+setp                hotshot.0.axis-z-pitch                  8
+setp                hotshot.0.axis-z-teeth                  1
+setp                hotshot.0.axis-z-tmc-cs-thresh-cmd      50000
+net z-pos-cmd       joint.3.motor-pos-cmd                   => hotshot.0.axis-z-position-cmd
+net z-pos-fb        hotshot.0.axis-z-position-fb            => joint.3.motor-pos-fb
+net z-enable        joint.3.amp-enable-out                  => hotshot.0.axis-z-enable
+net z-homing        joint.3.homing                          => hotshot.0.axis-z-is-homing
+net z-home-sw       hotshot.0.axis-z-home-sw                => joint.3.home-sw-in
+net z-neg-lim-sw    hotshot.0.axis-z-neg-limit-sw           => joint.3.neg-lim-sw-in
+
+# net estop-out   <= iocontrol.0.user-enable-out
+# net estop-out   => iocontrol.0.emc-enable-in
+net estop-ext     hotshot.0.estop-fb            => iocontrol.0.emc-enable-in
+net estop-out     iocontrol.0.user-enable-out   => hotshot.0.estop-cmd
+net estop-out     => hotshot.0.estop-cmd
+
+net tool-number <= iocontrol.0.tool-prep-number
+net tool-change-loopback iocontrol.0.tool-change => iocontrol.0.tool-changed
+net tool-prepare-loopback iocontrol.0.tool-prepare => iocontrol.0.tool-prepared

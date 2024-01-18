@@ -1,0 +1,2484 @@
+component hotshot "Hotshot Board Driver";
+license "GPL";
+
+// plasmac requires floating-point
+function _ fp;
+// function calibrate fp;
+function sensors fp;
+
+// option extra_setup;
+option extra_cleanup;
+
+pin out bit arc_ok;          // wire to plasmac.arc-ok-in
+pin out float arc_voltage;   // wire to plasmac.arc-voltage-in
+pin out bit torch_breakaway; // wire to plasmac.breakaway
+pin in bit torch_on;         // wire to plasmac.torch-on
+pin in bit ohmic_enable;     // wire to plasmac.ohmic-enable
+pin out bit ohmic_probe;     // wire to plasmac.ohmic-probe
+
+pin in u32 axis_x_chip;
+pin in u32 axis_x_motor;
+pin in u32 axis_x_pitch;
+pin in u32 axis_x_teeth;
+
+pin in u32 axis_yl_chip;
+pin in u32 axis_yl_motor;
+pin in u32 axis_yl_pitch;
+pin in u32 axis_yl_teeth;
+
+pin in u32 axis_yr_chip;
+pin in u32 axis_yr_motor;
+pin in u32 axis_yr_pitch;
+pin in u32 axis_yr_teeth;
+
+pin in u32 axis_z_chip;
+pin in u32 axis_z_motor;
+pin in u32 axis_z_pitch;
+pin in u32 axis_z_teeth;
+
+pin in bit axis_x_enable;
+pin in bit axis_yl_enable;
+pin in bit axis_yr_enable;
+pin in bit axis_z_enable;
+
+pin in float axis_x_position_cmd;  // commanded position
+pin out float axis_x_position_fb;  // actual position
+pin in float axis_yl_position_cmd; // commanded position
+pin out float axis_yl_position_fb; // actual position
+pin in float axis_yr_position_cmd; // commanded position
+pin out float axis_yr_position_fb; // actual position
+pin in float axis_z_position_cmd;  // commanded position
+pin out float axis_z_position_fb;  // actual position
+
+// In machine units (i.e. mm or inch) per second
+pin in float axis_x_max_velocity_cmd;
+pin in float axis_yl_max_velocity_cmd;
+pin in float axis_yr_max_velocity_cmd;
+pin in float axis_z_max_velocity_cmd;
+
+pin out float axis_x_velocity_fb;
+pin out float axis_yl_velocity_fb;
+pin out float axis_yr_velocity_fb;
+pin out float axis_z_velocity_fb;
+
+pin out s32 axis_x_tmc_velocity_fb;
+pin out s32 axis_yl_tmc_velocity_fb;
+pin out s32 axis_yr_tmc_velocity_fb;
+pin out s32 axis_z_tmc_velocity_fb;
+
+pin out s32 axis_x_tmc_position_fb;
+pin out s32 axis_yl_tmc_position_fb;
+pin out s32 axis_yr_tmc_position_fb;
+pin out s32 axis_z_tmc_position_fb;
+
+pin in float axis_x_max_acceleration_cmd;
+pin in float axis_yl_max_acceleration_cmd;
+pin in float axis_yr_max_acceleration_cmd;
+pin in float axis_z_max_acceleration_cmd;
+
+pin out u32 axis_x_tmc_max_acceleration_fb;
+pin out u32 axis_yl_tmc_max_acceleration_fb;
+pin out u32 axis_yr_tmc_max_acceleration_fb;
+pin out u32 axis_z_tmc_max_acceleration_fb;
+
+pin in bit axis_x_is_homing;
+pin in bit axis_yl_is_homing;
+pin in bit axis_yr_is_homing;
+pin in bit axis_z_is_homing;
+
+pin out bit axis_x_home_sw;
+pin out bit axis_yl_home_sw;
+pin out bit axis_yr_home_sw;
+pin out bit axis_z_home_sw;
+
+pin out bit axis_x_neg_limit_sw;
+pin out bit axis_yl_neg_limit_sw;
+pin out bit axis_yr_neg_limit_sw;
+pin out bit axis_z_neg_limit_sw;
+
+pin in u32 axis_x_tmc_sg_thresh_cmd;
+pin in u32 axis_yl_tmc_sg_thresh_cmd;
+pin in u32 axis_yr_tmc_sg_thresh_cmd;
+pin in u32 axis_z_tmc_sg_thresh_cmd;
+
+pin in bit axis_x_tmc_sg_stop_cmd;
+pin in bit axis_yl_tmc_sg_stop_cmd;
+pin in bit axis_yr_tmc_sg_stop_cmd;
+pin in bit axis_z_tmc_sg_stop_cmd;
+
+pin out bit axis_x_sg_stop_fb;
+pin out bit axis_yl_sg_stop_fb;
+pin out bit axis_yr_sg_stop_fb;
+pin out bit axis_z_sg_stop_fb;
+
+pin in u32 axis_x_tmc_run_current_cmd;
+pin in u32 axis_yl_tmc_run_current_cmd;
+pin in u32 axis_yr_tmc_run_current_cmd;
+pin in u32 axis_z_tmc_run_current_cmd;
+
+pin in u32 axis_x_tmc_hold_current_cmd;
+pin in u32 axis_yl_tmc_hold_current_cmd;
+pin in u32 axis_yr_tmc_hold_current_cmd;
+pin in u32 axis_z_tmc_hold_current_cmd;
+
+pin in u32 axis_x_microsteps_cmd;
+pin in u32 axis_yl_microsteps_cmd;
+pin in u32 axis_yr_microsteps_cmd;
+pin in u32 axis_z_microsteps_cmd;
+
+pin in u32 axis_x_tmc_cs_thresh_cmd;
+pin in u32 axis_yl_tmc_cs_thresh_cmd;
+pin in u32 axis_yr_tmc_cs_thresh_cmd;
+pin in u32 axis_z_tmc_cs_thresh_cmd;
+
+pin out u32 axis_x_tmc_microstep_resolution_fb;
+pin out u32 axis_yl_tmc_microstep_resolution_fb;
+pin out u32 axis_yr_tmc_microstep_resolution_fb;
+pin out u32 axis_z_tmc_microstep_resolution_fb;
+
+pin out s32 axis_x_tmc_motor_load_fb;
+pin out s32 axis_yl_tmc_motor_load_fb;
+pin out s32 axis_yr_tmc_motor_load_fb;
+pin out s32 axis_z_tmc_motor_load_fb;
+
+pin out u32 axis_x_tmc_motor_current_fb;
+pin out u32 axis_yl_tmc_motor_current_fb;
+pin out u32 axis_yr_tmc_motor_current_fb;
+pin out u32 axis_z_tmc_motor_current_fb;
+
+pin out bit axis_x_tmc_motor_stall_fb;
+pin out bit axis_yl_tmc_motor_stall_fb;
+pin out bit axis_yr_tmc_motor_stall_fb;
+pin out bit axis_z_tmc_motor_stall_fb;
+
+pin out bit axis_x_tmc_motor_standstill_fb;
+pin out bit axis_yl_tmc_motor_standstill_fb;
+pin out bit axis_yr_tmc_motor_standstill_fb;
+pin out bit axis_z_tmc_motor_standstill_fb;
+
+pin out bit axis_x_tmc_motor_full_stepping_fb;
+pin out bit axis_yl_tmc_motor_full_stepping_fb;
+pin out bit axis_yr_tmc_motor_full_stepping_fb;
+pin out bit axis_z_tmc_motor_full_stepping_fb;
+
+pin out bit axis_x_tmc_motor_overtemp_warning_fb;
+pin out bit axis_yl_tmc_motor_overtemp_warning_fb;
+pin out bit axis_yr_tmc_motor_overtemp_warning_fb;
+pin out bit axis_z_tmc_motor_overtemp_warning_fb;
+
+pin out bit axis_x_tmc_motor_overtemp_alarm_fb;
+pin out bit axis_yl_tmc_motor_overtemp_alarm_fb;
+pin out bit axis_yr_tmc_motor_overtemp_alarm_fb;
+pin out bit axis_z_tmc_motor_overtemp_alarm_fb;
+
+pin out bit axis_x_tmc_position_reached_fb;
+pin out bit axis_yl_tmc_position_reached_fb;
+pin out bit axis_yr_tmc_position_reached_fb;
+pin out bit axis_z_tmc_position_reached_fb;
+
+pin out bit axis_x_tmc_t_zerowait_active_fb;
+pin out bit axis_yl_tmc_t_zerowait_active_fb;
+pin out bit axis_yr_tmc_t_zerowait_active_fb;
+pin out bit axis_z_tmc_t_zerowait_active_fb;
+
+pin out bit axis_x_tmc_velocity_reached_fb;
+pin out bit axis_yl_tmc_velocity_reached_fb;
+pin out bit axis_yr_tmc_velocity_reached_fb;
+pin out bit axis_z_tmc_velocity_reached_fb;
+
+pin out float axis_x_tmc_max_velocity_fb;
+pin out float axis_yl_tmc_max_velocity_fb;
+pin out float axis_yr_tmc_max_velocity_fb;
+pin out float axis_z_tmc_max_velocity_fb;
+
+pin out bit estop-fb;
+pin in bit estop-cmd;
+pin out bit abort-fb;
+
+;;
+
+// bcm2835.c
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <math.h>
+#include <sys/types.h>
+#include <rtapi.h>
+#include "tmc/ic/TMC5041/TMC5041.h"
+
+#include "bcm2835.h"
+#include "hotshot.h"
+
+// ============================================================================
+// bcm2835.c
+
+#define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
+
+/* Physical address and size of the peripherals block
+// May be overridden on RPi2
+*/
+off_t bcm2835_peripherals_base = BCM2835_PERI_BASE;
+size_t bcm2835_peripherals_size = BCM2835_PERI_SIZE;
+
+/* Virtual memory address of the mapped peripherals block
+ */
+uint32_t *bcm2835_peripherals = (uint32_t *)MAP_FAILED;
+
+/* And the register bases within the peripherals block
+ */
+volatile uint32_t *bcm2835_gpio = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_pwm = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_clk = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_pads = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_spi0 = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_bsc0 = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_bsc1 = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_st = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_aux = (uint32_t *)MAP_FAILED;
+volatile uint32_t *bcm2835_spi1 = (uint32_t *)MAP_FAILED;
+/* BEB*/
+volatile uint32_t *bcm2835_smi = (uint32_t *)MAP_FAILED;
+
+/* This variable allows us to test on hardware other than RPi.
+// It prevents access to the kernel memory, and does not do any peripheral access
+// Instead it prints out what it _would_ do if debug were 0
+ */
+static uint8_t debug = 0;
+
+/* RPI 4 has different pullup registers - we need to know if we have that type */
+static uint8_t pud_type_rpi4 = 0;
+
+/* SPI bit order. BCM2835 SPI0 only supports MSBFIRST, so we instead
+ * have a software based bit reversal, based on a contribution by Damiano Benedetti
+ */
+static uint8_t bcm2835_spi_bit_order = BCM2835_SPI_BIT_ORDER_MSBFIRST;
+static uint8_t bcm2835_byte_reverse_table[] =
+    {
+        0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
+        0x10, 0x90, 0x50, 0xd0, 0x30, 0xb0, 0x70, 0xf0,
+        0x08, 0x88, 0x48, 0xc8, 0x28, 0xa8, 0x68, 0xe8,
+        0x18, 0x98, 0x58, 0xd8, 0x38, 0xb8, 0x78, 0xf8,
+        0x04, 0x84, 0x44, 0xc4, 0x24, 0xa4, 0x64, 0xe4,
+        0x14, 0x94, 0x54, 0xd4, 0x34, 0xb4, 0x74, 0xf4,
+        0x0c, 0x8c, 0x4c, 0xcc, 0x2c, 0xac, 0x6c, 0xec,
+        0x1c, 0x9c, 0x5c, 0xdc, 0x3c, 0xbc, 0x7c, 0xfc,
+        0x02, 0x82, 0x42, 0xc2, 0x22, 0xa2, 0x62, 0xe2,
+        0x12, 0x92, 0x52, 0xd2, 0x32, 0xb2, 0x72, 0xf2,
+        0x0a, 0x8a, 0x4a, 0xca, 0x2a, 0xaa, 0x6a, 0xea,
+        0x1a, 0x9a, 0x5a, 0xda, 0x3a, 0xba, 0x7a, 0xfa,
+        0x06, 0x86, 0x46, 0xc6, 0x26, 0xa6, 0x66, 0xe6,
+        0x16, 0x96, 0x56, 0xd6, 0x36, 0xb6, 0x76, 0xf6,
+        0x0e, 0x8e, 0x4e, 0xce, 0x2e, 0xae, 0x6e, 0xee,
+        0x1e, 0x9e, 0x5e, 0xde, 0x3e, 0xbe, 0x7e, 0xfe,
+        0x01, 0x81, 0x41, 0xc1, 0x21, 0xa1, 0x61, 0xe1,
+        0x11, 0x91, 0x51, 0xd1, 0x31, 0xb1, 0x71, 0xf1,
+        0x09, 0x89, 0x49, 0xc9, 0x29, 0xa9, 0x69, 0xe9,
+        0x19, 0x99, 0x59, 0xd9, 0x39, 0xb9, 0x79, 0xf9,
+        0x05, 0x85, 0x45, 0xc5, 0x25, 0xa5, 0x65, 0xe5,
+        0x15, 0x95, 0x55, 0xd5, 0x35, 0xb5, 0x75, 0xf5,
+        0x0d, 0x8d, 0x4d, 0xcd, 0x2d, 0xad, 0x6d, 0xed,
+        0x1d, 0x9d, 0x5d, 0xdd, 0x3d, 0xbd, 0x7d, 0xfd,
+        0x03, 0x83, 0x43, 0xc3, 0x23, 0xa3, 0x63, 0xe3,
+        0x13, 0x93, 0x53, 0xd3, 0x33, 0xb3, 0x73, 0xf3,
+        0x0b, 0x8b, 0x4b, 0xcb, 0x2b, 0xab, 0x6b, 0xeb,
+        0x1b, 0x9b, 0x5b, 0xdb, 0x3b, 0xbb, 0x7b, 0xfb,
+        0x07, 0x87, 0x47, 0xc7, 0x27, 0xa7, 0x67, 0xe7,
+        0x17, 0x97, 0x57, 0xd7, 0x37, 0xb7, 0x77, 0xf7,
+        0x0f, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef,
+        0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff};
+
+static uint32_t spi1_speed;
+
+static uint8_t bcm2835_correct_order(uint8_t b)
+{
+    if (bcm2835_spi_bit_order == BCM2835_SPI_BIT_ORDER_LSBFIRST)
+        return bcm2835_byte_reverse_table[b];
+    else
+        return b;
+}
+
+/* Read with memory barriers from peripheral
+ */
+uint32_t bcm2835_peri_read(volatile uint32_t *paddr)
+{
+    uint32_t ret;
+    if (debug)
+    {
+        printf("bcm2835_peri_read  paddr %p\n", (void *)paddr);
+        return 0;
+    }
+    else
+    {
+        __sync_synchronize();
+        ret = *paddr;
+        __sync_synchronize();
+        return ret;
+    }
+}
+
+/* read from peripheral without the read barrier
+ * This can only be used if more reads to THE SAME peripheral
+ * will follow.  The sequence must terminate with memory barrier
+ * before any read or write to another peripheral can occur.
+ * The MB can be explicit, or one of the barrier read/write calls.
+ */
+uint32_t bcm2835_peri_read_nb(volatile uint32_t *paddr)
+{
+    if (debug)
+    {
+        printf("bcm2835_peri_read_nb  paddr %p\n", paddr);
+        return 0;
+    }
+    else
+    {
+        return *paddr;
+    }
+}
+
+/* Write with memory barriers to peripheral
+ */
+void bcm2835_peri_write(volatile uint32_t *paddr, uint32_t value)
+{
+    if (debug)
+    {
+        printf("bcm2835_peri_write paddr %p, value %08X\n", paddr, value);
+    }
+    else
+    {
+        __sync_synchronize();
+        *paddr = value;
+        __sync_synchronize();
+    }
+}
+
+/* write to peripheral without the write barrier */
+void bcm2835_peri_write_nb(volatile uint32_t *paddr, uint32_t value)
+{
+    if (debug)
+    {
+        printf("bcm2835_peri_write_nb paddr %p, value %08X\n",
+               paddr, value);
+    }
+    else
+    {
+        *paddr = value;
+    }
+}
+
+/* Set/clear only the bits in value covered by the mask
+ * This is not atomic - can be interrupted.
+ */
+void bcm2835_peri_set_bits(volatile uint32_t *paddr, uint32_t value, uint32_t mask)
+{
+    uint32_t v = bcm2835_peri_read(paddr);
+    v = (v & ~mask) | (value & mask);
+    bcm2835_peri_write(paddr, v);
+}
+
+/* Function select
+// pin is a BCM2835 GPIO pin number NOT RPi pin number
+//      There are 6 control registers, each control the functions of a block
+//      of 10 pins.
+//      Each control register has 10 sets of 3 bits per GPIO pin:
+//
+//      000 = GPIO Pin X is an input
+//      001 = GPIO Pin X is an output
+//      100 = GPIO Pin X takes alternate function 0
+//      101 = GPIO Pin X takes alternate function 1
+//      110 = GPIO Pin X takes alternate function 2
+//      111 = GPIO Pin X takes alternate function 3
+//      011 = GPIO Pin X takes alternate function 4
+//      010 = GPIO Pin X takes alternate function 5
+//
+// So the 3 bits for port X are:
+//      X / 10 + ((X % 10) * 3)
+*/
+void bcm2835_gpio_fsel(uint8_t pin, uint8_t mode)
+{
+    /* Function selects are 10 pins per 32 bit word, 3 bits per pin */
+    volatile uint32_t *paddr = bcm2835_gpio + BCM2835_GPFSEL0 / 4 + (pin / 10);
+    uint8_t shift = (pin % 10) * 3;
+    uint32_t mask = BCM2835_GPIO_FSEL_MASK << shift;
+    uint32_t value = mode << shift;
+    bcm2835_peri_set_bits(paddr, value, mask);
+}
+
+/* Set output pin */
+void bcm2835_gpio_set(uint8_t pin)
+{
+    volatile uint32_t *paddr = bcm2835_gpio + BCM2835_GPSET0 / 4 + pin / 32;
+    uint8_t shift = pin % 32;
+    bcm2835_peri_write(paddr, 1 << shift);
+}
+
+/* Clear output pin */
+void bcm2835_gpio_clr(uint8_t pin)
+{
+    volatile uint32_t *paddr = bcm2835_gpio + BCM2835_GPCLR0 / 4 + pin / 32;
+    uint8_t shift = pin % 32;
+    bcm2835_peri_write(paddr, 1 << shift);
+}
+
+/* Read input pin */
+uint8_t bcm2835_gpio_lev(uint8_t pin)
+{
+    volatile uint32_t *paddr = bcm2835_gpio + BCM2835_GPLEV0 / 4 + pin / 32;
+    uint8_t shift = pin % 32;
+    uint32_t value = bcm2835_peri_read(paddr);
+    return (value & (1 << shift)) ? HIGH : LOW;
+}
+
+/* Writes (and reads) an number of bytes to SPI */
+void bcm2835_spi_transfernb(char *tbuf, char *rbuf, uint32_t len)
+{
+    volatile uint32_t *paddr = bcm2835_spi0 + BCM2835_SPI0_CS / 4;
+    volatile uint32_t *fifo = bcm2835_spi0 + BCM2835_SPI0_FIFO / 4;
+    uint32_t TXCnt = 0;
+    uint32_t RXCnt = 0;
+
+    /* This is Polled transfer as per section 10.6.1
+    // BUG ALERT: what happens if we get interupted in this section, and someone else
+    // accesses a different peripheral?
+    */
+
+    /* Clear TX and RX fifos */
+    bcm2835_peri_set_bits(paddr, BCM2835_SPI0_CS_CLEAR, BCM2835_SPI0_CS_CLEAR);
+
+    /* Set TA = 1 */
+    bcm2835_peri_set_bits(paddr, BCM2835_SPI0_CS_TA, BCM2835_SPI0_CS_TA);
+
+    /* Use the FIFO's to reduce the interbyte times */
+    while ((TXCnt < len) || (RXCnt < len))
+    {
+        /* TX fifo not full, so add some more bytes */
+        while (((bcm2835_peri_read(paddr) & BCM2835_SPI0_CS_TXD)) && (TXCnt < len))
+        {
+            bcm2835_peri_write_nb(fifo, bcm2835_correct_order(tbuf[TXCnt]));
+            TXCnt++;
+        }
+        /* Rx fifo not empty, so get the next received bytes */
+        while (((bcm2835_peri_read(paddr) & BCM2835_SPI0_CS_RXD)) && (RXCnt < len))
+        {
+            rbuf[RXCnt] = bcm2835_correct_order(bcm2835_peri_read_nb(fifo));
+            RXCnt++;
+        }
+    }
+    /* Wait for DONE to be set */
+    while (!(bcm2835_peri_read_nb(paddr) & BCM2835_SPI0_CS_DONE))
+        ;
+
+    /* Set TA = 0, and also set the barrier */
+    bcm2835_peri_set_bits(paddr, 0, BCM2835_SPI0_CS_TA);
+}
+
+void bcm2835_aux_spi_transfernb(const char *tbuf, char *rbuf, uint32_t len)
+{
+    volatile uint32_t *cntl0 = bcm2835_spi1 + BCM2835_AUX_SPI_CNTL0 / 4;
+    volatile uint32_t *cntl1 = bcm2835_spi1 + BCM2835_AUX_SPI_CNTL1 / 4;
+    volatile uint32_t *stat = bcm2835_spi1 + BCM2835_AUX_SPI_STAT / 4;
+    volatile uint32_t *txhold = bcm2835_spi1 + BCM2835_AUX_SPI_TXHOLD / 4;
+    volatile uint32_t *io = bcm2835_spi1 + BCM2835_AUX_SPI_IO / 4;
+
+    char *tx = (char *)tbuf;
+    char *rx = (char *)rbuf;
+    uint32_t tx_len = len;
+    uint32_t rx_len = len;
+    uint32_t count;
+    uint32_t data;
+    uint32_t i;
+    uint8_t byte;
+
+    uint32_t _cntl0 = (spi1_speed << BCM2835_AUX_SPI_CNTL0_SPEED_SHIFT);
+    _cntl0 |= BCM2835_AUX_SPI_CNTL0_CS2_N;
+    _cntl0 |= BCM2835_AUX_SPI_CNTL0_ENABLE;
+    _cntl0 |= BCM2835_AUX_SPI_CNTL0_MSBF_OUT;
+    _cntl0 |= BCM2835_AUX_SPI_CNTL0_VAR_WIDTH;
+
+    bcm2835_peri_write(cntl0, _cntl0);
+    bcm2835_peri_write(cntl1, BCM2835_AUX_SPI_CNTL1_MSBF_IN);
+
+    while ((tx_len > 0) || (rx_len > 0))
+    {
+
+        while (!(bcm2835_peri_read(stat) & BCM2835_AUX_SPI_STAT_TX_FULL) && (tx_len > 0))
+        {
+            count = MIN(tx_len, 3);
+            data = 0;
+
+            for (i = 0; i < count; i++)
+            {
+                byte = (tx != NULL) ? (uint8_t)*tx++ : (uint8_t)0;
+                data |= byte << (8 * (2 - i));
+            }
+
+            data |= (count * 8) << 24;
+            tx_len -= count;
+
+            if (tx_len != 0)
+            {
+                bcm2835_peri_write(txhold, data);
+            }
+            else
+            {
+                bcm2835_peri_write(io, data);
+            }
+        }
+
+        while (!(bcm2835_peri_read(stat) & BCM2835_AUX_SPI_STAT_RX_EMPTY) && (rx_len > 0))
+        {
+            count = MIN(rx_len, 3);
+            data = bcm2835_peri_read(io);
+
+            if (rbuf != NULL)
+            {
+                switch (count)
+                {
+                case 3:
+                    *rx++ = (char)((data >> 16) & 0xFF);
+                    /*@fallthrough@*/
+                    /* no break */
+                case 2:
+                    *rx++ = (char)((data >> 8) & 0xFF);
+                    /*@fallthrough@*/
+                    /* no break */
+                case 1:
+                    *rx++ = (char)((data >> 0) & 0xFF);
+                }
+            }
+
+            rx_len -= count;
+        }
+
+        while (!(bcm2835_peri_read(stat) & BCM2835_AUX_SPI_STAT_BUSY) && (rx_len > 0))
+        {
+            count = MIN(rx_len, 3);
+            data = bcm2835_peri_read(io);
+
+            if (rbuf != NULL)
+            {
+                switch (count)
+                {
+                case 3:
+                    *rx++ = (char)((data >> 16) & 0xFF);
+                    /*@fallthrough@*/
+                    /* no break */
+                case 2:
+                    *rx++ = (char)((data >> 8) & 0xFF);
+                    /*@fallthrough@*/
+                    /* no break */
+                case 1:
+                    *rx++ = (char)((data >> 0) & 0xFF);
+                }
+            }
+
+            rx_len -= count;
+        }
+    }
+}
+
+void bcm2835_aux_spi_transfern(char *buf, uint32_t len)
+{
+    bcm2835_aux_spi_transfernb(buf, buf, len);
+}
+
+int bcm2835_spi_begin(void)
+{
+    volatile uint32_t *paddr;
+
+    if (bcm2835_spi0 == MAP_FAILED)
+        return 0; /* bcm2835_init() failed, or not root */
+
+    /* Set the SPI0 pins to the Alt 0 function to enable SPI0 access on them */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_26, BCM2835_GPIO_FSEL_ALT0); /* CE1 */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_24, BCM2835_GPIO_FSEL_ALT0); /* CE0 */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_21, BCM2835_GPIO_FSEL_ALT0); /* MISO */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_19, BCM2835_GPIO_FSEL_ALT0); /* MOSI */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_23, BCM2835_GPIO_FSEL_ALT0); /* CLK */
+
+    /* Set the SPI CS register to the some sensible defaults */
+    paddr = bcm2835_spi0 + BCM2835_SPI0_CS / 4;
+    bcm2835_peri_write(paddr, 0); /* All 0s */
+
+    /* Clear TX and RX fifos */
+    bcm2835_peri_write_nb(paddr, BCM2835_SPI0_CS_CLEAR);
+
+    return 1; // OK
+}
+
+void bcm2835_spi_end(void)
+{
+    /* Set all the SPI0 pins back to input */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_26, BCM2835_GPIO_FSEL_INPT); /* CE1 */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_24, BCM2835_GPIO_FSEL_INPT); /* CE0 */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_21, BCM2835_GPIO_FSEL_INPT); /* MISO */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_19, BCM2835_GPIO_FSEL_INPT); /* MOSI */
+    bcm2835_gpio_fsel(RPI_GPIO_P1_23, BCM2835_GPIO_FSEL_INPT); /* CLK */
+}
+
+uint16_t bcm2835_aux_spi_CalcClockDivider(uint32_t speed_hz)
+{
+    uint16_t divider;
+
+    if (speed_hz < (uint32_t)BCM2835_AUX_SPI_CLOCK_MIN)
+    {
+        speed_hz = (uint32_t)BCM2835_AUX_SPI_CLOCK_MIN;
+    }
+    else if (speed_hz > (uint32_t)BCM2835_AUX_SPI_CLOCK_MAX)
+    {
+        speed_hz = (uint32_t)BCM2835_AUX_SPI_CLOCK_MAX;
+    }
+
+    divider = (uint16_t)DIV_ROUND_UP(BCM2835_CORE_CLK_HZ, 2 * speed_hz) - 1;
+
+    if (divider > (uint16_t)BCM2835_AUX_SPI_CNTL0_SPEED_MAX)
+    {
+        return (uint16_t)BCM2835_AUX_SPI_CNTL0_SPEED_MAX;
+    }
+
+    return divider;
+}
+
+void bcm2835_aux_spi_setClockDivider(uint16_t divider)
+{
+    spi1_speed = (uint32_t)divider;
+}
+
+int bcm2835_aux_spi_begin(void)
+{
+    volatile uint32_t *enable = bcm2835_aux + BCM2835_AUX_ENABLE / 4;
+    volatile uint32_t *cntl0 = bcm2835_spi1 + BCM2835_AUX_SPI_CNTL0 / 4;
+    volatile uint32_t *cntl1 = bcm2835_spi1 + BCM2835_AUX_SPI_CNTL1 / 4;
+
+    if (bcm2835_spi1 == MAP_FAILED)
+        return 0; /* bcm2835_init() failed, or not root */
+
+    /* Set the SPI pins to the Alt 4 function to enable SPI1 access on them */
+    bcm2835_gpio_fsel(RPI_V2_GPIO_P1_36, BCM2835_GPIO_FSEL_ALT4); /* SPI1_CE2_N */
+    bcm2835_gpio_fsel(RPI_V2_GPIO_P1_35, BCM2835_GPIO_FSEL_ALT4); /* SPI1_MISO */
+    bcm2835_gpio_fsel(RPI_V2_GPIO_P1_38, BCM2835_GPIO_FSEL_ALT4); /* SPI1_MOSI */
+    bcm2835_gpio_fsel(RPI_V2_GPIO_P1_40, BCM2835_GPIO_FSEL_ALT4); /* SPI1_SCLK */
+
+    bcm2835_aux_spi_setClockDivider(bcm2835_aux_spi_CalcClockDivider(1000000)); // Default 1MHz SPI
+
+    bcm2835_peri_write(enable, BCM2835_AUX_ENABLE_SPI0);
+    bcm2835_peri_write(cntl1, 0);
+    bcm2835_peri_write(cntl0, BCM2835_AUX_SPI_CNTL0_CLEARFIFO);
+
+    return 1; /* OK */
+}
+
+void bcm2835_aux_spi_end(void)
+{
+    /* Set all the SPI1 pins back to input */
+    bcm2835_gpio_fsel(RPI_V2_GPIO_P1_36, BCM2835_GPIO_FSEL_INPT); /* SPI1_CE2_N */
+    bcm2835_gpio_fsel(RPI_V2_GPIO_P1_35, BCM2835_GPIO_FSEL_INPT); /* SPI1_MISO */
+    bcm2835_gpio_fsel(RPI_V2_GPIO_P1_38, BCM2835_GPIO_FSEL_INPT); /* SPI1_MOSI */
+    bcm2835_gpio_fsel(RPI_V2_GPIO_P1_40, BCM2835_GPIO_FSEL_INPT); /* SPI1_SCLK */
+}
+
+void bcm2835_spi_setBitOrder(uint8_t order)
+{
+    bcm2835_spi_bit_order = order;
+}
+
+void bcm2835_spi_setDataMode(uint8_t mode)
+{
+    volatile uint32_t *paddr = bcm2835_spi0 + BCM2835_SPI0_CS / 4;
+    /* Mask in the CPO and CPHA bits of CS */
+    bcm2835_peri_set_bits(paddr, mode << 2, BCM2835_SPI0_CS_CPOL | BCM2835_SPI0_CS_CPHA);
+}
+
+void bcm2835_spi_chipSelect(uint8_t cs)
+{
+    volatile uint32_t *paddr = bcm2835_spi0 + BCM2835_SPI0_CS / 4;
+    /* Mask in the CS bits of CS */
+    bcm2835_peri_set_bits(paddr, cs, BCM2835_SPI0_CS_CS);
+}
+
+/* defaults to 0, which means a divider of 65536.
+// The divisor must be a power of 2. Odd numbers
+// rounded down. The maximum SPI clock rate is
+// of the APB clock
+*/
+void bcm2835_spi_setClockDivider(uint16_t divider)
+{
+    volatile uint32_t *paddr = bcm2835_spi0 + BCM2835_SPI0_CLK / 4;
+    bcm2835_peri_write(paddr, divider);
+}
+
+void bcm2835_spi_setChipSelectPolarity(uint8_t cs, uint8_t active)
+{
+    volatile uint32_t *paddr = bcm2835_spi0 + BCM2835_SPI0_CS / 4;
+    uint8_t shift = 21 + cs;
+    /* Mask in the appropriate CSPOLn bit */
+    bcm2835_peri_set_bits(paddr, active << shift, 1 << shift);
+}
+
+/* Map 'size' bytes starting at 'off' in file 'fd' to memory.
+// Return mapped address on success, MAP_FAILED otherwise.
+// On error print message.
+*/
+static void *mapmem(const char *msg, size_t size, int fd, off_t off)
+{
+    void *map = mmap(NULL, size, (PROT_READ | PROT_WRITE), MAP_SHARED, fd, off);
+    if (map == MAP_FAILED)
+        fprintf(stderr, "bcm2835_init: %s mmap failed: %s\n", msg, strerror(errno));
+    return map;
+}
+
+static void unmapmem(void **pmem, size_t size)
+{
+    if (*pmem == MAP_FAILED)
+        return;
+    munmap(*pmem, size);
+    *pmem = MAP_FAILED;
+}
+
+/* Close this library and deallocate everything */
+int bcm2835_close(void)
+{
+    if (debug)
+        return 1; /* Success */
+
+    unmapmem((void **)&bcm2835_peripherals, bcm2835_peripherals_size);
+    bcm2835_peripherals = MAP_FAILED;
+    bcm2835_gpio = MAP_FAILED;
+    bcm2835_pwm = MAP_FAILED;
+    bcm2835_clk = MAP_FAILED;
+    bcm2835_pads = MAP_FAILED;
+    bcm2835_spi0 = MAP_FAILED;
+    bcm2835_bsc0 = MAP_FAILED;
+    bcm2835_bsc1 = MAP_FAILED;
+    bcm2835_st = MAP_FAILED;
+    bcm2835_aux = MAP_FAILED;
+    bcm2835_spi1 = MAP_FAILED;
+    /* BEB */
+    bcm2835_smi = MAP_FAILED;
+
+    return 1; /* Success */
+}
+
+/* Initialise this library. */
+int bcm2835_init(void)
+{
+    int memfd;
+    int ok;
+    FILE *fp;
+
+    // if (debug)
+    // {
+    //     bcm2835_peripherals = (uint32_t*)BCM2835_PERI_BASE;
+    // bcm2835_pads = bcm2835_peripherals + BCM2835_GPIO_PADS/4;
+    // bcm2835_clk  = bcm2835_peripherals + BCM2835_CLOCK_BASE/4;
+    // bcm2835_gpio = bcm2835_peripherals + BCM2835_GPIO_BASE/4;
+    // bcm2835_pwm  = bcm2835_peripherals + BCM2835_GPIO_PWM/4;
+    // bcm2835_spi0 = bcm2835_peripherals + BCM2835_SPI0_BASE/4;
+    // bcm2835_bsc0 = bcm2835_peripherals + BCM2835_BSC0_BASE/4;
+    // bcm2835_bsc1 = bcm2835_peripherals + BCM2835_BSC1_BASE/4;
+    // bcm2835_st   = bcm2835_peripherals + BCM2835_ST_BASE/4;
+    // bcm2835_aux  = bcm2835_peripherals + BCM2835_AUX_BASE/4;
+    // bcm2835_spi1 = bcm2835_peripherals + BCM2835_SPI1_BASE/4;
+    //     /* BEB */
+    // bcm2835_smi  = bcm2835_peripherals + BCM2835_SMI_BASE/4;
+    // return 1; /* Success */
+    // }
+
+    /* Figure out the base and size of the peripheral address block
+    // using the device-tree. Required for RPi2/3/4, optional for RPi 1
+    */
+    if ((fp = fopen(BMC2835_RPI2_DT_FILENAME, "rb")))
+    {
+        unsigned char buf[16];
+        uint32_t base_address;
+        uint32_t peri_size;
+        if (fread(buf, 1, sizeof(buf), fp) >= 8)
+        {
+            base_address = (buf[4] << 24) |
+                           (buf[5] << 16) |
+                           (buf[6] << 8) |
+                           (buf[7] << 0);
+
+            peri_size = (buf[8] << 24) |
+                        (buf[9] << 16) |
+                        (buf[10] << 8) |
+                        (buf[11] << 0);
+
+            if (!base_address)
+            {
+                /* looks like RPI 4 */
+                base_address = (buf[8] << 24) |
+                               (buf[9] << 16) |
+                               (buf[10] << 8) |
+                               (buf[11] << 0);
+
+                peri_size = (buf[12] << 24) |
+                            (buf[13] << 16) |
+                            (buf[14] << 8) |
+                            (buf[15] << 0);
+            }
+            /* check for valid known range formats */
+            if ((buf[0] == 0x7e) &&
+                (buf[1] == 0x00) &&
+                (buf[2] == 0x00) &&
+                (buf[3] == 0x00) &&
+                ((base_address == BCM2835_PERI_BASE) || (base_address == BCM2835_RPI2_PERI_BASE) || (base_address == BCM2835_RPI4_PERI_BASE)))
+            {
+                bcm2835_peripherals_base = (off_t)base_address;
+                bcm2835_peripherals_size = (size_t)peri_size;
+                if (base_address == BCM2835_RPI4_PERI_BASE)
+                {
+                    pud_type_rpi4 = 1;
+                }
+            }
+        }
+
+        fclose(fp);
+    }
+    /* else we are prob on RPi 1 with BCM2835, and use the hardwired defaults */
+
+    /* Now get ready to map the peripherals block
+     * If we are not root, try for the new /dev/gpiomem interface and accept
+     * the fact that we can only access GPIO
+     * else try for the /dev/mem interface and get access to everything
+     */
+    ok = 0;
+    if (geteuid() == 0
+#ifdef BCM2835_HAVE_LIBCAP
+        || bcm2835_has_capability(CAP_SYS_RAWIO)
+#endif
+    )
+    {
+        /* Open the master /dev/mem device */
+        if ((memfd = open("/dev/mem", O_RDWR | O_SYNC)) < 0)
+        {
+            fprintf(stderr, "bcm2835_init: Unable to open /dev/mem: %s\n",
+                    strerror(errno));
+            goto exit;
+        }
+
+        /* Base of the peripherals block is mapped to VM */
+        bcm2835_peripherals = mapmem("gpio", bcm2835_peripherals_size, memfd, bcm2835_peripherals_base);
+        if (bcm2835_peripherals == MAP_FAILED)
+            goto exit;
+
+        /* Now compute the base addresses of various peripherals,
+        // which are at fixed offsets within the mapped peripherals block
+        // Caution: bcm2835_peripherals is uint32_t*, so divide offsets by 4
+        */
+        bcm2835_gpio = bcm2835_peripherals + BCM2835_GPIO_BASE / 4;
+        bcm2835_pwm = bcm2835_peripherals + BCM2835_GPIO_PWM / 4;
+        bcm2835_clk = bcm2835_peripherals + BCM2835_CLOCK_BASE / 4;
+        bcm2835_pads = bcm2835_peripherals + BCM2835_GPIO_PADS / 4;
+        bcm2835_spi0 = bcm2835_peripherals + BCM2835_SPI0_BASE / 4;
+        bcm2835_bsc0 = bcm2835_peripherals + BCM2835_BSC0_BASE / 4; /* I2C */
+        bcm2835_bsc1 = bcm2835_peripherals + BCM2835_BSC1_BASE / 4; /* I2C */
+        bcm2835_st = bcm2835_peripherals + BCM2835_ST_BASE / 4;
+        bcm2835_aux = bcm2835_peripherals + BCM2835_AUX_BASE / 4;
+        bcm2835_spi1 = bcm2835_peripherals + BCM2835_SPI1_BASE / 4;
+        /* BEB */
+        bcm2835_smi = bcm2835_peripherals + BCM2835_SMI_BASE / 4;
+
+        ok = 1;
+    }
+    else
+    {
+        /* Not root, try /dev/gpiomem */
+        /* Open the master /dev/mem device */
+        if ((memfd = open("/dev/gpiomem", O_RDWR | O_SYNC)) < 0)
+        {
+            fprintf(stderr, "bcm2835_init: Unable to open /dev/gpiomem: %s\n",
+                    strerror(errno));
+            goto exit;
+        }
+
+        /* Base of the peripherals block is mapped to VM */
+        bcm2835_peripherals_base = 0;
+        bcm2835_peripherals = mapmem("gpio", bcm2835_peripherals_size, memfd, bcm2835_peripherals_base);
+        if (bcm2835_peripherals == MAP_FAILED)
+            goto exit;
+        bcm2835_gpio = bcm2835_peripherals;
+        ok = 1;
+    }
+
+exit:
+    if (memfd >= 0)
+        close(memfd);
+
+    if (!ok)
+        bcm2835_close();
+
+    return ok;
+}
+
+/*! Sets the Pull-up/down register for the given pin. This is
+    used with bcm2835_gpio_pudclk() to set the  Pull-up/down resistor for the given pin.
+    However, it is usually more convenient to use bcm2835_gpio_set_pud().
+    \param[in] pud The desired Pull-up/down mode. One of BCM2835_GPIO_PUD_* from bcm2835PUDControl
+    On the RPI 4, although this function and bcm2835_gpio_pudclk() are supported for backward
+    compatibility, new code should always use bcm2835_gpio_set_pud().
+    \sa bcm2835_gpio_set_pud()
+*/
+extern void bcm2835_gpio_pud(uint8_t pud);
+
+/*! Clocks the Pull-up/down value set earlier by bcm2835_gpio_pud() into the pin.
+    \param[in] pin GPIO number, or one of RPI_GPIO_P1_* from \ref RPiGPIOPin.
+    \param[in] on HIGH to clock the value from bcm2835_gpio_pud() into the pin.
+    LOW to remove the clock.
+
+    On the RPI 4, although this function and bcm2835_gpio_pud() are supported for backward
+    compatibility, new code should always use bcm2835_gpio_set_pud().
+
+    \sa bcm2835_gpio_set_pud()
+*/
+extern void bcm2835_gpio_pudclk(uint8_t pin, uint8_t on);
+
+/*! Sets the Pull-up/down mode for the specified pin. This is more convenient than
+    clocking the mode in with bcm2835_gpio_pud() and bcm2835_gpio_pudclk().
+    \param[in] pin GPIO number, or one of RPI_GPIO_P1_* from \ref RPiGPIOPin.
+    \param[in] pud The desired Pull-up/down mode. One of BCM2835_GPIO_PUD_* from bcm2835PUDControl
+*/
+extern void bcm2835_gpio_set_pud(uint8_t pin, uint8_t pud);
+
+/* RPI 4 has different pullup operation - make backwards compat */
+static uint8_t pud_compat_setting = BCM2835_GPIO_PUD_OFF;
+
+/* Read the System Timer Counter (64-bits) */
+uint64_t bcm2835_st_read(void)
+{
+    volatile uint32_t *paddr;
+    uint32_t hi, lo;
+    uint64_t st;
+
+    if (bcm2835_st == MAP_FAILED)
+        return 0;
+
+    paddr = bcm2835_st + BCM2835_ST_CHI / 4;
+    hi = bcm2835_peri_read(paddr);
+
+    paddr = bcm2835_st + BCM2835_ST_CLO / 4;
+    lo = bcm2835_peri_read(paddr);
+
+    paddr = bcm2835_st + BCM2835_ST_CHI / 4;
+    st = bcm2835_peri_read(paddr);
+
+    /* Test for overflow */
+    if (st == hi)
+    {
+        st <<= 32;
+        st += lo;
+    }
+    else
+    {
+        st <<= 32;
+        paddr = bcm2835_st + BCM2835_ST_CLO / 4;
+        st += bcm2835_peri_read(paddr);
+    }
+    return st;
+}
+
+/* Delays for the specified number of microseconds with offset */
+void bcm2835_st_delay(uint64_t offset_micros, uint64_t micros)
+{
+    uint64_t compare = offset_micros + micros;
+
+    while (bcm2835_st_read() < compare)
+        ;
+}
+
+/* microseconds */
+void bcm2835_delayMicroseconds(uint64_t micros)
+{
+    struct timespec t1;
+    uint64_t start;
+
+    if (debug)
+    {
+        /* Cant access sytem timers in debug mode */
+        printf("bcm2835_delayMicroseconds %lld\n", (long long int)micros);
+        return;
+    }
+
+    /* Calling nanosleep() takes at least 100-200 us, so use it for
+    // long waits and use a busy wait on the System Timer for the rest.
+    */
+    start = bcm2835_st_read();
+
+    /* Not allowed to access timer registers (result is not as precise)*/
+    if (start == 0)
+    {
+        t1.tv_sec = 0;
+        t1.tv_nsec = 1000 * (long)(micros);
+        nanosleep(&t1, NULL);
+        return;
+    }
+
+    if (micros > 450)
+    {
+        t1.tv_sec = 0;
+        t1.tv_nsec = 1000 * (long)(micros - 200);
+        nanosleep(&t1, NULL);
+    }
+
+    bcm2835_st_delay(start, micros);
+}
+
+#define delayMicroseconds(x) bcm2835_delayMicroseconds(x)
+
+/* Set pullup/down */
+void bcm2835_gpio_pud(uint8_t pud)
+{
+    if (pud_type_rpi4)
+    {
+        pud_compat_setting = pud;
+    }
+    else
+    {
+        volatile uint32_t *paddr = bcm2835_gpio + BCM2835_GPPUD / 4;
+        bcm2835_peri_write(paddr, pud);
+    }
+}
+
+/* Pullup/down clock
+// Clocks the value of pud into the GPIO pin
+*/
+void bcm2835_gpio_pudclk(uint8_t pin, uint8_t on)
+{
+    if (pud_type_rpi4)
+    {
+        if (on)
+            bcm2835_gpio_set_pud(pin, pud_compat_setting);
+    }
+    else
+    {
+        volatile uint32_t *paddr = bcm2835_gpio + BCM2835_GPPUDCLK0 / 4 + pin / 32;
+        uint8_t shift = pin % 32;
+        bcm2835_peri_write(paddr, (on ? 1 : 0) << shift);
+    }
+}
+
+/* Set the pullup/down resistor for a pin
+//
+// The GPIO Pull-up/down Clock Registers control the actuation of internal pull-downs on
+// the respective GPIO pins. These registers must be used in conjunction with the GPPUD
+// register to effect GPIO Pull-up/down changes. The following sequence of events is
+// required:
+// 1. Write to GPPUD to set the required control signal (i.e. Pull-up or Pull-Down or neither
+// to remove the current Pull-up/down)
+// 2. Wait 150 cycles ? this provides the required set-up time for the control signal
+// 3. Write to GPPUDCLK0/1 to clock the control signal into the GPIO pads you wish to
+// modify ? NOTE only the pads which receive a clock will be modified, all others will
+// retain their previous state.
+// 4. Wait 150 cycles ? this provides the required hold time for the control signal
+// 5. Write to GPPUD to remove the control signal
+// 6. Write to GPPUDCLK0/1 to remove the clock
+//
+// RPi has P1-03 and P1-05 with 1k8 pullup resistor
+//
+// RPI 4 uses a different PUD method - no clock
+
+*/
+void bcm2835_gpio_set_pud(uint8_t pin, uint8_t pud)
+{
+    if (pud_type_rpi4)
+    {
+        int shiftbits = (pin & 0xf) << 1;
+        uint32_t bits;
+        uint32_t pull;
+
+        switch (pud)
+        {
+        case BCM2835_GPIO_PUD_OFF:
+            pull = 0;
+            break;
+        case BCM2835_GPIO_PUD_UP:
+            pull = 1;
+            break;
+        case BCM2835_GPIO_PUD_DOWN:
+            pull = 2;
+            break;
+        default:
+            return;
+        }
+
+        volatile uint32_t *paddr = bcm2835_gpio + BCM2835_GPPUPPDN0 / 4 + (pin >> 4);
+
+        bits = bcm2835_peri_read_nb(paddr);
+        bits &= ~(3 << shiftbits);
+        bits |= (pull << shiftbits);
+
+        bcm2835_peri_write_nb(paddr, bits);
+    }
+    else
+    {
+        bcm2835_gpio_pud(pud);
+        delayMicroseconds(10);
+        bcm2835_gpio_pudclk(pin, 1);
+        delayMicroseconds(10);
+        bcm2835_gpio_pud(BCM2835_GPIO_PUD_OFF);
+        bcm2835_gpio_pudclk(pin, 0);
+    }
+}
+
+// bcm2835.c
+// ============================================================================
+
+
+// ============================================================================
+// Raspberry Pi 4 SPI support
+
+// Call once to configure SPI0
+void setup_spi0()
+{
+
+    // Start SPI operations.
+    // Forces RPi SPI0 pins P1-19 (MOSI), P1-21 (MISO), P1-23 (CLK),
+    // P1-24 (CE0) and P1-26 (CE1) to alternate function ALT0,
+    // which enables those pins for SPI interface.
+    int spi_begin_success = bcm2835_spi_begin();
+
+    // Set SPI parameters
+    bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);    // The default
+    bcm2835_spi_setDataMode(BCM2835_SPI_MODE3);                 // The default
+    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_1024); // <= 4 MHz for internal clock
+    bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);    // the default
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+}
+
+// Call once to configure SPI1
+void setup_spi1()
+{
+
+    // Start SPI1 operations.
+    int spi_begin_success = bcm2835_aux_spi_begin();
+
+    // Set SPI parameters
+    bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);        // The default
+    bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                     // Data comes in on falling edge
+    bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_1024); // <= 4 MHz for internal clock
+    bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);        // the default
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+}
+
+// Call once to unconfgure SPI0
+void teardown_spi0()
+{
+    // Unselect chip
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+
+    // End SPI operations. SPI0 pins P1-19 (MOSI), P1-21 (MISO),
+    // P1-23 (CLK), P1-24 (CE0) and P1-26 (CE1) are returned to
+    // their default INPUT behaviour.
+    bcm2835_spi_end();
+}
+
+// Call once to unconfgure SPI1
+void teardown_spi1()
+{
+    // Unselect chip
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+
+    // End SPI operations. SPI0 pins P1-19 (MOSI), P1-21 (MISO),
+    // P1-23 (CLK), P1-24 (CE0) and P1-26 (CE1) are returned to
+    // their default INPUT behaviour.
+    bcm2835_aux_spi_end();
+}
+
+void start_spi_conversation(uint32_t chip)
+{
+    // Select a chip
+    bcm2835_spi_chipSelect(chip);
+}
+
+void end_spi_conversation()
+{
+    // Unselect chip
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+}
+
+// Raspberry Pi 4 SPI support
+// ============================================================================
+
+// ============================================================================
+// Raspberry Pi 4 GPIO support
+
+void setup_gpio()
+{
+    bcm2835_gpio_fsel(PIN_ARC_OK, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_ARC_OK, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_OHMIC_PROBE, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_OHMIC_PROBE, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_ESTOP, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_ESTOP, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_TORCH_ON, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(PIN_OHMIC_ENABLE, BCM2835_GPIO_FSEL_OUTP);
+}
+
+// Raspberry Pi 4 GPIO support
+// ============================================================================
+
+
+// ============================================================================
+// TMC-API support
+
+/**
+ * This function is required by the TMC-API
+ */
+void tmc5041_readWriteArray(uint8_t channel, uint8_t *data, size_t length) {
+    // TODO implement this
+    // Maybe combine tmc5041_read_register and tmc5041_write_register?
+}
+
+// TMC-API support
+// ============================================================================
+
+
+// ============================================================================
+// TMC5041 support
+
+spi_status_t parse_spi_status(uint8_t spi_status[40]) {
+    return (spi_status_t) {
+        .status_stop_l2     = spi_status[0] & 0b01000000,
+        .status_stop_l1     = spi_status[0] & 0b00100000,
+        .velocity_reached2  = spi_status[0] & 0b00010000,
+        .velocity_reached1  = spi_status[0] & 0b00001000,
+        .driver_error2      = spi_status[0] & 0b00000100,
+        .driver_error1      = spi_status[0] & 0b00000010,
+        .reset_flag         = spi_status[0] & 0b00000001
+    };
+}
+
+// 4.1.2 SPI Status Bits Transferred with Each Datagram Read Back
+void log_spi_status(joint_t * motor, uint8_t spi_status[40])
+{
+    bool status_stop_l2     = spi_status[0] & 0b01000000;
+    bool status_stop_l1     = spi_status[0] & 0b00100000;
+    bool velocity_reached2  = spi_status[0] & 0b00010000;
+    bool velocity_reached1  = spi_status[0] & 0b00001000;
+    bool driver_error2      = spi_status[0] & 0b00000100;
+    bool driver_error1      = spi_status[0] & 0b00000010;
+    bool reset_flag         = spi_status[0] & 0b00000001;
+    #ifdef DEBUG
+    rtapi_print("hotshot (%d:%d): spi_status: status_stop_l2=%x status_stop_l1=%x velocity_reached2=%x velocity_reached1=%x driver_error2=%x driver_error1=%x reset_flag=%x\n",
+        motor->chip, motor->motor, status_stop_l2, status_stop_l1, velocity_reached2, velocity_reached1, driver_error2, driver_error1, reset_flag);
+    #endif
+    // Reset by reading GSTAT
+    if (driver_error2 || driver_error1 || reset_flag) {
+        rtapi_print("hotshot: WARNING resetting driver");
+        config_chip();
+    }
+}
+
+/**
+ * Inspired by tmc5041_readInt() in TMC-API.
+ * Do not change any types in this function.
+*/
+int32_t tmc5041_read_register(uint8_t address) {
+	uint8_t data[5] = { 0, 0, 0, 0, 0 };
+    data[0] = address;
+    bcm2835_spi_transfernb(data, data, 5);
+    data[0] = address;
+    bcm2835_spi_transfernb(data, data, 5);
+    return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | data[3] << 8 | data[4];
+}
+
+int32_t tmc5041_write_register(joint_t * motor, uint8_t address, int32_t value)
+{
+    uint8_t data[5] = {address | TMC5041_WRITE_BIT, BYTE(value, 3), BYTE(value, 2), BYTE(value, 1), BYTE(value, 0) };
+    bcm2835_spi_transfernb(data, data, 5);
+    return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | data[3] << 8 | data[4];
+}
+
+/** Set RAMPMODE register value*/
+void tmc5041_set_register_RAMPMODE(joint_t * motor, uint8_t rampmode)
+{
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    uint32_t write_payload = 0x00;
+    //
+    // 0: Positioning mode (using all A, D and V parameters)
+    // 1: Velocity mode to positive VMAX (using AMAX acceleration)
+    // 2: Velocity mode to negative VMAX (using AMAX acceleration)
+    // 3: Hold mode (velocity remains unchanged, unless stop event occurs)
+    //
+    // RAMPMODE=0
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_RAMPMODE_MASK, TMC5041_RAMPMODE_SHIFT, rampmode);
+    uint8_t rampmode_message[40] = {TMC5041_RAMPMODE(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(rampmode_message, spi_status, 5);
+}
+
+void tmc5041_set_register_XACTUAL(joint_t * motor, int32 xactual)
+{
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    uint32_t write_payload = 0x00;
+    // XACTUAL
+    write_payload = FIELD_SET(write_payload, TMC5041_XACTUAL_MASK, TMC5041_XACTUAL_SHIFT, xactual);
+    uint8_t xtarget_message[40] = {TMC5041_XACTUAL(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(xtarget_message, spi_status, 5);
+}
+
+int32_t tmc5041_get_register_XACTUAL(joint_t * motor)
+{
+    // XACTUAL: Actual motor position (signed)
+    return tmc5041_read_register(TMC5041_XACTUAL(motor->motor));
+}
+
+int32_t tmc5041_get_register_VACTUAL(joint_t * motor)
+{
+    // Actual motor velocity from ramp generator (signed)
+    return tmc5041_read_register(TMC5041_VACTUAL(motor->motor));
+}
+
+spi_status_t tmc5041_set_register_XTARGET(joint_t * motor, int32 xtarget)
+{
+    uint32_t write_payload = 0x00;
+    // Target position for RAMPMODE=0 (signed).
+    // Write a new target position to this register in order to activate the ramp generator positioning in RAMPMODE=0.
+    // Initialize all velocity, acceleration and deceleration parameters before.
+    //
+    // XTARGET
+    write_payload = FIELD_SET(write_payload, TMC5041_XTARGET_MASK, TMC5041_XTARGET_SHIFT, xtarget);
+    uint8_t message[40] = {TMC5041_XTARGET(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(message, message, 5);
+    return parse_spi_status(message);
+}
+
+// Returns true if StallGuard event is triggered
+ramp_stat_register_t tmc5041_get_register_RAMP_STAT(joint_t * motor) {
+    // Reading the register will clear the stall condition and the motor may
+    // re-start motion, unless the motion controller has been stopped.
+    // (Flag and interrupt condition are cleared upon reading)
+    // This bit is ORed to the interrupt output signal
+
+    int32_t reply = tmc5041_read_register(TMC5041_RAMPSTAT(motor->motor));
+
+    ramp_stat_register_t reg;
+    reg.status_sg          = FIELD_GET(reply, TMC5041_STATUS_SG_MASK, TMC5041_STATUS_SG_SHIFT);
+    reg.second_move        = FIELD_GET(reply, TMC5041_SECOND_MOVE_MASK, TMC5041_SECOND_MOVE_SHIFT);
+    reg.t_zerowait_active  = FIELD_GET(reply, TMC5041_T_ZEROWAIT_ACTIVE_MASK, TMC5041_T_ZEROWAIT_ACTIVE_SHIFT);
+    reg.vzero              = FIELD_GET(reply, TMC5041_VZERO_MASK, TMC5041_VZERO_SHIFT);
+    reg.position_reached   = FIELD_GET(reply, TMC5041_POSITION_REACHED_MASK, TMC5041_POSITION_REACHED_SHIFT);
+    reg.velocity_reached   = FIELD_GET(reply, TMC5041_VELOCITY_REACHED_MASK, TMC5041_VELOCITY_REACHED_SHIFT);
+    reg.event_pos_reached  = FIELD_GET(reply, TMC5041_EVENT_POS_REACHED_MASK, TMC5041_EVENT_POS_REACHED_SHIFT);
+    reg.event_stop_sg      = FIELD_GET(reply, TMC5041_EVENT_STOP_SG_MASK, TMC5041_EVENT_STOP_SG_SHIFT);
+    reg.event_stop_r       = FIELD_GET(reply, TMC5041_EVENT_STOP_R_MASK, TMC5041_EVENT_STOP_R_SHIFT);
+    reg.event_stop_l       = FIELD_GET(reply, TMC5041_EVENT_STOP_L_MASK, TMC5041_EVENT_STOP_L_SHIFT);
+    reg.status_latch_r     = FIELD_GET(reply, TMC5041_STATUS_LATCH_R_MASK, TMC5041_STATUS_LATCH_R_SHIFT);
+    reg.status_latch_l     = FIELD_GET(reply, TMC5041_STATUS_LATCH_L_MASK, TMC5041_STATUS_LATCH_L_SHIFT);
+    reg.status_stop_r      = FIELD_GET(reply, TMC5041_STATUS_STOP_R_MASK, TMC5041_STATUS_STOP_R_SHIFT);
+    reg.status_stop_l      = FIELD_GET(reply, TMC5041_STATUS_STOP_L_MASK, TMC5041_STATUS_STOP_L_SHIFT);
+
+    return reg;
+}
+
+// extern void tmc5041_readWriteArray(uint8_t channel, uint8_t *data, size_t length);
+
+// DRV_STATUS register access
+//
+drv_status_register_t tmc5041_get_register_DRV_STATUS(joint_t * motor)
+{
+    int32_t reply = tmc5041_read_register(TMC5041_DRVSTATUS(motor->motor));
+    drv_status_register_t reg;
+    reg.standstill = FIELD_GET(reply, TMC5041_STST_MASK, TMC5041_STST_SHIFT);
+    reg.overtemp_warning = FIELD_GET(reply, TMC5041_OTPW_MASK, TMC5041_OTPW_SHIFT);
+    reg.overtemp_alarm = FIELD_GET(reply, TMC5041_OT_MASK, TMC5041_OT_SHIFT);
+    reg.sg_result = FIELD_GET(reply, TMC5041_SG_RESULT_MASK, TMC5041_SG_RESULT_SHIFT);
+    reg.cs_actual = FIELD_GET(reply, TMC5041_CS_ACTUAL_MASK, TMC5041_CS_ACTUAL_SHIFT);
+    reg.sg_status = FIELD_GET(reply, TMC5041_STALLGUARD_MASK, TMC5041_STALLGUARD_SHIFT);
+    reg.full_stepping = FIELD_GET(reply, TMC5041_FSACTIVE_MASK, TMC5041_FSACTIVE_SHIFT);
+    // TODO    
+    // bool open_load_phase_b;
+    // bool open_load_phase_a;
+    // bool ground_short_phase_b;
+    // bool ground_short_phase_a;
+    return reg;
+}
+
+chopconf_register_t tmc5041_get_register_CHOPCONF(joint_t * motor) {
+    int32_t reply = tmc5041_read_register(TMC5041_CHOPCONF(motor->motor));
+    chopconf_register_t reg;
+    reg.mres = FIELD_GET(reply, TMC5041_MRES_MASK, TMC5041_MRES_SHIFT);
+    return reg;
+}
+
+int32_t tmc5041_get_register_XLATCH(joint_t * motor) {
+    return tmc5041_read_register(TMC5041_XLATCH(motor->motor));
+}
+
+bool set_home(joint_t * motor)
+{
+    // Switch the ramp generator to hold mode
+    tmc5041_set_register_RAMPMODE(motor, TMC5041_RAMPMODE_HOLD);
+    // TODO and calculate the difference between the latched position and the actual position.
+    //      For StallGuard based homing or when using hard stop, XACTUAL stops exactly at the home position, so there is no difference (0).
+    // Write the calculated difference into the actual position register.
+    tmc5041_set_register_XACTUAL(motor, 0);
+    tmc5041_set_register_XTARGET(motor, 0);
+    // Now, homing is finished. A move to position 0 will bring back the motor exactly to the switching point.
+    // In case StallGuard was used for homing, a read access to RAMP_STAT clears the 
+    // StallGuard stop event event_stop_sg and releases the motor from the stop condition.
+    tmc5041_get_register_RAMP_STAT(motor);
+    // Switch back into positioning mode
+    tmc5041_set_register_RAMPMODE(motor, TMC5041_RAMPMODE_POS);
+
+    return TRUE;
+}
+
+void reset_motor(joint_t * motor)
+{
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    uint32_t write_payload = 0x00;
+
+    // Set TOFF=0 to clear registers
+    write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0b0);
+    uint8_t chop_conf[40] = {TMC5041_CHOPCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(chop_conf, spi_status, 5);
+
+    // Reset XACTUAL to 0
+    set_home(motor);
+}
+
+spi_status_t follow(joint_t * motor)
+{
+    // XTARGET: Target position for ramp mode
+    // Calculate target position and velocity
+    // Implicitly round to lower since were converting from float to int
+    int32 xtarget = (*motor->position_cmd) * motor->microstep_per_mm;
+    spi_status_t spi_status = tmc5041_set_register_XTARGET(motor, xtarget);
+
+    int64_t xactual_value = tmc5041_get_register_XACTUAL(motor);
+    spi_status.xactual_mm = (float)xactual_value / (float)motor->microstep_per_mm;
+
+    return spi_status;
+}
+
+uint8_t microsteps_to_tmc_mres(uint16_t usteps)
+{
+    // 0 = 256 usteps = 0b0000 (default)
+    // 1 = 128 usteps = 0b0001
+    // 2 =  64 usteps = 0b0010
+    // 3 =  32 usteps = 0b0011
+    // 4 =  16 usteps = 0b0100
+    // 5 =  8 usteps =
+    // 6 =  4 usteps =
+    // 7 =  2 usteps =
+    if (usteps == 256)
+    {
+        return 0;
+    }
+    uint8_t value = 0;
+    usteps = usteps == 0 ? 1 : usteps;
+    while ((usteps & 0x01) == 0)
+    {
+        value++;
+        usteps >>= 1;
+    }
+    return 8 - (value > 8 ? 8 : value);
+}
+
+// TMC5041 support
+// ============================================================================
+
+// ============================================================================
+// Main application
+
+int64_t mm_to_microsteps(uint32_t microstep_per_mm, float mm)
+{
+    return mm * microstep_per_mm;
+}
+
+uint32_t microsteps_per_mm(uint32_t fullsteps_per_rev, float linear_mm_per_rev, uint32_t microsteps)
+{
+    return (fullsteps_per_rev * microsteps) / linear_mm_per_rev;
+}
+
+void config_chip()
+{
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    // GCONF
+    //
+    uint8_t gconf[40] = {TMC5041_GSTAT, ____, ____, ____, ____};
+    bcm2835_spi_transfernb(gconf, spi_status, 5);
+}
+
+void config_motor(joint_t * motor)
+{
+    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
+    uint32_t write_payload = 0x00;
+
+    // Ramp Generator Motion Control Register Set
+    //
+    uint8_t irun = motor->tmc_run_current_cmd;
+    uint8_t ihold = motor->tmc_hold_current_cmd;
+    uint8_t iholddelay = 1;
+    // This is the lower threshold velocity for switching on smart
+    // energy CoolStep and StallGuard feature. Further it is the upper
+    // operation velocity for StealthChop.
+    // Hint: May be adapted to disable CoolStep during acceleration and deceleration phase by setting identical to VMAX.
+    // Enable CoolStep and StallGuard at 5mm per second
+    // uint32_t vcoolthrs = mm_to_microsteps(motor->microstep_per_mm, 10);
+    // TMC5041 data sheet uses 30 RPM (20 mm/sec on X axis)
+    // uint32_t vcoolthrs = 1600*2; // ( 30 * 200 * 16 ) / 60
+    uint32_t vcoolthrs = motor->tmc_cs_thresh;
+    // This velocity setting allows velocity dependent switching into
+    // a different chopper mode and fullstepping to maximize torque.
+    uint32_t vhigh = 64000;
+
+    // Ramp Generator Motion Control Register Set
+    //
+    uint8_t rampmode = 0; // positioning mode
+    uint8_t vstart = 0;
+    uint8_t vstop = 10;
+    // V1=0 disables A1 and D1 phase, use AMAX, DMAX only
+    uint32_t v1 = 0;
+    // uint16_t amax = mm_to_microsteps(motor->microstep_per_mm, motor->max_acceleration_cmd);
+    uint16_t amax = *motor->tmc_max_acceleration_fb;
+    uint16_t a1 = amax * 2;
+    uint16_t dmax = amax;
+    // Do not set DI=0 in positioning mode, even if V1=0!
+    uint16_t d1 = a1;
+    uint8_t tzerowait = 0;
+
+    // Coolstep
+    //
+    uint8_t sfilt = 0;
+    uint8_t seimin = 0;
+    uint8_t sedn = 0;
+    uint8_t seup = 0;
+    // When the load increases, SG falls below SEMIN, and CoolStep increases the current.
+    // When the load decreases, SG rises above (SEMIN + SEMAX + 1) * 32, and the current is reduced.
+    uint8_t semin = 3; // coolstep activated when SG < SEMIN*32
+    uint8_t semax = 10; // coolstep deactivated when SG >= (SEMIN+SEMAX+1)*32
+
+    // Chopper Configuration
+    //
+    uint16_t vhighchm = *motor->tmc_max_velocity_fb;
+    uint16_t vhighfs = *motor->tmc_max_velocity_fb;
+    uint8_t tbl = 0b10;
+    uint8_t hend = 0b0;
+    uint8_t hstrt = 0b100;
+    uint8_t toff = 0b0100;
+    uint8_t mres = motor->tmc_mres;
+    // 0: Low sensitivity, high sense resistor voltage
+    // 1: High sensitivity, low sense resistor voltage
+    uint8_t vsense = 0;
+    // 0 Standard mode (SpreadCycle)
+    uint8_t chm = 0;
+
+    // Stallguard parameters
+    //
+    pin_sg_thresh_t sg_thresh = *motor->tmc_sg_thresh_cmd;
+
+    // Calculate max velocity
+    // Target velocity should be in absolute units
+    // float abs_vtarget_mm_per_sec = fabs(motor->max_velocity_cmd);
+    // VMAX: Motion ramp target velocity
+    // int32_t vmax = abs_vtarget_mm_per_sec * motor->microstep_per_mm; // in microsteps per second
+    int32_t vmax = *motor->tmc_max_velocity_fb;
+
+    // Switch mode
+    bool en_softstop = 0;
+    bool sg_stop = motor->tmc_sg_stop_cmd;
+
+    //
+    // Power Configuration
+    //
+
+    // Current Setting
+    //
+    write_payload = 0x00;
+    // IRUN: Current scale when motor is running (scaling factor N/32 i.e. 1/32, 2/32, … 31/32)
+    // For high precision motor operation, work with a current scaling factor in the range 16 to 31,
+    // because scaling down the current values reduces the effective microstep resolution by making microsteps coarser.
+    write_payload = FIELD_SET(write_payload, TMC5041_IRUN_MASK, TMC5041_IRUN_SHIFT, irun);
+    // IHOLD: Identical to IRUN, but for motor in stand still.
+    write_payload = FIELD_SET(write_payload, TMC5041_IHOLD_MASK, TMC5041_IHOLD_SHIFT, ihold);
+    // IHOLDDELAY: 0 = instant IHOLD
+    write_payload = FIELD_SET(write_payload, TMC5041_IHOLDDELAY_MASK, TMC5041_IHOLDDELAY_SHIFT, iholddelay);
+    uint8_t current[40] = {TMC5041_IHOLD_IRUN(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(current, spi_status, 5);
+
+    // Chopper configuration
+    //
+    // PWMCONF: StealthChop Configuration
+    //
+    // write_payload = 0x00;
+    // // PWM_AUTOSCALE: Enable automatic current scaling using current measurement or use fixed scaling mode.
+    // write_payload = FIELD_SET(write_payload, TMC5041_PWM_AUTOSCALE_MASK, TMC5041_PWM_AUTOSCALE_SHIFT, pwm_autoscale);
+    // // PWM_GRAD: Global enable and regulation loop gradient when pwm_autoscale=1
+    // write_payload = FIELD_SET(write_payload, TMC5041_PWM_GRAD_MASK, TMC5041_PWM_GRAD_SHIFT, pwm_grad);
+    // // PWM_AMPL: User defined PWM amplitude for fixed scaling or amplitude limit for re-entry into StealthChop mode when pwm_autoscale=1.
+    // write_payload = FIELD_SET(write_payload, TMC5041_PWM_AMPL_MASK, TMC5041_PWM_AMPL_SHIFT, pwm_ampl);
+    // // PWM_FREQ: PWM frequency selection. See 7.1 Two Modes for Current Regulation
+    // write_payload = FIELD_SET(write_payload, TMC5041_PWM_FREQ_MASK, TMC5041_PWM_FREQ_SHIFT, pwm_freq);
+    // uint8_t pwmconf[40] = {TMC5041_PWMCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    // bcm2835_spi_transfernb(pwmconf, spi_status, 5);
+    //
+    // CHOPCONF: Chopper Configuration (i.e. SpreadCycle)
+    //
+    write_payload = 0x00;
+    // MRES: micro step resolution
+    write_payload = FIELD_SET(write_payload, TMC5041_MRES_MASK, TMC5041_MRES_SHIFT, mres);
+    // vhighchm: high velocity chopper mode
+    write_payload = FIELD_SET(write_payload, TMC5041_VHIGHCHM_MASK, TMC5041_VHIGHCHM_SHIFT, vhighchm);
+    // vhighfs: high velocity fullstep selection
+    write_payload = FIELD_SET(write_payload, TMC5041_VHIGHFS_MASK, TMC5041_VHIGHFS_SHIFT, vhighfs);
+    // VSENSE: sense resistor voltage based current scaling
+    write_payload = FIELD_SET(write_payload, TMC5041_VSENSE_MASK, TMC5041_VSENSE_SHIFT, vsense);
+    // TBL: blank time select
+    write_payload = FIELD_SET(write_payload, TMC5041_TBL_MASK, TMC5041_TBL_SHIFT, tbl);
+    // CHM: chopper mode 
+    write_payload = FIELD_SET(write_payload, TMC5041_CHM_MASK, TMC5041_CHM_SHIFT, chm);
+    // TODO rndtf
+    // TODO disfdcc
+    // HEND: hysteresis low value OFFSET sine wave offset
+    write_payload = FIELD_SET(write_payload, TMC5041_HEND_MASK, TMC5041_HEND_SHIFT, hend);
+    // HSTRT: hysteresis start value added to HEND
+    write_payload = FIELD_SET(write_payload, TMC5041_HSTRT_MASK, TMC5041_HSTRT_SHIFT, hstrt);
+    // TOFF: off time and driver enable
+    write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, toff);
+    uint8_t chop_conf[40] = {TMC5041_CHOPCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(chop_conf, spi_status, 5);
+
+    //
+    // CoolStep and StallGuard2 configuration
+    //
+
+    // VCOOLTHRS
+    //
+    // Lower ramp generator velocity threshold. Below this velocity CoolStep and StallGuard becomes disabled (not used
+    // in Step/Dir mode). Adapt to the lower limit of the velocity range where StallGuard2 gives a stable result
+    //
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VCOOLTHRS_MASK, TMC5041_VCOOLTHRS_SHIFT, vcoolthrs);
+    uint8_t vcoolthrs_message[40] = {TMC5041_VCOOLTHRS(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vcoolthrs_message, spi_status, 5);
+
+    // VHIGH
+    // 
+    // Upper ramp generator velocity threshold value. Above this velocity CoolStep becomes disabled
+    // (not used in Step/Dir mode). Adapt to the velocity range where StallGuard2 gives a stable result.
+    //
+    write_payload = 0x00;
+    // VHIGH: Set high values for both
+    write_payload = FIELD_SET(write_payload, TMC5041_VHIGH_MASK, TMC5041_VHIGH_SHIFT, vhigh);
+    uint8_t vhigh_message[40] = {TMC5041_VHIGH(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vhigh_message, spi_status, 5);
+
+    // COOLCONF: Smart Energy Control CoolStep and StallGuard2
+    //
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_SFILT_MASK, TMC5041_SFILT_SHIFT, sfilt);
+    write_payload = FIELD_SET(write_payload, TMC5041_SGT_MASK, TMC5041_SGT_SHIFT, sg_thresh);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEIMIN_MASK, TMC5041_SEIMIN_SHIFT, seimin);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEDN_MASK, TMC5041_SEDN_SHIFT, sedn);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEMAX_MASK, TMC5041_SEMAX_SHIFT, semax);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEUP_MASK, TMC5041_SEUP_SHIFT, seup);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEMIN_MASK, TMC5041_SEMIN_SHIFT, semin);
+    uint8_t coolconf[40] = {TMC5041_COOLCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(coolconf, spi_status, 5);
+
+    // SW_MODE: Reference Switch & StallGuard2 Event Configuration Register
+    //
+    write_payload = 0x00;
+    // Attention: Do not use soft stop in combination with StallGuard2.
+    write_payload = FIELD_SET(write_payload, TMC5041_EN_SOFTSTOP_MASK, TMC5041_EN_SOFTSTOP_SHIFT, en_softstop);
+    // Note: set VCOOLTHRS to a suitable value before enabling this
+    write_payload = FIELD_SET(write_payload, TMC5041_SG_STOP_MASK, TMC5041_SG_STOP_SHIFT, sg_stop);
+    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_R_INACTIVE_MASK, TMC5041_LATCH_R_INACTIVE_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_R_ACTIVE_MASK, TMC5041_LATCH_R_ACTIVE_SHIFT, 1);
+    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_L_INACTIVE_MASK, TMC5041_LATCH_L_INACTIVE_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_L_ACTIVE_MASK, TMC5041_LATCH_L_ACTIVE_SHIFT, 1);
+    write_payload = FIELD_SET(write_payload, TMC5041_SWAP_LR_MASK, TMC5041_SWAP_LR_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_POL_STOP_R_MASK, TMC5041_POL_STOP_R_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_POL_STOP_L_MASK, TMC5041_POL_STOP_L_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_STOP_R_ENABLE_MASK, TMC5041_STOP_R_ENABLE_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_STOP_L_ENABLE_MASK, TMC5041_STOP_L_ENABLE_SHIFT, 0);
+    uint8_t swmode[40] = {TMC5041_SWMODE(motor->motor)|TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(swmode, spi_status, 5);
+
+    //
+    // Ramp Configuration
+    //
+
+    // VSTART
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VSTART_MASK, TMC5041_VSTART_SHIFT, vstart);
+    uint8_t vstart_message[40] = {TMC5041_VSTART(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vstart_message, spi_status, 5);
+
+    // VSTOP
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VSTOP_MASK, TMC5041_VSTOP_SHIFT, vstop);
+    uint8_t vstop_message[40] = {TMC5041_VSTOP(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vstop_message, spi_status, 5);
+
+    // V1
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_V1__MASK, TMC5041_V1__SHIFT, v1);
+    uint8_t v1_message[40] = {TMC5041_V1(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(v1_message, spi_status, 5);
+
+    // A1
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_A1_MASK, TMC5041_A1_SHIFT, a1);
+    uint8_t a1_message[40] = {TMC5041_A1(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(a1_message, spi_status, 5);
+
+    // Maximum acceleration/deceleration [µsteps / ta²]
+    //
+    // This is the acceleration and deceleration value for velocity mode.
+    // In position mode (RAMP=0), must be lower than A1 (???)
+    //
+    // AMAX
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_AMAX_MASK, TMC5041_AMAX_SHIFT, amax);
+    uint8_t amax_message[40] = {TMC5041_AMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(amax_message, spi_status, 5);
+
+    // DMAX = AMAX
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_DMAX_MASK, TMC5041_DMAX_SHIFT, dmax);
+    uint8_t dmax_message[40] = {TMC5041_DMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(dmax_message, spi_status, 5);
+
+    // D1 = A1
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_D1_MASK, TMC5041_D1_SHIFT, d1);
+    uint8_t d1_message[40] = {TMC5041_D1(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(d1_message, spi_status, 5);
+
+    // TZEROWAIT
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_TZEROWAIT_MASK, TMC5041_TZEROWAIT_SHIFT, tzerowait);
+    uint8_t tzerowait_message[40] = {TMC5041_TZEROWAIT(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(tzerowait_message, spi_status, 5);
+
+    //
+    // Target velocity
+    //
+    // This is the target velocity [in µsteps / t] in velocity mode. It can be changed any time during a motion
+    //
+    // VMAX
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VMAX_MASK, TMC5041_VMAX_SHIFT, vmax);
+    uint8_t vmax_message[40] = {TMC5041_VMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vmax_message, spi_status, 5);
+
+    // Ramp mode
+    tmc5041_set_register_RAMPMODE(motor, rampmode);
+}
+
+void config_tmc5041(joint_t motors[], size_t motor_count)
+{
+    #ifdef DEBUG
+    rtapi_print("enter config_tmc5041\n");
+    #endif
+
+    // Configure chip and motors
+    // size_t size = sizeof(motors);
+    // HACK
+    for (size_t i = 0; i < motor_count; i++)
+    {
+        
+        #ifdef DEBUG
+        rtapi_print("start spi convo\n");
+        rtapi_print("Motor is %d %d %d %d\n", 
+            motors[i].chip, motors[i].motor, motors[i].pitch, motors[i].teeth);
+        #endif
+
+        #ifdef DEBUG
+        rtapi_print("start spi convo with chip %d\n", motors[i].chip);
+        #endif
+
+        start_spi_conversation(motors[i].chip);
+
+        #ifdef DEBUG
+        rtapi_print("Reset motor\n");
+        #endif
+
+        reset_motor(&motors[i]);
+
+        #ifdef DEBUG
+        rtapi_print("Config motor\n");
+        #endif
+
+        config_motor(&motors[i]);
+
+        #ifdef DEBUG
+        rtapi_print("end spi convo\n");
+        #endif
+
+        end_spi_conversation();
+    }
+
+    #ifdef DEBUG
+    rtapi_print("exit config_tmc5041\n");
+    #endif
+}
+
+void teardown_tmc5041(joint_t motors[])
+{
+    // Configure chip and motors
+    // HACK
+    size_t size = 4;
+    for (size_t i = 0; i < size; i++)
+    {
+        start_spi_conversation(motors[i].chip);
+        reset_motor(&motors[i]);
+        end_spi_conversation();
+    }
+}
+
+float thc_voltage(uint8_t chip, float V_ref)
+{
+    //
+    // Read from ADC
+    // Protocol start bit (S), sgl/diff (D), odd/sign (C), MSBF (M)
+    //  S = 1
+    //  D = 1 ; 0=diff, 1= Single ended (i.e. 2 channel) mode
+    //  C = 0; if D=0, then odd/sign, if D=1, then 0 or 1 for channel number
+    //  M = 1
+    // Message = { 0000000S, DCM00000, 00000000 }
+    // Final byte of zeros is so we get an 3 total bytes back from ADC
+    char send_data[3] = {0b00000001, 0b10000000, 0b00000000};
+    bcm2835_aux_spi_transfern(send_data, 3);
+    // Intrepret ADC response
+    // Get sensor value
+    uint16_t value = 0x00;
+    // We need only data from last 2 bytes.
+    // And there we can discard last two bits to get 10 bit value
+    // as MCP3002 resolution is 10bits
+    //
+    // 15 = 0000 1111 with & operation makes sure that we have all data from XXXX DDDD and nothing more.
+    value = send_data[1] & 15;
+    // Move to left to make room for next piece of data.
+    value = value << 6; // 000D DDDD << 6 == 0DDD DD00 0000
+    // Now we get the last of data from byte 3, discarding last two bits
+    value = value + (send_data[2] >> 2);
+    // DDDD DDXXX >> 2 == 00DD DDDD
+    // 0DDD DD00 0000 + 00DD DDDD == 0DDD DDDD DDDD
+    // Convert to voltage
+    // Voltage = ( V_ref * value ) / 1024
+    float voltage = (V_ref * value) / 1024;
+
+    // Assumes 50:1 voltage divider
+    return voltage * 50;
+}
+
+bool was_all_homed = 0;
+
+bool get_home_switch_state(joint_t * motor, bool axis_is_homing) {
+    if (axis_is_homing) {
+        ramp_stat_register_t reg = tmc5041_get_register_RAMP_STAT(motor);
+        return reg.status_sg;
+    }
+    return FALSE;
+}
+
+bool get_neg_limit_switch_state(joint_t * motor, float axis_max_velocity_cmd) {
+    if (axis_max_velocity_cmd < 0) {
+        ramp_stat_register_t reg = tmc5041_get_register_RAMP_STAT(motor);
+        return reg.status_sg;
+    }
+    return FALSE;
+}
+
+// Main application
+// ============================================================================
+
+// ============================================================================
+// HAL Module
+
+// joint_t * motors[0];
+// joint_t * joint_yl;
+// joint_t * joint_yr;
+// joint_t * joint_z;
+
+// 0 = X, 1 = YL, 2 = YR, 3 = Z
+// joint_t * motors[4];
+#define MOTOR_COUNT 4
+joint_t motors[MOTOR_COUNT];
+
+bool needs_setup = TRUE;
+
+bool setup_once() {
+
+    #ifdef DEBUG
+    rtapi_print("Running setup once\n");
+    #endif
+
+    #ifdef DEBUG
+    rtapi_print("Init BCM driver\n");
+    #endif
+
+    // Intialize Broadcom driver
+    int init_success = bcm2835_init();
+
+    #ifdef DEBUG
+    rtapi_print("Set up gpio\n");
+    #endif
+
+    // Set up RPi GPIO
+    setup_gpio();
+
+    #ifdef DEBUG
+    rtapi_print("Set up SPI\n");
+    #endif
+
+    // Initialize SPI
+    setup_spi0();
+    setup_spi1();
+
+    #ifdef DEBUG
+    rtapi_print("Set up motors\n");
+    #endif
+
+    // TODO TMC-API call this once for each TMC IC
+    // tmc5041_init(TMC5041TypeDef *tmc5041, uint8_t channel, ConfigurationTypeDef *config, const int32_t *registerResetState)
+
+    #ifdef DEBUG
+    rtapi_print("Set up tmc5041\n");
+    #endif
+
+    config_tmc5041(motors, MOTOR_COUNT);
+
+    #ifdef DEBUG
+    rtapi_print("Done running setup once\n");
+    #endif
+
+    return FALSE;
+}
+
+void handle_joint(joint_t * motor) {
+
+    if (*motor->is_enabled) {
+
+        #ifdef DEBUG
+        rtapi_print("joint x is enabled. chip=%d motor=%d pitch=%d teeth=%d\n", 
+            motor->chip, motor->motor, motor->pitch, motor->teeth);
+        #endif
+
+        start_spi_conversation(motor->chip);
+
+        // Check switches
+        //
+        // Note: Reading RAMP_STAT clears sg_stop
+        ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(motor);
+        // Note: status_sg and event_stop_sg appear to be the same
+        // axis_x_sg_stop_fb = ramp_stat.event_stop_sg;
+        *motor->sg_stop_fb = ramp_stat.status_sg;
+        // TODO
+        // axis_x_tmc_position_reached_fb = ramp_stat.position_reached;
+        // axis_x_tmc_t_zerowait_active_fb = ramp_stat.t_zerowait_active;
+        // axis_x_tmc_velocity_reached_fb = ramp_stat.velocity_reached;
+                
+        #ifdef DEBUG
+        rtapi_print("ramp_stat axis_x_sg_stop_fb %d \n", (*motor->sg_stop_fb));
+        #endif
+
+        // Handle StallGuard state
+        //
+        if (*motor->sg_stop_fb) {
+            // StallGuard has been triggered
+
+            #ifdef DEBUG
+            rtapi_print("SG triggered sg_stop_cmd=%d sg_thresh_cmd=%d\n", 
+                motor->tmc_sg_stop_cmd, motor->tmc_sg_thresh_cmd);
+            #endif
+
+            // TODO shut off torch
+            // TODO stop motion controller or motor will twitch every time we read RAMP_STAT
+
+            if (motor->is_homing) {
+                // We are homing and we have hit a Stallguard stop event, so trigger home switch
+
+                #ifdef DEBUG
+                rtapi_print("Setting home\n");
+                #endif
+
+                motor->home_sw = set_home(motor);
+            } else {
+                // We've hit a Stallguard stop, but we're not homing, so trigger breakaway
+
+                #ifdef DEBUG
+                rtapi_print("Setting breakaway\n");
+                #endif
+
+                // TODO Add `torch_breakaway = set_breakaway(&motors[0])1 that should immediately stop motor
+                *motor->torch_breakaway_fb = TRUE;
+                // TODO "breakaway" for the x axis should indicate negative limit switch is triggered
+                // There is currently no negative limit switch for X and YL/YR
+            }             
+        } else {
+            // No active StallGuard switches, so move motor and reset all switches
+
+            #ifdef DEBUG
+            rtapi_print("Moving motor to %f\n", (*motor->position_cmd));
+            #endif
+
+            // Move motor
+            //
+            spi_status_t spi_status = follow(motor);
+
+            #ifdef DEBUG
+            rtapi_print("Followed position to %f\n", spi_status.xactual_mm);
+            #endif
+
+            *motor->position_fb = spi_status.xactual_mm;
+
+            #ifdef DEBUG
+            rtapi_print("position_fb is %f\n", *motor->position_fb);
+            #endif
+
+            *motor->tmc_position_fb = tmc5041_get_register_XACTUAL(motor);
+
+            #ifdef DEBUG
+            rtapi_print("Motor actual position now %f\n", *motor->position_fb);
+            #endif
+
+            // Ensure switches aren't triggered
+            //
+            motor->home_sw = FALSE;
+            // FIXME
+            *motor->torch_breakaway_fb = FALSE;
+
+            #ifdef DEBUG
+            rtapi_print("Finished resetting switches\n");
+            #endif
+        }
+
+        #ifdef DEBUG
+        rtapi_print("Get velocity\n");
+        #endif
+
+        // Get velocity
+        //
+        *motor->tmc_velocity_fb = tmc5041_get_register_VACTUAL(motor);
+        float vactual_mm = (float)(*motor->tmc_velocity_fb) / (float)motor->microstep_per_mm;
+        *motor->velocity_fb = vactual_mm;
+       
+        #ifdef DEBUG
+        rtapi_print("vactual_mm is %f\n", vactual_mm);
+        rtapi_print("Get driver state\n");
+        #endif
+
+        // Get driver state
+        // 
+        drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(motor);
+        *motor->tmc_motor_standstill_fb = drv_status.standstill;
+        *motor->tmc_motor_full_stepping_fb = drv_status.full_stepping;
+        *motor->tmc_motor_overtemp_warning_fb = drv_status.overtemp_warning;
+        *motor->tmc_motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
+        *motor->tmc_motor_load_fb = drv_status.sg_result;
+        *motor->tmc_motor_current_fb = drv_status.cs_actual;
+        *motor->tmc_motor_stall_fb = drv_status.sg_status;
+
+        #ifdef DEBUG
+        rtapi_print("vactual_mm is %f\n", vactual_mm);
+        rtapi_print("Get chopper state\n");
+        #endif
+
+        // Get chopper state
+        //
+        chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(motor);
+        *motor->tmc_microstep_resolution_fb = chopconf.mres;
+
+        #ifdef DEBUG
+        rtapi_print("Done handling joint\n");
+        #endif
+
+        end_spi_conversation();
+    } else {
+        // Joint is not enabled in LinuxCNC
+
+        // Cut power to motor
+        // Can only do this when we config_motor inside motor->is_enabled condition
+        // TODO reset_motor(&motors[0]);
+        motor->is_on = FALSE;
+
+        // Clear torch breakaway
+        // TODO we should really do this when we transition from unenabled to enabled power
+        *motor->torch_breakaway_fb = FALSE;
+    }
+}
+
+// main function
+FUNCTION(_)
+{
+    // Set up motors exactly once.
+    if (needs_setup) {
+
+        // X
+        #undef axis_x_enable
+        #undef axis_x_is_homing
+        #undef axis_x_position_cmd
+        #undef axis_x_tmc_sg_stop_cmd
+        #undef axis_x_tmc_sg_thresh_cmd
+        uint32_t axis_x_microstep_per_mm = microsteps_per_mm(200, axis_x_pitch * axis_x_teeth, axis_x_microsteps_cmd);
+        motors[0] = (joint_t) {
+            .chip                   = axis_x_chip,
+            .motor                  = axis_x_motor,
+            .pitch                  = axis_x_pitch,
+            .teeth                  = axis_x_teeth,
+            .is_enabled             = __comp_inst->axis_x_enable,
+            .is_homing              = __comp_inst->axis_x_is_homing,
+            .position_cmd           = __comp_inst->axis_x_position_cmd,
+            .position_fb            = &axis_x_position_fb,
+            .max_velocity_cmd       = axis_x_max_velocity_cmd,
+            .velocity_fb            = &axis_x_velocity_fb,
+            .max_acceleration_cmd   = axis_x_max_acceleration_cmd,
+            .microsteps_cmd         = axis_x_microsteps_cmd,
+            .mm_per_rev             = axis_x_pitch * axis_x_teeth,
+            .microstep_per_mm       = axis_x_microstep_per_mm,
+            .tmc_run_current_cmd    = axis_x_tmc_run_current_cmd,
+            .tmc_hold_current_cmd   = axis_x_tmc_hold_current_cmd,
+            .tmc_sg_stop_cmd        = __comp_inst->axis_x_tmc_sg_stop_cmd,
+            .tmc_sg_thresh_cmd      = __comp_inst->axis_x_tmc_sg_thresh_cmd,
+            .tmc_mres                           = microsteps_to_tmc_mres(axis_x_microsteps_cmd),
+            .tmc_cs_thresh                      = axis_x_tmc_cs_thresh_cmd,
+            .tmc_max_velocity_fb                = &axis_x_tmc_max_velocity_fb,
+            .tmc_max_acceleration_fb            = &axis_x_tmc_max_acceleration_fb,
+            .sg_stop_fb                         = &axis_x_sg_stop_fb,
+            .home_sw_fb                         = &axis_x_home_sw,
+            .tmc_position_fb                    = &axis_x_tmc_position_fb,
+            .tmc_velocity_fb                    = &axis_x_tmc_velocity_fb,
+            .tmc_motor_standstill_fb            = &axis_x_tmc_motor_standstill_fb,
+            .tmc_motor_full_stepping_fb         = &axis_x_tmc_motor_full_stepping_fb,
+            .tmc_motor_overtemp_warning_fb      = &axis_x_tmc_motor_overtemp_warning_fb,
+            .tmc_motor_overtemp_alarm_fb        = &axis_x_tmc_motor_overtemp_alarm_fb,
+            .tmc_motor_load_fb                  = &axis_x_tmc_motor_load_fb,
+            .tmc_motor_current_fb               = &axis_x_tmc_motor_current_fb,
+            .tmc_motor_stall_fb                 = &axis_x_tmc_motor_stall_fb,
+            .tmc_microstep_resolution_fb        = &axis_x_tmc_microstep_resolution_fb,
+            // TODO move to sensors() function
+            .torch_breakaway_fb     = &torch_breakaway,
+        };
+        *motors[0].tmc_max_velocity_fb = (float)fabs(axis_x_max_velocity_cmd) * axis_x_microstep_per_mm;
+        *motors[0].tmc_max_acceleration_fb = mm_to_microsteps(axis_x_microstep_per_mm, axis_x_max_acceleration_cmd);
+
+        // YL
+        #undef axis_yl_enable
+        #undef axis_yl_is_homing
+        #undef axis_yl_position_cmd
+        #undef axis_yl_tmc_sg_stop_cmd
+        #undef axis_yl_tmc_sg_thresh_cmd
+        uint32_t axis_yl_microstep_per_mm = microsteps_per_mm(200, axis_yl_pitch * axis_yl_teeth, axis_yl_microsteps_cmd);
+        motors[1] = (joint_t) {
+            .chip                   = axis_yl_chip,
+            .motor                  = axis_yl_motor,
+            .pitch                  = axis_yl_pitch,
+            .teeth                  = axis_yl_teeth,
+            .is_enabled             = __comp_inst->axis_yl_enable,
+            .is_homing              = __comp_inst->axis_yl_is_homing,
+            .position_cmd           = __comp_inst->axis_yl_position_cmd,
+            .position_fb            = &axis_yl_position_fb,
+            .max_velocity_cmd       = axis_yl_max_velocity_cmd,
+            .velocity_fb            = &axis_yl_velocity_fb,
+            .max_acceleration_cmd   = axis_yl_max_acceleration_cmd,
+            .microsteps_cmd         = axis_yl_microsteps_cmd,
+            .mm_per_rev             = axis_yl_pitch * axis_yl_teeth,
+            .microstep_per_mm       = axis_yl_microstep_per_mm,
+            .tmc_run_current_cmd    = axis_yl_tmc_run_current_cmd,
+            .tmc_hold_current_cmd   = axis_yl_tmc_hold_current_cmd,
+            .tmc_sg_stop_cmd        = __comp_inst->axis_yl_tmc_sg_stop_cmd,
+            .tmc_sg_thresh_cmd      = __comp_inst->axis_yl_tmc_sg_thresh_cmd,
+            .tmc_mres               = microsteps_to_tmc_mres(axis_yl_microsteps_cmd),
+            .tmc_cs_thresh                      = axis_yl_tmc_cs_thresh_cmd,
+            .tmc_max_velocity_fb                = &axis_yl_tmc_max_velocity_fb,
+            .tmc_max_acceleration_fb            = &axis_yl_tmc_max_acceleration_fb,
+            .sg_stop_fb                         = &axis_yl_sg_stop_fb,
+            .home_sw_fb                         = &axis_yl_home_sw,
+            .tmc_position_fb                    = &axis_yl_tmc_position_fb,
+            .tmc_velocity_fb                    = &axis_yl_tmc_velocity_fb,
+            .tmc_motor_standstill_fb            = &axis_yl_tmc_motor_standstill_fb,
+            .tmc_motor_full_stepping_fb         = &axis_yl_tmc_motor_full_stepping_fb,
+            .tmc_motor_overtemp_warning_fb      = &axis_yl_tmc_motor_overtemp_warning_fb,
+            .tmc_motor_overtemp_alarm_fb        = &axis_yl_tmc_motor_overtemp_alarm_fb,
+            .tmc_motor_load_fb                  = &axis_yl_tmc_motor_load_fb,
+            .tmc_motor_current_fb               = &axis_yl_tmc_motor_current_fb,
+            .tmc_motor_stall_fb                 = &axis_yl_tmc_motor_stall_fb,
+            .tmc_microstep_resolution_fb        = &axis_yl_tmc_microstep_resolution_fb,
+            // TODO move to sensors() function
+            .torch_breakaway_fb     = &torch_breakaway,
+        };
+        *motors[1].tmc_max_velocity_fb = (float)fabs(axis_yl_max_velocity_cmd) * axis_yl_microstep_per_mm;
+        *motors[1].tmc_max_acceleration_fb = mm_to_microsteps(axis_yl_microstep_per_mm, axis_yl_max_acceleration_cmd);
+
+        // YR
+        #undef axis_yr_enable
+        #undef axis_yr_is_homing
+        #undef axis_yr_position_cmd
+        #undef axis_yr_tmc_sg_stop_cmd
+        #undef axis_yr_tmc_sg_thresh_cmd
+        uint32_t axis_yr_microstep_per_mm = microsteps_per_mm(200, axis_yr_pitch * axis_yr_teeth, axis_yr_microsteps_cmd);
+        motors[2] = (joint_t) {
+            .chip                   = axis_yr_chip,
+            .motor                  = axis_yr_motor,
+            .pitch                  = axis_yr_pitch,
+            .teeth                  = axis_yr_teeth,
+            .is_enabled             = __comp_inst->axis_yr_enable,
+            .is_homing              = __comp_inst->axis_yr_is_homing,
+            .position_cmd           = __comp_inst->axis_yr_position_cmd,
+            .position_fb            = &axis_yr_position_fb,
+            .max_velocity_cmd       = axis_yr_max_velocity_cmd,
+            .velocity_fb            = &axis_yr_velocity_fb,
+            .max_acceleration_cmd   = axis_yr_max_acceleration_cmd,
+            .microsteps_cmd         = axis_yr_microsteps_cmd,
+            .mm_per_rev             = axis_yr_pitch * axis_yr_teeth,
+            .microstep_per_mm       = axis_yr_microstep_per_mm,
+            .tmc_run_current_cmd    = axis_yr_tmc_run_current_cmd,
+            .tmc_hold_current_cmd   = axis_yr_tmc_hold_current_cmd,
+            .tmc_sg_stop_cmd        = __comp_inst->axis_yr_tmc_sg_stop_cmd,
+            .tmc_sg_thresh_cmd      = __comp_inst->axis_yr_tmc_sg_thresh_cmd,
+            .tmc_mres                           = microsteps_to_tmc_mres(axis_yr_microsteps_cmd),
+            .tmc_cs_thresh                      = axis_yr_tmc_cs_thresh_cmd,
+            .tmc_max_velocity_fb                = &axis_yr_tmc_max_velocity_fb,
+            .tmc_max_acceleration_fb            = &axis_yr_tmc_max_acceleration_fb,
+            .sg_stop_fb                         = &axis_yr_sg_stop_fb,
+            .home_sw_fb                         = &axis_yr_home_sw,
+            .tmc_position_fb                    = &axis_yr_tmc_position_fb,
+            .tmc_velocity_fb                    = &axis_yr_tmc_velocity_fb,
+            .tmc_motor_standstill_fb            = &axis_yr_tmc_motor_standstill_fb,
+            .tmc_motor_full_stepping_fb         = &axis_yr_tmc_motor_full_stepping_fb,
+            .tmc_motor_overtemp_warning_fb      = &axis_yr_tmc_motor_overtemp_warning_fb,
+            .tmc_motor_overtemp_alarm_fb        = &axis_yr_tmc_motor_overtemp_alarm_fb,
+            .tmc_motor_load_fb                  = &axis_yr_tmc_motor_load_fb,
+            .tmc_motor_current_fb               = &axis_yr_tmc_motor_current_fb,
+            .tmc_motor_stall_fb                 = &axis_yr_tmc_motor_stall_fb,
+            .tmc_microstep_resolution_fb        = &axis_yr_tmc_microstep_resolution_fb,
+            // TODO move to sensors() function
+            .torch_breakaway_fb     = &torch_breakaway,
+        };
+        *motors[2].tmc_max_velocity_fb = (float)fabs(axis_yr_max_velocity_cmd) * axis_yr_microstep_per_mm;
+        *motors[2].tmc_max_acceleration_fb = mm_to_microsteps(axis_yr_microstep_per_mm, axis_yr_max_acceleration_cmd);
+
+        // Z
+        #undef axis_z_enable
+        #undef axis_z_is_homing
+        #undef axis_z_position_cmd
+        #undef axis_z_tmc_sg_stop_cmd
+        #undef axis_z_tmc_sg_thresh_cmd
+        uint32_t axis_z_microstep_per_mm = microsteps_per_mm(200, axis_z_pitch * axis_z_teeth, axis_z_microsteps_cmd);
+        motors[3] = (joint_t) {
+            .chip                   = axis_z_chip,
+            .motor                  = axis_z_motor,
+            .pitch                  = axis_z_pitch,
+            .teeth                  = axis_z_teeth,
+            .is_enabled             = __comp_inst->axis_z_enable,
+            .is_homing              = __comp_inst->axis_z_is_homing,
+            .position_cmd           = __comp_inst->axis_z_position_cmd,
+            .position_fb            = &axis_z_position_fb,
+            .max_velocity_cmd       = axis_z_max_velocity_cmd,
+            .velocity_fb            = &axis_z_velocity_fb,
+            .max_acceleration_cmd   = axis_z_max_acceleration_cmd,
+            .microsteps_cmd         = axis_z_microsteps_cmd,
+            .mm_per_rev             = axis_z_pitch * axis_z_teeth,
+            .microstep_per_mm       = axis_z_microstep_per_mm,
+            .tmc_run_current_cmd    = axis_z_tmc_run_current_cmd,
+            .tmc_hold_current_cmd   = axis_z_tmc_hold_current_cmd,
+            .tmc_sg_stop_cmd        = __comp_inst->axis_z_tmc_sg_stop_cmd,
+            .tmc_sg_thresh_cmd      = __comp_inst->axis_z_tmc_sg_thresh_cmd,
+            .tmc_mres               = microsteps_to_tmc_mres(axis_z_microsteps_cmd),
+            .tmc_cs_thresh                      = axis_z_tmc_cs_thresh_cmd,
+            .tmc_max_velocity_fb                = &axis_z_tmc_max_velocity_fb,
+            .tmc_max_acceleration_fb            = &axis_z_tmc_max_acceleration_fb,
+            .sg_stop_fb                         = &axis_z_sg_stop_fb,
+            .home_sw_fb                         = &axis_z_home_sw,
+            .tmc_position_fb                    = &axis_z_tmc_position_fb,
+            .tmc_velocity_fb                    = &axis_z_tmc_velocity_fb,
+            .tmc_motor_standstill_fb            = &axis_z_tmc_motor_standstill_fb,
+            .tmc_motor_full_stepping_fb         = &axis_z_tmc_motor_full_stepping_fb,
+            .tmc_motor_overtemp_warning_fb      = &axis_z_tmc_motor_overtemp_warning_fb,
+            .tmc_motor_overtemp_alarm_fb        = &axis_z_tmc_motor_overtemp_alarm_fb,
+            .tmc_motor_load_fb                  = &axis_z_tmc_motor_load_fb,
+            .tmc_motor_current_fb               = &axis_z_tmc_motor_current_fb,
+            .tmc_motor_stall_fb                 = &axis_z_tmc_motor_stall_fb,
+            .tmc_microstep_resolution_fb        = &axis_z_tmc_microstep_resolution_fb,
+            // TODO move to sensors() function
+            .torch_breakaway_fb     = &torch_breakaway,
+        };
+        *motors[3].tmc_max_velocity_fb = (float)fabs(axis_z_max_velocity_cmd) * microsteps_per_mm(200, axis_z_pitch * axis_z_teeth, axis_z_microsteps_cmd);
+        *motors[3].tmc_max_acceleration_fb = mm_to_microsteps(axis_z_microstep_per_mm, axis_z_max_acceleration_cmd);
+
+        #ifdef DEBUG
+        rtapi_print("Invoking setup_once\n");
+        #endif
+
+        needs_setup = setup_once();
+    }
+
+    // TODO TMC-API Call this function once per cycle for each IC
+    // tmc5041_periodicJob(TMC5041TypeDef *tmc5041, uint32_t tick)
+    // tmc5041_periodicJob(TMC5041TypeDef *tmc5041, uint32_t tick)
+
+    handle_joint(&motors[0]);
+    handle_joint(&motors[1]);
+    handle_joint(&motors[2]);
+    handle_joint(&motors[3]);
+
+}
+
+FUNCTION(sensors) {
+
+    start_spi_conversation(BCM2835_SPI_CS1);
+
+    // TODO go into estop mode on estop-cmd?
+
+    // TODO maybe set abort-fb
+    abort_fb = FALSE;
+
+    // Read in arc voltage and set arc_voltage pin
+    float V_ref = 5;
+    arc_voltage = thc_voltage(BCM2835_SPI_CS1, V_ref);
+    // TODO implmement moving average? https://forums.raspberrypi.com/viewtopic.php?t=40248
+    //      (new result) = (previous result)*(1 - ratio) + (new sample) * (ratio)
+    //      using a ratio of 0.025
+    end_spi_conversation();
+
+    // Read in arc ok switch state and set arc_ok bin bit
+    //  plasmac.arc-ok-in bit in
+    //    external arc ok input signal [mode 1 & mode 2]
+    uint8_t arc_ok_level = bcm2835_gpio_lev(PIN_ARC_OK);
+    if (arc_ok_level == HIGH)
+    {
+        arc_ok = TRUE;
+    }
+    else
+    {
+        arc_ok = FALSE;
+    }
+
+    // Removed in favor of Stallguard based breakaway
+    //
+    // Read in breakaway switch state and set breakaway pin bit
+    //  plasmac.breakaway bit in
+    //      torch breakaway switch (optional, see float_switch)
+    // uint8_t torch_breakaway_level = bcm2835_gpio_lev(PIN_TORCH_BREAKAWAY);
+    // if (torch_breakaway_level == LOW)
+    // {
+    //     torch_breakaway = TRUE;
+    // }
+    // else
+    // {
+    //     torch_breakaway = FALSE;
+    // }
+
+    // Read in ohmic probe contact state and set ohmic_probe pin bit
+    //  plasmac.ohmic-probe bit in
+    //      ohmic probe input
+    uint8_t ohmic_probe_level = bcm2835_gpio_lev(PIN_OHMIC_PROBE);
+    if (ohmic_probe_level == HIGH)
+    {
+        ohmic_probe = TRUE;
+    }
+    else
+    {
+        ohmic_probe = FALSE;
+    }
+
+    // Read in ohmic probe contact state and set ohmic_probe pin bit
+    // estop is wired fail safe, i.e. active low.
+    // However, PlasmaC expects FALSE to indicate active estop
+    uint8_t estop_fb_level = bcm2835_gpio_lev(PIN_ESTOP);
+    if (estop_fb_level == HIGH)
+    {
+        estop_fb = TRUE;
+    }
+    else
+    {
+        estop_fb = FALSE;
+    }
+
+    // Read in ohmic_enable pin and enable/disable ohmic sensor relay
+    //  plasmac.ohmic-enable bit out
+    //      on only while probing
+    if (ohmic_enable)
+    {
+        bcm2835_gpio_set(PIN_OHMIC_ENABLE);
+    }
+    else
+    {
+        bcm2835_gpio_clr(PIN_OHMIC_ENABLE);
+    }
+
+    // Read in torch_on pin bit and enable/disable torch fire relay
+    //  plasmac.torch-on bit out
+    //      turn torch on, connect to your torch on input
+    if (torch_on)
+    {
+        bcm2835_gpio_set(PIN_TORCH_ON);
+    }
+    else
+    {
+        bcm2835_gpio_clr(PIN_TORCH_ON);
+    }
+}
+
+EXTRA_CLEANUP()
+{
+    teardown_tmc5041(motors);
+   
+    teardown_spi0();
+    teardown_spi1();
+
+    // Close the library, deallocating any allocated memory and closing /dev/mem
+    bcm2835_close();
+}
+
+// HAL Module
+// ============================================================================
+
+// ============================================================================
+// Test
+
+// FUNCTION(calibrate)                                                                                                                                              
+// {
+//     float vtarget_mm_per_sec    = axis_x_max_velocity_cmd;
+//     float xtarget_mm            = 0.0;   // absolute position along an axis
+//     start_spi_conversation(motors[0]);
+//     // Start movement
+//     //
+//     tmc5041_set_register_RAMPMODE(motors[0], 1); // velocity mode
+//     move_motor(motors[0], xtarget_mm);
+//     // Get calibration info
+//     //
+//     int64_t xactual = tmc5041_get_register_XACTUAL(motors[0]);
+//     float xactualmm = xactual_mm(motors[0]);
+//     float vmax = mm_to_microsteps(motors[0].microstep_per_mm, axis_x_max_velocity_cmd);
+//     ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(motors[0]);
+//     bool get_home_switch = get_home_switch_state(motors[0], 0);
+//     bool get_neg_limit_switch = get_neg_limit_switch_state(motors[0], vtarget_mm_per_sec);
+//     drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(motors[0]);
+//     uint16_t sg_result = drv_status.sg_result;
+//     uint8_t cs_actual = drv_status.cs_actual;
+//     bool sg_status = drv_status.sg_status;
+//     axis_x_home_sw = get_home_switch;
+//     axis_x_neg_limit_sw = get_neg_limit_switch;
+//     axis_x_position_fb = xactualmm;
+//     axis_x_load = sg_result;
+//     axis_x_current = cs_actual;
+//     axis_x_stall = sg_status;
+//     // And echo it
+//     //
+//     rtapi_print("hotshot (%d:%d): Calibrate\n", motors[0].chip, motors[0].motor);
+//     rtapi_print("    axis_x_max_velocity_cmd=%f, vmax=%f, axis_x_max_acceleration_cmd=%f\n", 
+//         axis_x_max_velocity_cmd, vmax, axis_x_max_acceleration_cmd);
+//     rtapi_print("    xactual_mm=%f, xactual=%d\n", 
+//         xactualmm, xactual);
+//     rtapi_print("    axis_x_load=%d, axis_x_current=%d, axis_x_stall=%d\n", 
+//         sg_result, cs_actual, sg_status);
+//     rtapi_print("    event_stop_sg=%d\n", ramp_stat.event_stop_sg);
+//     rtapi_print("    axis_x_home_sw=%d, axis_x_neg_limit_sw=%d\n", 
+//         get_home_switch, get_neg_limit_switch);
+//     end_spi_conversation();
+// }
+
+// Test
+// ============================================================================
