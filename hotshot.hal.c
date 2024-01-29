@@ -30,49 +30,24 @@ bool hotshot_joint_init(joint_t * joint)
     printf("hotshot_joint_init: joint->microstep_per_mm=%d\n", joint->microstep_per_mm );
     #endif
 
-    // uint32_t tmc_max_velocity_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_velocity_cmd);
-    // joint->tmc.max_velocity_cmd = tmc_max_velocity_cmd;
-
-    // #ifdef DEBUG
-    // printf("hotshot_joint_init: tmc_max_velocity_cmd=%d, joint->tmc.max_velocity_cmd=%d\n", 
-    //     tmc_max_velocity_cmd, joint->tmc.max_velocity_cmd);
-    // #endif
-
-    // #ifdef DEBUG
-    // printf("hotshot_joint_init: joint->tmc.max_velocity_cmd=%d\n", joint->tmc.max_velocity_cmd);
-    // #endif
-
     uint32_t tmc_max_acceleration_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_acceleration_cmd);
+    // uint32_t tmc_acceleration_cmd = mm_to_microsteps(microstep_per_mm, *joint->acceleration_cmd);
 
     #ifdef DEBUG
     printf("hotshot_joint_init: tmc_max_acceleration_cmd=%d\n", tmc_max_acceleration_cmd);
     #endif
 
+    // joint->tmc.acceleration_cmd = tmc_acceleration_cmd;
     joint->tmc.max_acceleration_cmd = tmc_max_acceleration_cmd;
 
     #ifdef DEBUG
     printf("hotshot_joint_init: joint->tmc.max_acceleration_cmd=%d\n", joint->tmc.max_acceleration_cmd);
     #endif
 
+    // TODO we're setting acceleration on the fly now, so should we also do these dynamically?
     *joint->tmc.ramp_a1_cmd = tmc_max_acceleration_cmd * 2;
-
     *joint->tmc.ramp_dmax_cmd = tmc_max_acceleration_cmd;
-
     joint->tmc.ramp_d1_cmd = joint->tmc.ramp_a1_cmd;
-
-    // #ifdef DEBUG
-    // printf("hotshot_joint_init: amax=%d ramp_a1_cmd=%d, ramp_dmax_cmd=%d, ramp_d1_cmd=%d\n", 
-    //     *joint->tmc.ramp_vstart_cmd, joint->tmc.max_velocity_cmd);
-    // #endif
-
-    // For positioning mode, VSTART must == VMAX
-    // joint->tmc.ramp_vstart_cmd = &joint->tmc.max_velocity_cmd;
-    // joint->tmc.ramp_vstop_cmd = &joint->tmc.max_velocity_cmd;
-
-    // #ifdef DEBUG
-    // printf("hotshot_joint_init: VSTART=%d VMAX=%d\n", 
-    //     *joint->tmc.ramp_vstart_cmd, joint->tmc.max_velocity_cmd);
-    // #endif
 
     tmc5041_motor_init(&joint->tmc);
 }
@@ -177,7 +152,7 @@ void handle_joint(joint_t * joint) {
             // #endif
 
             // Move joint
-            follow(joint);
+            move(joint);
 
             // Ensure switches aren't triggered
             //

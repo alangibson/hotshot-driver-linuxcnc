@@ -83,3 +83,9 @@ sudo usermod -a -G gpio $USER
 sudo usermod -a -G kmem $USER # required for /dev/mem access 
 sudo chmod g+w /dev/mem
 halrun
+
+
+# References
+
+PID explanation:
+    https://forum.linuxcnc.org/10-advanced-configuration/14483-servo-tuning-pid-and-ffn

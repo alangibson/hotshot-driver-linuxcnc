@@ -87,7 +87,7 @@ void log_spi_status(tmc5041_motor_t * motor, uint8_t spi_status[40])
 }
 
 /** Set RAMPMODE register value*/
-void tmc5041_set_register_RAMPMODE(tmc5041_motor_t * motor, uint8_t rampmode)
+void tmc5041_set_register_RAMPMODE(tmc5041_motor_t * motor, int32_t rampmode)
 {
     static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
     uint32_t write_payload = 0x00;
@@ -133,11 +133,23 @@ int32_t tmc5041_get_register_XACTUAL(tmc5041_motor_t * motor)
     return tmc5041_readInt(motor, TMC5041_XACTUAL(motor->motor));
 }
 
+int convert_24bit_to_32bit(int x) {
+    // printf("convert_24bit_to_32bit: before=%d\n", x);
+    // Check if the 24th bit is set (negative number)
+    if (x & 0x00800000) {
+        // Sign-extend by setting the upper 8 bits
+        x |= 0xFF000000;
+    }
+    // printf("convert_24bit_to_32bit: after=%d\n", x);
+    return x;
+}
+
 int32_t tmc5041_get_register_VACTUAL(tmc5041_motor_t * motor)
 {
     // Actual motor velocity from ramp generator (signed)
     int32_t value = tmc5041_readInt(motor, TMC5041_VACTUAL(motor->motor));
-    return CAST_Sn_TO_S32(value, 24);
+    // return CAST_Sn_TO_S32(value, 24);
+    return convert_24bit_to_32bit(value);
 }
 
 spi_status_t tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget)
@@ -153,6 +165,7 @@ spi_status_t tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget
     bcm2835_spi_transfernb(message, message, 5);
     return parse_spi_status(message);
 }
+
 
 // Returns true if StallGuard event is triggered
 ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor) {
@@ -280,6 +293,49 @@ void tmc5041_chip_init()
     uint8_t gconf[40] = {TMC5041_GSTAT, ____, ____, ____, ____};
     bcm2835_spi_transfernb(gconf, spi_status, 5);
 }
+
+void tmc5041_set_register_VMAX(tmc5041_motor_t * motor, int32_t vmax) 
+{
+    // VMAX: Motion ramp target velocity
+    //
+    // This is the target velocity [in µsteps / t] in velocity mode. It can be changed any time during a motion
+    //
+    int32_t write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VMAX_MASK, TMC5041_VMAX_SHIFT, vmax);
+    uint8_t vmax_message[40] = {TMC5041_VMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vmax_message, vmax_message, 5);
+}
+
+void tmc5041_set_register_AMAX(tmc5041_motor_t * motor, int32_t amax) 
+{
+    // AMAX
+    // Maximum acceleration/deceleration [µsteps / ta²]
+    //
+    // This is the acceleration and deceleration value for velocity mode.
+    // In position mode (RAMP=0), must be lower than A1 (???)
+    //
+    int32_t write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_AMAX_MASK, TMC5041_AMAX_SHIFT, motor->max_acceleration_cmd);
+    uint8_t amax_message[40] = {TMC5041_AMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(amax_message, amax_message, 5);
+}
+
+void tmc5041_set_register_VSTART(tmc5041_motor_t * motor, int32_t vstart) 
+{
+    int32_t write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VSTART_MASK, TMC5041_VSTART_SHIFT, vstart);
+    uint8_t vstart_message[40] = {TMC5041_VSTART(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vstart_message, vstart_message, 5);
+}
+
+void tmc5041_set_register_VSTOP(tmc5041_motor_t * motor, int32_t vstop) 
+{
+    int32_t write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VSTOP_MASK, TMC5041_VSTOP_SHIFT, vstop);
+    uint8_t vstop_message[40] = {TMC5041_VSTOP(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vstop_message, vstop_message, 5);
+}
+
 
 void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 {
@@ -482,15 +538,7 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 
     // AMAX
     //
-    // Maximum acceleration/deceleration [µsteps / ta²]
-    //
-    // This is the acceleration and deceleration value for velocity mode.
-    // In position mode (RAMP=0), must be lower than A1 (???)
-    //
-    write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_AMAX_MASK, TMC5041_AMAX_SHIFT, motor->max_acceleration_cmd);
-    uint8_t amax_message[40] = {TMC5041_AMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(amax_message, spi_status, 5);
+    tmc5041_set_register_AMAX(motor, motor->acceleration_cmd);
 
     // DMAX
     //
@@ -519,33 +567,6 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     tmc5041_set_register_RAMPMODE(motor, *motor->ramp_mode_cmd);
 }
 
-void tmc5041_set_register_VMAX(tmc5041_motor_t * motor, int32_t vmax) 
-{
-    // VMAX: Motion ramp target velocity
-    //
-    // This is the target velocity [in µsteps / t] in velocity mode. It can be changed any time during a motion
-    //
-    int32_t write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_VMAX_MASK, TMC5041_VMAX_SHIFT, vmax);
-    uint8_t vmax_message[40] = {TMC5041_VMAX(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vmax_message, vmax_message, 5);
-}
-
-void tmc5041_set_register_VSTART(tmc5041_motor_t * motor, int32_t vstart) 
-{
-    int32_t write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_VSTART_MASK, TMC5041_VSTART_SHIFT, vstart);
-    uint8_t vstart_message[40] = {TMC5041_VSTART(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vstart_message, vstart_message, 5);
-}
-
-void tmc5041_set_register_VSTOP(tmc5041_motor_t * motor, int32_t vstop) 
-{
-    int32_t write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_VSTOP_MASK, TMC5041_VSTOP_SHIFT, vstop);
-    uint8_t vstop_message[40] = {TMC5041_VSTOP(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vstop_message, vstop_message, 5);
-}
 
 void tmc5041_motor_init(tmc5041_motor_t * motor)
 {

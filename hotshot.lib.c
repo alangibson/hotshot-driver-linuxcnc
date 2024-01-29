@@ -29,111 +29,171 @@ uint32_t microsteps_per_mm(uint32_t fullsteps_per_rev, float64_t linear_mm_per_r
     return (fullsteps_per_rev * microsteps) / linear_mm_per_rev;
 }
 
+void move(joint_t * joint)
+{
+    // VMAX is set on the fly by PID
+    int32_t vmax = mm_to_microsteps(joint->microstep_per_mm, *joint->velocity_cmd);
+
+    // RAMPMODE:
+    //  1: Velocity mode to positive VMAX (using AMAX acceleration)
+    //  2: Velocity mode to negative VMAX (using AMAX acceleration)
+    if (vmax > 0)
+        tmc5041_set_register_RAMPMODE(&joint->tmc, 1);
+    else if (vmax < 0)
+        tmc5041_set_register_RAMPMODE(&joint->tmc, 2);
+    // TODO else ???
+    
+    tmc5041_set_register_VMAX(&joint->tmc, vmax);
+
+    // Update pins
+    int32_t xactual             = tmc5041_get_register_XACTUAL(&joint->tmc);
+    float64_t xactual_mm        = microsteps_to_mm(joint->microstep_per_mm, xactual);
+    int32_t vactual             = tmc5041_get_register_VACTUAL(&joint->tmc);
+    float64_t vactual_mm        = microsteps_to_mm(joint->microstep_per_mm, vactual);
+    *joint->tmc.velocity_fb     = vactual;
+    *joint->tmc.position_fb     = xactual;
+    *joint->velocity_fb         = vactual_mm;
+    *joint->position_fb         = xactual_mm;
+
+    #ifdef DEBUG
+    int32_t xtarget = mm_to_microsteps(joint->microstep_per_mm, *joint->position_cmd);
+    printf("move(%d, %d): xtarget=%d us,%f mm\n", 
+        joint->tmc.chip, joint->tmc.motor, 
+        xtarget, *joint->position_cmd);
+    printf("move(%d, %d): xactual=%d us,%f mm\n", 
+        joint->tmc.chip, joint->tmc.motor, xactual, xactual_mm);
+    printf("move(%d, %d): follow error = %d us\n", 
+        joint->tmc.chip, joint->tmc.motor, xtarget - xactual);
+    printf("move(%d, %d): vmax=%d us/sec,%f mm/sec\n", 
+        joint->tmc.chip, joint->tmc.motor, vmax, *joint->velocity_cmd);
+    printf("move(%d, %d): vactual=%d us/sec,%f mm/sec\n", 
+        joint->tmc.chip, joint->tmc.motor, vactual, vactual_mm);
+    #endif
+}
+
 void follow(joint_t * joint)
 {
-    // HACK must use LAST_POSITION_COMMAND while we are forcing position_fb to be position_cmd
-    // float64_t position_fb = *joint->position_fb;
-    float64_t position_fb = joint->last_position_fb;
-    int32 position_fb_us = mm_to_microsteps(joint->microstep_per_mm, position_fb);
+    //
+    // Plan move
+    //
+
+    float64_t last_position_fb_mm = joint->last_position_fb;
+    int32_t last_position_fb = mm_to_microsteps(joint->microstep_per_mm, last_position_fb_mm);
     
+    int32_t last_needed_move_distance = joint->last_xtarget - 
+        mm_to_microsteps(joint->microstep_per_mm, *joint->position_fb);
+
     // Implicitly round to lower since were converting from float to int
     int32 xtarget = mm_to_microsteps(joint->microstep_per_mm, *joint->position_cmd);
     float64_t xtarget_mm = *joint->position_cmd;
-
+ 
     int32_t xactual = tmc5041_get_register_XACTUAL(&joint->tmc);
     float64_t xactual_mm = microsteps_to_mm(joint->microstep_per_mm, xactual);
 
-    int32_t prior_travel = xactual - position_fb_us;
-    float64_t prior_travel_mm = microsteps_to_mm(joint->microstep_per_mm, prior_travel);
+    int32_t actual_move_distance = xactual - last_position_fb;
+    float64_t actual_move_distance_mm = microsteps_to_mm(joint->microstep_per_mm, actual_move_distance);
 
     int32_t follow_error = joint->last_xtarget - xactual;
     float64_t follow_error_mm = microsteps_to_mm(joint->microstep_per_mm, follow_error);
 
-    int32_t move_distance = xtarget - xactual;
-    float64_t move_distance_mm = microsteps_to_mm(joint->microstep_per_mm, move_distance);
-
-    // Prior travel can be 0
-    float64_t too_slow_by = 1;
-    if (prior_travel != 0)
-        too_slow_by = joint->last_move_distance / (float64_t)prior_travel;
+    int32_t next_move_distance = xtarget - xactual;
+    float64_t next_move_distance_mm = microsteps_to_mm(joint->microstep_per_mm, next_move_distance);
 
     int32_t vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
     float64_t vactual_mm = microsteps_to_mm(joint->microstep_per_mm, vactual);
 
+    int32_t max_velocity = mm_to_microsteps(joint->microstep_per_mm, *joint->max_velocity_cmd);
+
     int32_t vmax = mm_to_microsteps(joint->microstep_per_mm, *joint->velocity_cmd);
-
-    // vmax must be > 0 when move_distance > 0
-    // EMC sets current-vel pin to 0 before move is complete, so make sure we have a velocity
-    if (vmax == 0 && move_distance != 0)
-        vmax = mm_to_microsteps(joint->microstep_per_mm, *joint->max_velocity_cmd);
-    // Adjust vmax if we are not decelerating
-    // if (abs(vmax) >= abs(LAST_VELOCITY_CMD))
-    //     vmax = vmax * too_slow_by;
-    vmax = vmax * too_slow_by;
-    if (vmax == 0)
-        vmax = mm_to_microsteps(joint->microstep_per_mm, 100);
-
+    vmax = abs(vmax);
     float64_t vmax_mm = microsteps_to_mm(joint->microstep_per_mm, vmax);
 
+    int32_t amax = mm_to_microsteps(joint->microstep_per_mm, *joint->acceleration_cmd);
+    float64_t amax_mm = microsteps_to_mm(joint->microstep_per_mm, amax);
+
+    //
+    // Report
+    //
+
     #ifdef DEBUG
-    printf("follow(%d, %d): Prior position_fb=%f mm, %d us\n", 
-        joint->tmc.chip, joint->tmc.motor, 
-        *joint->position_fb, mm_to_microsteps(joint->microstep_per_mm, *joint->position_fb));
-    printf("follow(%d, %d): Move to position_cmd=%f mm, xtarget=%d us\n", 
-        joint->tmc.chip, joint->tmc.motor, xtarget_mm, xtarget);
-    printf("follow(%d, %d): Difference to last position_cmd=%f mm\n", 
-        joint->tmc.chip, joint->tmc.motor, *joint->position_cmd - LAST_POSITION_CMD);
-        printf("follow(%d, %d): Current position xactual_mm=%f mm, %d us\n", 
-        joint->tmc.chip, joint->tmc.motor, xactual_mm, xactual);
-    printf("follow(%d, %d): Move distance move_distance=%d us, %f mm\n", 
-        joint->tmc.chip, joint->tmc.motor, move_distance, move_distance_mm);
-    printf("follow(%d, %d): Follow error follow_error=%d us, %f mm\n", 
-        joint->tmc.chip, joint->tmc.motor, follow_error, follow_error_mm);
-    printf("follow(%d, %d): Prior travel prior_travel=%d us, %f mm\n", 
-        joint->tmc.chip, joint->tmc.motor, prior_travel, prior_travel_mm);
-    printf("follow(%d, %d): Curent velocity vactual=%d us/sec, %f mm/sec\n", 
-        joint->tmc.chip, joint->tmc.motor, vactual, vactual_mm);
-    printf("follow(%d, %d): Last velocity velocity_cmd=%d us/sec; delta to current = %d us/sec\n", 
-        joint->tmc.chip, joint->tmc.motor, LAST_VELOCITY_CMD, vmax - LAST_VELOCITY_CMD);
-    printf("follow(%d, %d): Needed velocity boost is %f above %f mm/sec, %d us/sec\n", 
-        joint->tmc.chip, joint->tmc.motor, too_slow_by, 
+    printf("follow(%d, %d): Prior:\n", joint->tmc.chip, joint->tmc.motor);
+    printf("follow(%d, %d):     last_position_fb=%f mm, %d us\n", 
+        joint->tmc.chip, joint->tmc.motor, last_position_fb_mm, last_position_fb);
+    printf("follow(%d, %d):     last xtarget=%d us, %f mm\n", 
+        joint->tmc.chip, joint->tmc.motor, joint->last_xtarget, microsteps_to_mm(joint->microstep_per_mm, joint->last_xtarget));
+    printf("follow(%d, %d):     Prior travel actual_move_distance=%d us, %f mm\n", 
+        joint->tmc.chip, joint->tmc.motor, actual_move_distance, actual_move_distance_mm);
+    
+    printf("follow(%d, %d): Current:\n", joint->tmc.chip, joint->tmc.motor);
+    printf("follow(%d, %d):     EMC joint velocity %f mm/sec, %d us/sec\n", 
+        joint->tmc.chip, joint->tmc.motor,
         *joint->velocity_cmd, mm_to_microsteps(joint->microstep_per_mm, *joint->velocity_cmd));
-    printf("follow(%d, %d): Velocity velocity_cmd=%f mm/sec, %d us/sec; max_velocity_cmd=%f mm/sec, %d us/sec\n", 
-        joint->tmc.chip, joint->tmc.motor, 
-        *joint->velocity_cmd, mm_to_microsteps(joint->microstep_per_mm, *joint->velocity_cmd),
-        *joint->max_velocity_cmd, mm_to_microsteps(joint->microstep_per_mm, *joint->max_velocity_cmd));
-    printf("follow(%d, %d): Velocity becomes adjusted vmax=%d us/sec, %f mm/sec\n", 
+    printf("follow(%d, %d):     EMC joint acceleration %f mm/sec2, %d us/sec2\n", 
+        joint->tmc.chip, joint->tmc.motor,
+        *joint->acceleration_cmd, mm_to_microsteps(joint->microstep_per_mm, *joint->acceleration_cmd));
+    printf("follow(%d, %d):     Current position xactual_mm=%f mm, %d us\n", 
+        joint->tmc.chip, joint->tmc.motor, xactual_mm, xactual);
+    printf("follow(%d, %d):     Follow error follow_error=%d us, %f mm\n", 
+        joint->tmc.chip, joint->tmc.motor, follow_error, follow_error_mm);
+    printf("follow(%d, %d):     Curent velocity vactual=%d us/sec, %f mm/sec\n", 
+        joint->tmc.chip, joint->tmc.motor, vactual, vactual_mm);
+
+    printf("follow(%d, %d): Plan:\n", joint->tmc.chip, joint->tmc.motor);
+    printf("follow(%d, %d):     Move to position_cmd=%f mm, xtarget=%d us\n", 
+        joint->tmc.chip, joint->tmc.motor, xtarget_mm, xtarget);
+    printf("follow(%d, %d):     Difference to last position_cmd=%f mm\n", 
+        joint->tmc.chip, joint->tmc.motor, *joint->position_cmd - last_position_fb_mm);
+    printf("follow(%d, %d):     Move distance next_move_distance=%d us, %f mm\n", 
+        joint->tmc.chip, joint->tmc.motor, next_move_distance, next_move_distance_mm);
+    printf("follow(%d, %d):     Velocity becomes adjusted vmax=%d us/sec, %f mm/sec\n", 
         joint->tmc.chip, joint->tmc.motor, vmax, vmax_mm);
+
+    printf("follow(%d, %d): Move:\n", joint->tmc.chip, joint->tmc.motor);
+    printf("follow(%d, %d):     Position position_cmd=%f mm, %d us\n", 
+        joint->tmc.chip, joint->tmc.motor, xtarget_mm, xtarget);
+    printf("follow(%d, %d):     Velocity velocity_cmd=%f mm/sec, %d us/sec; max_velocity_cmd=%f mm/sec, %d us/sec\n", 
+        joint->tmc.chip, joint->tmc.motor, vmax_mm, vmax,
+        *joint->max_velocity_cmd, mm_to_microsteps(joint->microstep_per_mm, *joint->max_velocity_cmd));
+    printf("follow(%d, %d):     Acceleration acceleration_cmd=%f mm/sec, %d us/sec; max_acceleration_cmd=%f mm/sec, %d us/sec\n", 
+        joint->tmc.chip, joint->tmc.motor, amax_mm, amax,
+        *joint->max_acceleration_cmd, mm_to_microsteps(joint->microstep_per_mm, *joint->max_acceleration_cmd));
+
     #endif
 
     //
     // Move
     //
 
-    if (move_distance != 0) 
-    {
-        #ifdef DEBUG
-        printf("follow(%d, %d): Moving to xtarget=%d us at vmax=%d us/sec\n", 
-            joint->tmc.chip, joint->tmc.motor, xtarget, vmax);
-        #endif
+    joint->tmc.velocity_cmd     = vmax;
+    joint->tmc.acceleration_cmd = amax;
 
+    if (next_move_distance != 0) 
+    {
+        tmc5041_set_register_XTARGET(&joint->tmc, xtarget);
         // tmc5041_set_register_VSTART(&joint->tmc, vmax);
         // tmc5041_set_register_VSTOP(&joint->tmc, vmax);
         tmc5041_set_register_VMAX(&joint->tmc, vmax);
-        tmc5041_set_register_XTARGET(&joint->tmc, xtarget);
+        tmc5041_set_register_AMAX(&joint->tmc, amax);        
     }
 
-    joint->last_xtarget = xtarget;
-    joint->last_move_distance = move_distance;
-    *joint->velocity_fb = vactual_mm;
-    *joint->tmc.velocity_fb = vactual;
-    joint->tmc.velocity_cmd = vmax;
-    *joint->tmc.position_fb = xactual;
+    //
+    // Update feedback pins and vars for next iteration
+    //
 
-    // HACK getting joint following errors on soft deceleration at table soft margins
-    joint->last_position_fb = xactual_mm;
-    // *joint->position_fb = xactual_mm;
-    *joint->position_fb = *joint->position_cmd;
+    // Refresh xactual
+    xactual = tmc5041_get_register_XACTUAL(&joint->tmc);
+    xactual_mm = microsteps_to_mm(joint->microstep_per_mm, xactual);
+    // Refresh vactual
+    vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
+    vactual_mm = microsteps_to_mm(joint->microstep_per_mm, vactual);
+
+    *joint->tmc.velocity_fb     = vactual;
+    *joint->tmc.position_fb     = xactual;
+    *joint->velocity_fb         = vactual_mm;
+    *joint->position_fb         = xactual_mm;
+    joint->last_position_fb     = xactual_mm;
+    joint->last_xtarget         = xtarget;
+    joint->last_move_distance   = next_move_distance;
 }
 
 float thc_voltage(uint8_t chip, float V_ref)

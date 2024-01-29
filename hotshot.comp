@@ -22,29 +22,39 @@ pin in bit axis_yr_enable;
 pin in bit axis_z_enable;
 
 pin in u32 axis_x_chip;
-pin in u32 axis_x_motor;
-pin in u32 axis_x_pitch;
-pin in u32 axis_x_teeth;
-
 pin in u32 axis_yl_chip;
-pin in u32 axis_yl_motor;
-pin in u32 axis_yl_pitch;
-pin in u32 axis_yl_teeth;
-
 pin in u32 axis_yr_chip;
-pin in u32 axis_yr_motor;
-pin in u32 axis_yr_pitch;
-pin in u32 axis_yr_teeth;
-
 pin in u32 axis_z_chip;
+
+pin in u32 axis_x_motor;
+pin in u32 axis_yl_motor;
+pin in u32 axis_yr_motor;
 pin in u32 axis_z_motor;
+
+pin in u32 axis_x_pitch;
+pin in u32 axis_yl_pitch;
+pin in u32 axis_yr_pitch;
 pin in u32 axis_z_pitch;
+
+pin in u32 axis_x_teeth;
+pin in u32 axis_yl_teeth;
+pin in u32 axis_yr_teeth;
 pin in u32 axis_z_teeth;
 
 pin in u32 axis_x_motor_fullsteps_per_rev_cmd;
 pin in u32 axis_yl_motor_fullsteps_per_rev_cmd;
 pin in u32 axis_yr_motor_fullsteps_per_rev_cmd;
 pin in u32 axis_z_motor_fullsteps_per_rev_cmd;
+
+pin in float axis_x_max_velocity_cmd;
+pin in float axis_yl_max_velocity_cmd;
+pin in float axis_yr_max_velocity_cmd;
+pin in float axis_z_max_velocity_cmd;
+
+pin in float axis_x_max_acceleration_cmd;
+pin in float axis_yl_max_acceleration_cmd;
+pin in float axis_yr_max_acceleration_cmd;
+pin in float axis_z_max_acceleration_cmd;
 
 pin in float axis_x_position_cmd; 
 pin in float axis_yl_position_cmd;
@@ -66,10 +76,15 @@ pin out float axis_yl_velocity_fb;
 pin out float axis_yr_velocity_fb;
 pin out float axis_z_velocity_fb;
 
-pin in float axis_x_max_velocity_cmd;
-pin in float axis_yl_max_velocity_cmd;
-pin in float axis_yr_max_velocity_cmd;
-pin in float axis_z_max_velocity_cmd;
+pin in float axis_x_acceleration_cmd;
+pin in float axis_yl_acceleration_cmd;
+pin in float axis_yr_acceleration_cmd;
+pin in float axis_z_acceleration_cmd;
+
+pin out float axis_x_acceleration_fb;
+pin out float axis_yl_acceleration_fb;
+pin out float axis_yr_acceleration_fb;
+pin out float axis_z_acceleration_fb;
 
 pin out s32 axis_x_tmc_velocity_fb;
 pin out s32 axis_yl_tmc_velocity_fb;
@@ -80,11 +95,6 @@ pin out s32 axis_x_tmc_position_fb;
 pin out s32 axis_yl_tmc_position_fb;
 pin out s32 axis_yr_tmc_position_fb;
 pin out s32 axis_z_tmc_position_fb;
-
-pin in float axis_x_max_acceleration_cmd;
-pin in float axis_yl_max_acceleration_cmd;
-pin in float axis_yr_max_acceleration_cmd;
-pin in float axis_z_max_acceleration_cmd;
 
 pin out u32 axis_x_tmc_max_acceleration_fb;
 pin out u32 axis_yl_tmc_max_acceleration_fb;
@@ -347,6 +357,7 @@ pin in bit machine_estop_cmd;
 #undef axis_x_motor_fullsteps_per_rev_cmd
 #undef axis_x_position_cmd
 #undef axis_x_velocity_cmd
+#undef axis_x_acceleration_cmd
 #undef axis_x_microsteps_cmd
 #undef axis_x_max_acceleration_cmd
 #undef axis_x_max_velocity_cmd
@@ -388,6 +399,7 @@ pin in bit machine_estop_cmd;
 #undef axis_yl_motor_fullsteps_per_rev_cmd
 #undef axis_yl_position_cmd
 #undef axis_yl_velocity_cmd
+#undef axis_yl_acceleration_cmd
 #undef axis_yl_microsteps_cmd
 #undef axis_yl_max_acceleration_cmd
 #undef axis_yl_max_velocity_cmd
@@ -429,6 +441,7 @@ pin in bit machine_estop_cmd;
 #undef axis_yr_motor_fullsteps_per_rev_cmd
 #undef axis_yr_position_cmd
 #undef axis_yr_velocity_cmd
+#undef axis_yr_acceleration_cmd
 #undef axis_yr_microsteps_cmd
 #undef axis_yr_max_acceleration_cmd
 #undef axis_yr_max_velocity_cmd
@@ -471,6 +484,7 @@ pin in bit machine_estop_cmd;
 #undef axis_z_motor_fullsteps_per_rev_cmd
 #undef axis_z_position_cmd
 #undef axis_z_velocity_cmd
+#undef axis_z_acceleration_cmd
 #undef axis_z_microsteps_cmd
 #undef axis_z_max_acceleration_cmd
 #undef axis_z_max_velocity_cmd
@@ -512,17 +526,8 @@ joint_t motors[MOTOR_COUNT];
 // main function
 FUNCTION(_)
 {
-
-    // #ifdef DEBUG
-    // printf("_: Entering needs_setup=%d\n", needs_setup);
-    // #endif
-
     // Set up motors exactly once.
     if (needs_setup) {
-
-        // #ifdef DEBUG
-        // printf("Wiring motor configuration to pins\n");
-        // #endif
 
         motors[0] = (joint_t) {
             .max_velocity_cmd               = __comp_inst->axis_x_max_velocity_cmd,
@@ -535,8 +540,10 @@ FUNCTION(_)
             .is_homing_cmd                  = __comp_inst->axis_x_is_homing,
             .position_cmd                   = __comp_inst->axis_x_position_cmd,
             .velocity_cmd                   = __comp_inst->axis_x_velocity_cmd,
+            .acceleration_cmd               = __comp_inst->axis_x_acceleration_cmd,
             .position_fb                    = &axis_x_position_fb,
             .velocity_fb                    = &axis_x_velocity_fb,
+            .acceleration_fb                = &axis_x_acceleration_fb,
             .sg_stop_fb                     = &axis_x_sg_stop_fb,
             .home_sw_fb                     = &axis_x_home_sw,
             .estop_fb                       = &machine_estop_fb,
@@ -600,8 +607,10 @@ FUNCTION(_)
             .is_homing_cmd                  = __comp_inst->axis_yl_is_homing,
             .position_cmd                   = __comp_inst->axis_yl_position_cmd,
             .velocity_cmd                   = __comp_inst->axis_yl_velocity_cmd,
+            .acceleration_cmd               = __comp_inst->axis_yl_acceleration_cmd,
             .position_fb                    = &axis_yl_position_fb,
             .velocity_fb                    = &axis_yl_velocity_fb,
+            .acceleration_fb                = &axis_yl_acceleration_fb,
             .sg_stop_fb                     = &axis_yl_sg_stop_fb,
             .home_sw_fb                     = &axis_yl_home_sw,
             .estop_fb                       = &machine_estop_fb,
@@ -665,8 +674,10 @@ FUNCTION(_)
             .is_homing_cmd                  = __comp_inst->axis_yr_is_homing,
             .position_cmd                   = __comp_inst->axis_yr_position_cmd,
             .velocity_cmd                   = __comp_inst->axis_yr_velocity_cmd,
+            .acceleration_cmd               = __comp_inst->axis_yr_acceleration_cmd,
             .position_fb                    = &axis_yr_position_fb,
             .velocity_fb                    = &axis_yr_velocity_fb,
+            .acceleration_fb                = &axis_yr_acceleration_fb,
             .sg_stop_fb                     = &axis_yr_sg_stop_fb,
             .home_sw_fb                     = &axis_yr_home_sw,
             .estop_fb                       = &machine_estop_fb,
@@ -730,8 +741,10 @@ FUNCTION(_)
             .is_homing_cmd                  = __comp_inst->axis_z_is_homing,
             .position_cmd                   = __comp_inst->axis_z_position_cmd,
             .velocity_cmd                   = __comp_inst->axis_z_velocity_cmd,
+            .acceleration_cmd               = __comp_inst->axis_z_acceleration_cmd,
             .position_fb                    = &axis_z_position_fb,
             .velocity_fb                    = &axis_z_velocity_fb,
+            .acceleration_fb                = &axis_z_acceleration_fb,
             .sg_stop_fb                     = &axis_z_sg_stop_fb,
             .home_sw_fb                     = &axis_z_home_sw,
             .estop_fb                       = &machine_estop_fb,
