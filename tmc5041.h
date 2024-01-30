@@ -76,9 +76,12 @@ typedef struct {
 	tmc5041_chip_t					    chip;
 	uint8_t							    motor;
     uint8_t     					    mres;
+    tmc_position_t     	                position_cmd;
+    tmc_position_t     	                last_position_cmd;
     uint32_t                            velocity_cmd;
     uint32_t                            acceleration_cmd;
     uint32_t                            max_acceleration_cmd;
+    bool                                is_power_on;
     volatile uint32_t               *   cs_thresh_cmd;      // coolStep threshold in ppt for TMC register
     volatile bool                   *   sg_stop_cmd;
     volatile uint32_t               *   run_current_cmd;

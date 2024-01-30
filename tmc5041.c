@@ -538,7 +538,7 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 
     // AMAX
     //
-    tmc5041_set_register_AMAX(motor, motor->acceleration_cmd);
+    tmc5041_set_register_AMAX(motor, motor->max_acceleration_cmd);
 
     // DMAX
     //
@@ -570,9 +570,9 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 
 void tmc5041_motor_init(tmc5041_motor_t * motor)
 {
-        printf("Configuring motor: chip=%d, motor=%d\n", motor->chip.chip, motor->motor);
-        
+       
         #ifdef DEBUG
+        printf("Configuring motor: chip=%d, motor=%d\n", motor->chip.chip, motor->motor);
         printf("start spi convo\n");
         printf("Motor is %d %d\n", 
             motor->chip, motor->motor);
@@ -582,28 +582,24 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
         printf("start spi convo with chip %d\n", motor->chip);
         #endif
 
-        printf("Start spi conversation\n");
         rpi_spi_select(motor->chip.chip);
 
         #ifdef DEBUG
         printf("Reset motor\n");
         #endif
 
-        printf("Reset motor conversation\n");
         tmc5041_motor_reset(motor);
 
         #ifdef DEBUG
         printf("Config motor\n");
         #endif
 
-        printf("Config motor registers\n");
         tmc5041_motor_set_config_registers(motor);
 
         #ifdef DEBUG
         printf("end spi convo\n");
         #endif
 
-        printf("End spi conversation\n");
         rpi_spi_unselect();
 }
 
@@ -612,6 +608,8 @@ void tmc5041_motor_power_off(tmc5041_motor_t * motor)
     int32_t chopconf = tmc5041_readInt(motor, TMC5041_CHOPCONF(motor->motor));
     chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0);
     tmc5041_writeInt(motor, TMC5041_CHOPCONF(motor->motor), chopconf);
+
+    motor->is_power_on = FALSE;
 }
 
 void tmc5041_motor_power_on(tmc5041_motor_t * motor)
@@ -619,9 +617,16 @@ void tmc5041_motor_power_on(tmc5041_motor_t * motor)
     // Power motor up after tmc5041_motor_off()
     // tmc5041_set_register_IHOLD_IRUN(motor, *motor->hold_current_cmd, *motor->run_current_cmd);
 
+    // If we power a motor off, then back on, the XACTUAL is some random number.
+    // This sort of makes sense because once a motor has been powered off we can no
+    // longer guarantee it's position. So sync XACTUAL with what EMC has commanded.
+    tmc5041_set_register_XACTUAL(motor, motor->position_cmd);
+
     int32_t chopconf = tmc5041_readInt(motor, TMC5041_CHOPCONF(motor->motor));
     chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0b0100);
     tmc5041_writeInt(motor, TMC5041_CHOPCONF(motor->motor), chopconf);
+
+    motor->is_power_on = TRUE;
 }
 
 

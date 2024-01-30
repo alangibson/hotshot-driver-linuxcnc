@@ -43,18 +43,25 @@ void move(joint_t * joint)
         tmc5041_set_register_RAMPMODE(&joint->tmc, 2);
     // TODO else ???
     
-    tmc5041_set_register_VMAX(&joint->tmc, vmax);
+    // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
+    tmc5041_set_register_VMAX(&joint->tmc, abs(vmax));
+
+    uint32_t microstep_per_mm = joint->microstep_per_mm;
+
+    // drv_status_register_t drvstatus = tmc5041_get_register_DRV_STATUS(&joint->tmc);
+    // if (drvstatus.full_stepping)
+    //     microstep_per_mm = 1;
 
     // Update pins
     int32_t xactual             = tmc5041_get_register_XACTUAL(&joint->tmc);
-    float64_t xactual_mm        = microsteps_to_mm(joint->microstep_per_mm, xactual);
+    float64_t xactual_mm        = microsteps_to_mm(microstep_per_mm, xactual);
     int32_t vactual             = tmc5041_get_register_VACTUAL(&joint->tmc);
-    float64_t vactual_mm        = microsteps_to_mm(joint->microstep_per_mm, vactual);
+    float64_t vactual_mm        = microsteps_to_mm(microstep_per_mm, vactual);
     *joint->tmc.velocity_fb     = vactual;
     *joint->tmc.position_fb     = xactual;
     *joint->velocity_fb         = vactual_mm;
     *joint->position_fb         = xactual_mm;
-
+    
     #ifdef DEBUG
     int32_t xtarget = mm_to_microsteps(joint->microstep_per_mm, *joint->position_cmd);
     printf("move(%d, %d): xtarget=%d us,%f mm\n", 
@@ -68,6 +75,8 @@ void move(joint_t * joint)
         joint->tmc.chip, joint->tmc.motor, vmax, *joint->velocity_cmd);
     printf("move(%d, %d): vactual=%d us/sec,%f mm/sec\n", 
         joint->tmc.chip, joint->tmc.motor, vactual, vactual_mm);
+    printf("move(%d, %d): amax=%d us/sec^2,%f mm/sec^2\n", 
+        joint->tmc.chip, joint->tmc.motor, *joint->max_acceleration_cmd, mm_to_microsteps(joint->microstep_per_mm, *joint->max_acceleration_cmd));   
     #endif
 }
 
