@@ -129,7 +129,6 @@ void tmc5041_set_register_IHOLD_IRUN(tmc5041_motor_t * motor, uint32_t ihold, ui
 int32_t tmc5041_get_register_XACTUAL(tmc5041_motor_t * motor)
 {
     // XACTUAL: Actual motor position (signed)
-    // return tmc5041_read_register(TMC5041_XACTUAL(motor->motor));
     return tmc5041_readInt(motor, TMC5041_XACTUAL(motor->motor));
 }
 
@@ -342,9 +341,10 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 
     #ifdef DEBUG
     printf("tmc5041_motor_set_config_registers:\n");
-    printf("    IHOLD_IRUN irun=%d ihold=%d\n",
+    printf("    IHOLD_IRUN irun=%d ihold=%d, current_hold_delay_cmd=%d\n",
         *motor->run_current_cmd,
-        *motor->hold_current_cmd);
+        *motor->hold_current_cmd,
+        *motor->current_hold_delay_cmd);
     printf("    RAMP amax=%d\n",
         motor->max_acceleration_cmd);
     printf("    CHOPCONF vmax=%d, mres=%d\n", 

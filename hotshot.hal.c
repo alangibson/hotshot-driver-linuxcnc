@@ -2,7 +2,6 @@
 
 #include "stdio.h"
 #include "stdbool.h"
-#include <sys/time.h>
 #include "math.h"
 #include "global.h"
 #include "bcm2835.h"
@@ -21,11 +20,10 @@ bool hotshot_joint_init(joint_t * joint)
         (*joint->pitch_cmd) * (*joint->teeth_cmd), 
         *joint->microsteps_cmd);
 
-    printf("hotshot_joint_init: microstep_per_mm=%d\n", microstep_per_mm);
-
     joint->microstep_per_mm = microstep_per_mm;
 
     #ifdef DEBUG
+    printf("hotshot_joint_init: microstep_per_mm=%d\n", microstep_per_mm);
     printf("hotshot_joint_init: joint->microstep_per_mm=%d\n", joint->microstep_per_mm );
     #endif
 
@@ -41,42 +39,42 @@ bool hotshot_joint_init(joint_t * joint)
     printf("hotshot_joint_init: joint->tmc.max_acceleration_cmd=%d\n", joint->tmc.max_acceleration_cmd);
     #endif
 
-    *joint->tmc.ramp_a1_cmd = tmc_max_acceleration_cmd * 2;
-    *joint->tmc.ramp_dmax_cmd = tmc_max_acceleration_cmd;
-    joint->tmc.ramp_d1_cmd = joint->tmc.ramp_a1_cmd;
+    // uint32_t a1 = tmc_max_acceleration_cmd * 2;
+    // *joint->tmc.ramp_a1_cmd = a1;
+    // printf("calling motor init 1\n");
+    // *joint->tmc.ramp_dmax_cmd = tmc_max_acceleration_cmd;
+    // printf("calling motor init 2\n");
+    // joint->tmc.ramp_d1_cmd = joint->tmc.ramp_a1_cmd;
+
+    #ifdef DEBUG
+    printf("calling motor init\n");
+    #endif
 
     tmc5041_motor_init(&joint->tmc);
 }
 
-bool hotshot_init(joint_t * joints, uint8_t motor_count)
+void hotshot_init(joint_t * joints, uint8_t motor_count)
 {
-    for (uint8_t i = 0; i < motor_count; i++) {
-        hotshot_joint_init(&joints[i]);
-    }
-    return FALSE;
+    rpi_init();
+    // for (uint8_t i = 0; i < motor_count; i++) {
+    //     hotshot_joint_init(&joints[i]);
+    // }
 }
 
-double D_SEC;
-long long TICK;
-long long LAST_TICK = 0;
-
-void handle_joint(joint_t * joint, long period_ns)
+void handle_joint(joint_t * joint)
 {
     rpi_spi_select(joint->tmc.chip.chip);
 
-    if (*joint->is_enabled_cmd) {
-
-        #ifdef DEBUG
-        printf("handle_joint(%d, %d): Start handling enabled joint --------------------\n", 
-            joint->tmc.chip, joint->tmc.motor);
-        #endif
-
-        if (! joint->is_setup) {
+    if (*joint->is_enabled_cmd)
+    {
+        if (! joint->is_setup)
+        {
             hotshot_joint_init(joint);
             joint->is_setup = TRUE;
         }
 
-        if (! joint->tmc.is_power_on) {
+        if (! joint->tmc.is_power_on)
+        {
             joint->tmc.position_cmd = mm_to_microsteps(joint->microstep_per_mm, *joint->position_cmd);
             tmc5041_motor_power_on(&joint->tmc);
         }
@@ -84,8 +82,8 @@ void handle_joint(joint_t * joint, long period_ns)
         // Check switches
         //
         // Note: Reading RAMP_STAT clears sg_stop
-        ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(&joint->tmc);
-        *joint->sg_stop_fb = ramp_stat.event_stop_sg;
+        // ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(&joint->tmc);
+        // *joint->sg_stop_fb = ramp_stat.event_stop_sg;
         // TODO
         // axis_x_tmc_position_reached_fb = ramp_stat.position_reached;
         // axis_x_tmc_t_zerowait_active_fb = ramp_stat.t_zerowait_active;
@@ -94,8 +92,11 @@ void handle_joint(joint_t * joint, long period_ns)
 
         // Handle StallGuard state
         //
-        if (*joint->sg_stop_fb) {
+        if (*joint->sg_stop_fb)
+        {
             // StallGuard has been triggered
+
+            printf("stallguard triggered\n");
 
             #ifdef DEBUG
             printf("handle_joint(%d, %d): StallGuard triggered sg_stop_cmd=%d sg_thresh_cmd=%d\n", 
@@ -135,75 +136,35 @@ void handle_joint(joint_t * joint, long period_ns)
                 // TODO "breakaway" for the x axis should indicate negative limit switch is triggered
                 // There is currently no negative limit switch for X and YL/YR
             }             
-        } else {
+        } else
+        {
             // No active StallGuard switches, so move joint and reset all switches
-
-            // Support clock scaling
-            // int32_t xactual = tmc5041_get_register_XACTUAL(&joint->tmc);
-            // float64_t xactual_mm = microsteps_to_mm(joint->microstep_per_mm, xactual);
-            // int32_t vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
-            // float64_t vactual_mm = microsteps_to_mm(joint->microstep_per_mm, vactual);
-            // float64_t expected_traveled_mm = *joint->velocity_cmd * D_SEC;
-            // float64_t actual_traveled_mm = xactual_mm - *joint->position_fb;
-            // float64_t velocity_factor = expected_traveled_mm / actual_traveled_mm;
-            // // TODO is this conversion direction correct?
-            // float64_t velocity_cmd = *joint->velocity_cmd / velocity_factor;
-            // #ifdef DEBUG
-            // printf("handle_joints(%d, %d): period_ns=%d, LAST_TICK=%d, TICK=%d\n", 
-            //     joint->tmc.chip, joint->tmc.motor, period_ns, LAST_TICK, TICK);
-            // printf("handle_joints(%d, %d): D_SEC=%f\n", 
-            //     joint->tmc.chip, joint->tmc.motor, D_SEC);
-            // printf("handle_joint(%d, %d): xactual_mm=%f, last position_fb=%f\n", 
-            //     joint->tmc.chip, joint->tmc.motor, xactual_mm, *joint->position_fb);
-            // printf("handle_joint(%d, %d): vactual_mm=%f, velocity_cmd=%f, velocity_factor=%f, adjusted velocity_cmd=%f\n", 
-            //     joint->tmc.chip, joint->tmc.motor, vactual_mm, *joint->velocity_cmd, velocity_factor, velocity_cmd);
-            // printf("handle_joint(%d, %d): expected_traveled_mm=%f, actual_traveled_mm=%f\n", 
-            //     joint->tmc.chip, joint->tmc.motor, expected_traveled_mm, actual_traveled_mm);
-            // #endif
-
-            // HACK same as PID FF1 that tracks well with EMC
-            // *joint->velocity_cmd = *joint->velocity_cmd * 0.29;
 
             // Move joint
             move(joint);
-
-            // *joint->velocity_fb = *joint->velocity_fb / 0.29;
+            // Update pins
+            update(joint);
 
             // Ensure switches aren't triggered
             joint->home_sw = FALSE;
             *joint->torch_breakaway_fb = FALSE;
         }
 
-        // #ifdef DEBUG
-        // printf("handle_joint(%d, %d): Get velocity\n",
-        //     joint->tmc.chip, joint->tmc.motor);
-        // #endif
-
         // Get driver state
         // 
-        drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&joint->tmc);
-        *joint->tmc.motor_standstill_fb = drv_status.standstill;
-        *joint->tmc.motor_full_stepping_fb = drv_status.full_stepping;
-        *joint->tmc.motor_overtemp_warning_fb = drv_status.overtemp_warning;
-        *joint->tmc.motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
-        *joint->tmc.motor_load_fb = drv_status.sg_result;
-        *joint->tmc.motor_current_fb = drv_status.cs_actual;
-        *joint->tmc.motor_stall_fb = drv_status.sg_status;
-
-        // #ifdef DEBUG
-        // printf("handle_joint(%d, %d): Get chopper state\n",
-        //     joint->tmc.chip, joint->tmc.motor);
-        // #endif
+        // drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&joint->tmc);
+        // *joint->tmc.motor_standstill_fb = drv_status.standstill;
+        // *joint->tmc.motor_full_stepping_fb = drv_status.full_stepping;
+        // *joint->tmc.motor_overtemp_warning_fb = drv_status.overtemp_warning;
+        // *joint->tmc.motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
+        // *joint->tmc.motor_load_fb = drv_status.sg_result;
+        // *joint->tmc.motor_current_fb = drv_status.cs_actual;
+        // *joint->tmc.motor_stall_fb = drv_status.sg_status;
 
         // Get chopper state
         //
-        chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(&joint->tmc);
-        *joint->tmc.microstep_resolution_fb = chopconf.mres;
-
-        // #ifdef DEBUG
-        // printf("handle_joint(%d, %d): Done handling enabled joint\n", 
-        //     joint->tmc.chip, joint->tmc.motor);
-        // #endif
+        // chopconf_register_t chopconf = tmc5041_get_register_CHOPCONF(&joint->tmc);
+        // *joint->tmc.microstep_resolution_fb = chopconf.mres;
 
     } else {
         // Joint is not enabled in LinuxCNC
@@ -217,19 +178,11 @@ void handle_joint(joint_t * joint, long period_ns)
     rpi_spi_unselect();
 }
 
-void handle_joints(joint_t * joint, uint8_t motor_count, long period_ns) {
+void handle_joints(joint_t * joint, uint8_t motor_count) {
     // Do something with each joint
-
-    // struct timeval te; 
-    // gettimeofday(&te, NULL);
-    // TICK = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
-    // D_SEC = (TICK - LAST_TICK) / 1000.0; 
-
     for (uint8_t i = 0; i < motor_count; i++) {
-        handle_joint(&joint[i], period_ns);
+        handle_joint(&joint[i]);
     }
-
-    // LAST_TICK = TICK;
 }
 
 void hotshot_end(joint_t * joint, uint8_t motor_count)

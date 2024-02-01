@@ -1,7 +1,8 @@
-// Requires
-//  #include "bcm2835.c"
-
 #include "bcm2835.h"
+
+#include <sched.h>
+#include <sys/mman.h>
+#include "string.h"
 
 #ifndef GLOBAL_OK
 #include "global.h"
@@ -23,7 +24,7 @@ void rpi_spi0_init()
     // Set SPI parameters
     bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);    // The default
     bcm2835_spi_setDataMode(BCM2835_SPI_MODE3);                 // The default
-    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_1024); // <= 4 MHz for internal clock
+    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_256); // <= 4 MHz for internal clock
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);    // the default
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
@@ -38,7 +39,7 @@ void rpi_spi1_init()
     // Set SPI parameters
     bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);        // The default
     bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                     // Data comes in on falling edge
-    bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_1024); // <= 4 MHz for internal clock
+    bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_256); // <= 4 MHz for internal clock
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);        // the default
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
@@ -102,11 +103,21 @@ void rpi_gpio_init()
 // Raspberry Pi 4 GPIO support
 // ============================================================================
 
+void rpi_clock_init()
+{
+    bcm2835_pwm_set_clock(BCM2835_PWM_CLOCK_DIVIDER_2);
+    // Set the GPIO pin to alternate function 5 (PWM0 output)
+    bcm2835_gpio_fsel(PIN_CLOCK, BCM2835_GPIO_FSEL_ALT5);
+    // PWM channel 0, markspace mode, enabled
+    bcm2835_pwm_set_mode(0, 1, 1);
+    // Range is 2 to achieve a 50% duty cycle
+    bcm2835_pwm_set_range(0, 2);
+}
+
 void rpi_init() {
     bcm2835_init();
-
     rpi_gpio_init();
-
+    rpi_clock_init();
     rpi_spi0_init();
     rpi_spi1_init();  
 }
@@ -114,7 +125,6 @@ void rpi_init() {
 void rpi_end() {
     rpi_spi0_end();
     rpi_spi1_end();
-
     // Close the library, deallocating any allocated memory and closing /dev/mem
     bcm2835_close();
 }

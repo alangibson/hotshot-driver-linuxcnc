@@ -3,8 +3,9 @@ license "GPL";
 
 // plasmac requires floating-point
 function _ fp;
-// function calibrate fp;
 function sensors fp;
+// function axis_0 fp;
+// function axis_1 fp;
 
 // option extra_setup;
 option extra_cleanup;
@@ -45,6 +46,8 @@ pin in u32 axis_x_motor_fullsteps_per_rev_cmd;
 pin in u32 axis_yl_motor_fullsteps_per_rev_cmd;
 pin in u32 axis_yr_motor_fullsteps_per_rev_cmd;
 pin in u32 axis_z_motor_fullsteps_per_rev_cmd;
+
+pin out float axis_x_velocity_factor_fb;
 
 pin in float axis_x_max_velocity_cmd;
 pin in float axis_yl_max_velocity_cmd;
@@ -543,6 +546,7 @@ FUNCTION(_)
             .acceleration_cmd               = __comp_inst->axis_x_acceleration_cmd,
             .position_fb                    = &axis_x_position_fb,
             .velocity_fb                    = &axis_x_velocity_fb,
+            .velocity_factor                = &axis_x_velocity_factor_fb,
             .acceleration_fb                = &axis_x_acceleration_fb,
             .sg_stop_fb                     = &axis_x_sg_stop_fb,
             .home_sw_fb                     = &axis_x_home_sw,
@@ -797,13 +801,23 @@ FUNCTION(_)
             }
         };
 
-        rpi_init();
+        hotshot_init(motors, MOTOR_COUNT);
 
         needs_setup = FALSE;
     }
 
-    handle_joints(motors, MOTOR_COUNT, period);
+    handle_joints(motors, MOTOR_COUNT);
 }
+
+// FUNCTION(axis_0)
+// {
+//     handle_joint(&motors[0]);
+// }
+
+// FUNCTION(axis_1)
+// {
+//     handle_joint(&motors[1]);
+// }
 
 FUNCTION(sensors) {
 
@@ -908,6 +922,307 @@ FUNCTION(sensors) {
     // printf("sensors: Exiting\n");
     // #endif
 }
+
+/*
+#undef axis_x_position_fb
+#undef axis_x_velocity_fb
+#undef axis_x_velocity_factor_fb
+#undef axis_x_acceleration_fb
+#undef axis_x_sg_stop_fb
+#undef axis_x_home_sw
+#undef machine_estop_fb
+#undef torch_breakaway
+#undef axis_x_tmc_position_fb
+#undef axis_x_tmc_velocity_fb
+#undef axis_x_tmc_motor_standstill_fb
+#undef axis_x_tmc_motor_full_stepping_fb
+#undef axis_x_tmc_motor_overtemp_warning_fb
+#undef axis_x_tmc_motor_overtemp_alarm_fb
+#undef axis_x_tmc_motor_load_fb
+#undef axis_x_tmc_motor_current_fb
+#undef axis_x_tmc_motor_stall_fb
+#undef axis_x_tmc_microstep_resolution_fb
+EXTRA_SETUP() // static int extra_setup(struct __comp_state *__comp_inst, char *prefix, long extra_arg);
+{
+    // Set up motors exactly once.
+    if (needs_setup) {
+
+        motors[0] = (joint_t) {
+            .max_velocity_cmd               = __comp_inst->axis_x_max_velocity_cmd,
+            .max_acceleration_cmd           = __comp_inst->axis_x_max_acceleration_cmd,
+            .pitch_cmd                      = __comp_inst->axis_x_pitch,
+            .teeth_cmd                      = __comp_inst->axis_x_teeth,
+            .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_x_motor_fullsteps_per_rev_cmd,
+            .microsteps_cmd                 = __comp_inst->axis_x_microsteps_cmd,
+            .is_enabled_cmd                 = __comp_inst->axis_x_enable,
+            .is_homing_cmd                  = __comp_inst->axis_x_is_homing,
+            .position_cmd                   = __comp_inst->axis_x_position_cmd,
+            .velocity_cmd                   = __comp_inst->axis_x_velocity_cmd,
+            .acceleration_cmd               = __comp_inst->axis_x_acceleration_cmd,
+            .position_fb                    = __comp_inst->axis_x_position_fb,
+            .velocity_fb                    = __comp_inst->axis_x_velocity_fb,
+            .velocity_factor                = __comp_inst->axis_x_velocity_factor_fb,
+            .acceleration_fb                = __comp_inst->axis_x_acceleration_fb,
+            .sg_stop_fb                     = __comp_inst->axis_x_sg_stop_fb,
+            .home_sw_fb                     = __comp_inst->axis_x_home_sw,
+            .estop_fb                       = __comp_inst->machine_estop_fb,
+            .torch_breakaway_fb             = __comp_inst->torch_breakaway,
+            .tmc = (tmc5041_motor_t) {
+                .chip = (tmc5041_chip_t) {
+                    .chip = axis_x_chip
+                },
+                .motor = axis_x_motor,
+                .run_current_cmd            = __comp_inst->axis_x_tmc_run_current_cmd,
+                .hold_current_cmd           = __comp_inst->axis_x_tmc_hold_current_cmd,
+                .cs_thresh_cmd              = __comp_inst->axis_x_tmc_cs_thresh_cmd,
+                .sg_stop_cmd                = __comp_inst->axis_x_tmc_sg_stop_cmd,
+                .sg_thresh_cmd              = __comp_inst->axis_x_tmc_sg_thresh_cmd,
+                .current_hold_delay_cmd     = __comp_inst->axis_x_tmc_current_hold_delay_cmd,
+                .ramp_mode_cmd              = __comp_inst->axis_x_tmc_ramp_mode_cmd,
+                .ramp_vstart_cmd            = __comp_inst->axis_x_tmc_ramp_vstart_cmd,
+                .ramp_vstop_cmd             = __comp_inst->axis_x_tmc_ramp_vstop_cmd,
+                .ramp_v1_cmd                = __comp_inst->axis_x_tmc_ramp_v1_cmd,
+                .ramp_a1_cmd                = __comp_inst->axis_x_tmc_ramp_a1_cmd,
+                .ramp_dmax_cmd              = __comp_inst->axis_x_tmc_ramp_dmax_cmd,
+                .ramp_d1_cmd                = __comp_inst->axis_x_tmc_ramp_d1_cmd,
+                .ramp_tzerowait_cmd         = __comp_inst->axis_x_tmc_ramp_tzerowait_cmd,
+                .coolstep_sfilt_cmd         = __comp_inst->axis_x_tmc_coolstep_sfilt_cmd,
+                .coolstep_seimin_cmd        = __comp_inst->axis_x_tmc_coolstep_seimin_cmd,
+                .coolstep_sedn_cmd          = __comp_inst->axis_x_tmc_coolstep_sedn_cmd,
+                .coolstep_seup_cmd          = __comp_inst->axis_x_tmc_coolstep_seup_cmd,
+                .coolstep_semin_cmd         = __comp_inst->axis_x_tmc_coolstep_semin_cmd,
+                .coolstep_semax_cmd         = __comp_inst->axis_x_tmc_coolstep_semax_cmd,
+                .chop_mode_cmd              = __comp_inst->axis_x_tmc_chop_mode_cmd,
+                .chop_vhigh_cmd             = __comp_inst->axis_x_tmc_chop_vhigh_cmd,
+                .chop_vhighchm_cmd          = __comp_inst->axis_x_tmc_chop_vhighchm_cmd,
+                .chop_vhighfs_cmd           = __comp_inst->axis_x_tmc_chop_vhighfs_cmd,
+                .chop_tbl_cmd               = __comp_inst->axis_x_tmc_chop_tbl_cmd,
+                .chop_hend_cmd              = __comp_inst->axis_x_tmc_chop_hend_cmd,
+                .chop_hstrt_cmd             = __comp_inst->axis_x_tmc_chop_hstrt_cmd,
+                .chop_toff_cmd              = __comp_inst->axis_x_tmc_chop_toff_cmd,
+                .chop_vsense_cmd            = __comp_inst->axis_x_tmc_chop_vsense_cmd,
+                .sw_en_softstop             = __comp_inst->axis_x_tmc_sw_en_softstop,
+                .position_fb                = __comp_inst->axis_x_tmc_position_fb,
+                .velocity_fb                = __comp_inst->axis_x_tmc_velocity_fb,
+                .motor_standstill_fb        = __comp_inst->axis_x_tmc_motor_standstill_fb,
+                .motor_full_stepping_fb     = __comp_inst->axis_x_tmc_motor_full_stepping_fb,
+                .motor_overtemp_warning_fb  = __comp_inst->axis_x_tmc_motor_overtemp_warning_fb,
+                .motor_overtemp_alarm_fb    = __comp_inst->axis_x_tmc_motor_overtemp_alarm_fb,
+                .motor_load_fb              = __comp_inst->axis_x_tmc_motor_load_fb,
+                .motor_current_fb           = __comp_inst->axis_x_tmc_motor_current_fb,
+                .motor_stall_fb             = __comp_inst->axis_x_tmc_motor_stall_fb,
+                .microstep_resolution_fb    = __comp_inst->axis_x_tmc_microstep_resolution_fb,
+            }
+        };
+
+        // motors[1] = (joint_t) {
+        //     .max_velocity_cmd               = __comp_inst->axis_yl_max_velocity_cmd,
+        //     .max_acceleration_cmd           = __comp_inst->axis_yl_max_acceleration_cmd,
+        //     .pitch_cmd                      = __comp_inst->axis_yl_pitch,
+        //     .teeth_cmd                      = __comp_inst->axis_yl_teeth,
+        //     .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_yl_motor_fullsteps_per_rev_cmd,
+        //     .microsteps_cmd                 = __comp_inst->axis_yl_microsteps_cmd,
+        //     .is_enabled_cmd                 = __comp_inst->axis_yl_enable,
+        //     .is_homing_cmd                  = __comp_inst->axis_yl_is_homing,
+        //     .position_cmd                   = __comp_inst->axis_yl_position_cmd,
+        //     .velocity_cmd                   = __comp_inst->axis_yl_velocity_cmd,
+        //     .acceleration_cmd               = __comp_inst->axis_yl_acceleration_cmd,
+        //     .position_fb                    = &axis_yl_position_fb,
+        //     .velocity_fb                    = &axis_yl_velocity_fb,
+        //     .acceleration_fb                = &axis_yl_acceleration_fb,
+        //     .sg_stop_fb                     = &axis_yl_sg_stop_fb,
+        //     .home_sw_fb                     = &axis_yl_home_sw,
+        //     .estop_fb                       = &machine_estop_fb,
+        //     .torch_breakaway_fb             = &torch_breakaway,
+        //     .tmc = (tmc5041_motor_t) {
+        //         .chip = (tmc5041_chip_t) {
+        //             .chip = axis_yl_chip
+        //         },
+        //         .motor = axis_yl_motor,
+        //         .run_current_cmd            = __comp_inst->axis_yl_tmc_run_current_cmd,
+        //         .hold_current_cmd           = __comp_inst->axis_yl_tmc_hold_current_cmd,
+        //         .cs_thresh_cmd              = __comp_inst->axis_yl_tmc_cs_thresh_cmd,
+        //         .sg_stop_cmd                = __comp_inst->axis_yl_tmc_sg_stop_cmd,
+        //         .sg_thresh_cmd              = __comp_inst->axis_yl_tmc_sg_thresh_cmd,
+        //         .current_hold_delay_cmd     = __comp_inst->axis_yl_tmc_current_hold_delay_cmd,
+        //         .ramp_mode_cmd              = __comp_inst->axis_yl_tmc_ramp_mode_cmd,
+        //         .ramp_vstart_cmd            = __comp_inst->axis_yl_tmc_ramp_vstart_cmd,
+        //         .ramp_vstop_cmd             = __comp_inst->axis_yl_tmc_ramp_vstop_cmd,
+        //         .ramp_v1_cmd                = __comp_inst->axis_yl_tmc_ramp_v1_cmd,
+        //         .ramp_a1_cmd                = __comp_inst->axis_yl_tmc_ramp_a1_cmd,
+        //         .ramp_dmax_cmd              = __comp_inst->axis_yl_tmc_ramp_dmax_cmd,
+        //         .ramp_d1_cmd                = __comp_inst->axis_yl_tmc_ramp_d1_cmd,
+        //         .ramp_tzerowait_cmd         = __comp_inst->axis_yl_tmc_ramp_tzerowait_cmd,
+        //         .coolstep_sfilt_cmd         = __comp_inst->axis_yl_tmc_coolstep_sfilt_cmd,
+        //         .coolstep_seimin_cmd        = __comp_inst->axis_yl_tmc_coolstep_seimin_cmd,
+        //         .coolstep_sedn_cmd          = __comp_inst->axis_yl_tmc_coolstep_sedn_cmd,
+        //         .coolstep_seup_cmd          = __comp_inst->axis_yl_tmc_coolstep_seup_cmd,
+        //         .coolstep_semin_cmd         = __comp_inst->axis_yl_tmc_coolstep_semin_cmd,
+        //         .coolstep_semax_cmd         = __comp_inst->axis_yl_tmc_coolstep_semax_cmd,
+        //         .chop_mode_cmd              = __comp_inst->axis_yl_tmc_chop_mode_cmd,
+        //         .chop_vhigh_cmd             = __comp_inst->axis_yl_tmc_chop_vhigh_cmd,
+        //         .chop_vhighchm_cmd          = __comp_inst->axis_yl_tmc_chop_vhighchm_cmd,
+        //         .chop_vhighfs_cmd           = __comp_inst->axis_yl_tmc_chop_vhighfs_cmd,
+        //         .chop_tbl_cmd               = __comp_inst->axis_yl_tmc_chop_tbl_cmd,
+        //         .chop_hend_cmd              = __comp_inst->axis_yl_tmc_chop_hend_cmd,
+        //         .chop_hstrt_cmd             = __comp_inst->axis_yl_tmc_chop_hstrt_cmd,
+        //         .chop_toff_cmd              = __comp_inst->axis_yl_tmc_chop_toff_cmd,
+        //         .chop_vsense_cmd            = __comp_inst->axis_yl_tmc_chop_vsense_cmd,
+        //         .sw_en_softstop             = __comp_inst->axis_yl_tmc_sw_en_softstop,
+        //         .position_fb                = &axis_yl_tmc_position_fb,
+        //         .velocity_fb                = &axis_yl_tmc_velocity_fb,
+        //         .motor_standstill_fb        = &axis_yl_tmc_motor_standstill_fb,
+        //         .motor_full_stepping_fb     = &axis_yl_tmc_motor_full_stepping_fb,
+        //         .motor_overtemp_warning_fb  = &axis_yl_tmc_motor_overtemp_warning_fb,
+        //         .motor_overtemp_alarm_fb    = &axis_yl_tmc_motor_overtemp_alarm_fb,
+        //         .motor_load_fb              = &axis_yl_tmc_motor_load_fb,
+        //         .motor_current_fb           = &axis_yl_tmc_motor_current_fb,
+        //         .motor_stall_fb             = &axis_yl_tmc_motor_stall_fb,
+        //         .microstep_resolution_fb    = &axis_yl_tmc_microstep_resolution_fb,
+        //     }
+        // };
+
+        // motors[2] = (joint_t) {
+        //     .max_velocity_cmd               = __comp_inst->axis_yr_max_velocity_cmd,
+        //     .max_acceleration_cmd           = __comp_inst->axis_yr_max_acceleration_cmd,
+        //     .pitch_cmd                      = __comp_inst->axis_yr_pitch,
+        //     .teeth_cmd                      = __comp_inst->axis_yr_teeth,
+        //     .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_yr_motor_fullsteps_per_rev_cmd,
+        //     .microsteps_cmd                 = __comp_inst->axis_yr_microsteps_cmd,
+        //     .is_enabled_cmd                 = __comp_inst->axis_yr_enable,
+        //     .is_homing_cmd                  = __comp_inst->axis_yr_is_homing,
+        //     .position_cmd                   = __comp_inst->axis_yr_position_cmd,
+        //     .velocity_cmd                   = __comp_inst->axis_yr_velocity_cmd,
+        //     .acceleration_cmd               = __comp_inst->axis_yr_acceleration_cmd,
+        //     .position_fb                    = &axis_yr_position_fb,
+        //     .velocity_fb                    = &axis_yr_velocity_fb,
+        //     .acceleration_fb                = &axis_yr_acceleration_fb,
+        //     .sg_stop_fb                     = &axis_yr_sg_stop_fb,
+        //     .home_sw_fb                     = &axis_yr_home_sw,
+        //     .estop_fb                       = &machine_estop_fb,
+        //     .torch_breakaway_fb             = &torch_breakaway,
+        //     .tmc = (tmc5041_motor_t) {
+        //         .chip = (tmc5041_chip_t) {
+        //             .chip = axis_yr_chip
+        //         },
+        //         .motor = axis_yr_motor,
+        //         .run_current_cmd            = __comp_inst->axis_yr_tmc_run_current_cmd,
+        //         .hold_current_cmd           = __comp_inst->axis_yr_tmc_hold_current_cmd,
+        //         .cs_thresh_cmd              = __comp_inst->axis_yr_tmc_cs_thresh_cmd,
+        //         .sg_stop_cmd                = __comp_inst->axis_yr_tmc_sg_stop_cmd,
+        //         .sg_thresh_cmd              = __comp_inst->axis_yr_tmc_sg_thresh_cmd,
+        //         .current_hold_delay_cmd     = __comp_inst->axis_yr_tmc_current_hold_delay_cmd,
+        //         .ramp_mode_cmd              = __comp_inst->axis_yr_tmc_ramp_mode_cmd,
+        //         .ramp_vstart_cmd            = __comp_inst->axis_yr_tmc_ramp_vstart_cmd,
+        //         .ramp_vstop_cmd             = __comp_inst->axis_yr_tmc_ramp_vstop_cmd,
+        //         .ramp_v1_cmd                = __comp_inst->axis_yr_tmc_ramp_v1_cmd,
+        //         .ramp_a1_cmd                = __comp_inst->axis_yr_tmc_ramp_a1_cmd,
+        //         .ramp_dmax_cmd              = __comp_inst->axis_yr_tmc_ramp_dmax_cmd,
+        //         .ramp_d1_cmd                = __comp_inst->axis_yr_tmc_ramp_d1_cmd,
+        //         .ramp_tzerowait_cmd         = __comp_inst->axis_yr_tmc_ramp_tzerowait_cmd,
+        //         .coolstep_sfilt_cmd         = __comp_inst->axis_yr_tmc_coolstep_sfilt_cmd,
+        //         .coolstep_seimin_cmd        = __comp_inst->axis_yr_tmc_coolstep_seimin_cmd,
+        //         .coolstep_sedn_cmd          = __comp_inst->axis_yr_tmc_coolstep_sedn_cmd,
+        //         .coolstep_seup_cmd          = __comp_inst->axis_yr_tmc_coolstep_seup_cmd,
+        //         .coolstep_semin_cmd         = __comp_inst->axis_yr_tmc_coolstep_semin_cmd,
+        //         .coolstep_semax_cmd         = __comp_inst->axis_yr_tmc_coolstep_semax_cmd,
+        //         .chop_mode_cmd              = __comp_inst->axis_yr_tmc_chop_mode_cmd,
+        //         .chop_vhigh_cmd             = __comp_inst->axis_yr_tmc_chop_vhigh_cmd,
+        //         .chop_vhighchm_cmd          = __comp_inst->axis_yr_tmc_chop_vhighchm_cmd,
+        //         .chop_vhighfs_cmd           = __comp_inst->axis_yr_tmc_chop_vhighfs_cmd,
+        //         .chop_tbl_cmd               = __comp_inst->axis_yr_tmc_chop_tbl_cmd,
+        //         .chop_hend_cmd              = __comp_inst->axis_yr_tmc_chop_hend_cmd,
+        //         .chop_hstrt_cmd             = __comp_inst->axis_yr_tmc_chop_hstrt_cmd,
+        //         .chop_toff_cmd              = __comp_inst->axis_yr_tmc_chop_toff_cmd,
+        //         .chop_vsense_cmd            = __comp_inst->axis_yr_tmc_chop_vsense_cmd,
+        //         .sw_en_softstop             = __comp_inst->axis_yr_tmc_sw_en_softstop,
+        //         .position_fb                = &axis_yr_tmc_position_fb,
+        //         .velocity_fb                = &axis_yr_tmc_velocity_fb,
+        //         .motor_standstill_fb        = &axis_yr_tmc_motor_standstill_fb,
+        //         .motor_full_stepping_fb     = &axis_yr_tmc_motor_full_stepping_fb,
+        //         .motor_overtemp_warning_fb  = &axis_yr_tmc_motor_overtemp_warning_fb,
+        //         .motor_overtemp_alarm_fb    = &axis_yr_tmc_motor_overtemp_alarm_fb,
+        //         .motor_load_fb              = &axis_yr_tmc_motor_load_fb,
+        //         .motor_current_fb           = &axis_yr_tmc_motor_current_fb,
+        //         .motor_stall_fb             = &axis_yr_tmc_motor_stall_fb,
+        //         .microstep_resolution_fb    = &axis_yr_tmc_microstep_resolution_fb,
+        //     }
+        // };
+
+        // motors[3] = (joint_t) {
+        //     .max_velocity_cmd               = __comp_inst->axis_z_max_velocity_cmd,
+        //     .max_acceleration_cmd           = __comp_inst->axis_z_max_acceleration_cmd,
+        //     .pitch_cmd                      = __comp_inst->axis_z_pitch,
+        //     .teeth_cmd                      = __comp_inst->axis_z_teeth,
+        //     .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_z_motor_fullsteps_per_rev_cmd,
+        //     .microsteps_cmd                 = __comp_inst->axis_z_microsteps_cmd,
+        //     .is_enabled_cmd                 = __comp_inst->axis_z_enable,
+        //     .is_homing_cmd                  = __comp_inst->axis_z_is_homing,
+        //     .position_cmd                   = __comp_inst->axis_z_position_cmd,
+        //     .velocity_cmd                   = __comp_inst->axis_z_velocity_cmd,
+        //     .acceleration_cmd               = __comp_inst->axis_z_acceleration_cmd,
+        //     .position_fb                    = &axis_z_position_fb,
+        //     .velocity_fb                    = &axis_z_velocity_fb,
+        //     .acceleration_fb                = &axis_z_acceleration_fb,
+        //     .sg_stop_fb                     = &axis_z_sg_stop_fb,
+        //     .home_sw_fb                     = &axis_z_home_sw,
+        //     .estop_fb                       = &machine_estop_fb,
+        //     .torch_breakaway_fb             = &torch_breakaway,
+        //     .tmc = (tmc5041_motor_t) {
+        //         .chip = (tmc5041_chip_t) {
+        //             .chip = axis_z_chip
+        //         },
+        //         .motor = axis_z_motor,
+        //         .run_current_cmd            = __comp_inst->axis_z_tmc_run_current_cmd,
+        //         .hold_current_cmd           = __comp_inst->axis_z_tmc_hold_current_cmd,
+        //         .cs_thresh_cmd              = __comp_inst->axis_z_tmc_cs_thresh_cmd,
+        //         .sg_stop_cmd                = __comp_inst->axis_z_tmc_sg_stop_cmd,
+        //         .sg_thresh_cmd              = __comp_inst->axis_z_tmc_sg_thresh_cmd,
+        //         .current_hold_delay_cmd     = __comp_inst->axis_z_tmc_current_hold_delay_cmd,
+        //         .ramp_mode_cmd              = __comp_inst->axis_z_tmc_ramp_mode_cmd,
+        //         .ramp_vstart_cmd            = __comp_inst->axis_z_tmc_ramp_vstart_cmd,
+        //         .ramp_vstop_cmd             = __comp_inst->axis_z_tmc_ramp_vstop_cmd,
+        //         .ramp_v1_cmd                = __comp_inst->axis_z_tmc_ramp_v1_cmd,
+        //         .ramp_a1_cmd                = __comp_inst->axis_z_tmc_ramp_a1_cmd,
+        //         .ramp_dmax_cmd              = __comp_inst->axis_z_tmc_ramp_dmax_cmd,
+        //         .ramp_d1_cmd                = __comp_inst->axis_z_tmc_ramp_d1_cmd,
+        //         .ramp_tzerowait_cmd         = __comp_inst->axis_z_tmc_ramp_tzerowait_cmd,
+        //         .coolstep_sfilt_cmd         = __comp_inst->axis_z_tmc_coolstep_sfilt_cmd,
+        //         .coolstep_seimin_cmd        = __comp_inst->axis_z_tmc_coolstep_seimin_cmd,
+        //         .coolstep_sedn_cmd          = __comp_inst->axis_z_tmc_coolstep_sedn_cmd,
+        //         .coolstep_seup_cmd          = __comp_inst->axis_z_tmc_coolstep_seup_cmd,
+        //         .coolstep_semin_cmd         = __comp_inst->axis_z_tmc_coolstep_semin_cmd,
+        //         .coolstep_semax_cmd         = __comp_inst->axis_z_tmc_coolstep_semax_cmd,
+        //         .chop_mode_cmd              = __comp_inst->axis_z_tmc_chop_mode_cmd,
+        //         .chop_vhigh_cmd             = __comp_inst->axis_z_tmc_chop_vhigh_cmd,
+        //         .chop_vhighchm_cmd          = __comp_inst->axis_z_tmc_chop_vhighchm_cmd,
+        //         .chop_vhighfs_cmd           = __comp_inst->axis_z_tmc_chop_vhighfs_cmd,
+        //         .chop_tbl_cmd               = __comp_inst->axis_z_tmc_chop_tbl_cmd,
+        //         .chop_hend_cmd              = __comp_inst->axis_z_tmc_chop_hend_cmd,
+        //         .chop_hstrt_cmd             = __comp_inst->axis_z_tmc_chop_hstrt_cmd,
+        //         .chop_toff_cmd              = __comp_inst->axis_z_tmc_chop_toff_cmd,
+        //         .chop_vsense_cmd            = __comp_inst->axis_z_tmc_chop_vsense_cmd,
+        //         .sw_en_softstop             = __comp_inst->axis_z_tmc_sw_en_softstop,
+        //         .position_fb                = &axis_z_tmc_position_fb,
+        //         .velocity_fb                = &axis_z_tmc_velocity_fb,
+        //         .motor_standstill_fb        = &axis_z_tmc_motor_standstill_fb,
+        //         .motor_full_stepping_fb     = &axis_z_tmc_motor_full_stepping_fb,
+        //         .motor_overtemp_warning_fb  = &axis_z_tmc_motor_overtemp_warning_fb,
+        //         .motor_overtemp_alarm_fb    = &axis_z_tmc_motor_overtemp_alarm_fb,
+        //         .motor_load_fb              = &axis_z_tmc_motor_load_fb,
+        //         .motor_current_fb           = &axis_z_tmc_motor_current_fb,
+        //         .motor_stall_fb             = &axis_z_tmc_motor_stall_fb,
+        //         .microstep_resolution_fb    = &axis_z_tmc_microstep_resolution_fb,
+        //     }
+        // };
+
+        // TODO we should really call hotshot_init here since we call hotshot_end at shutdown time
+        // rpi_init();
+
+        needs_setup = FALSE;
+    }
+}
+*/
 
 EXTRA_CLEANUP()
 {

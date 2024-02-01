@@ -46,6 +46,8 @@
         "tuple": "c",
         "type_traits": "c",
         "variant": "c",
-        "compare": "c"
+        "compare": "c",
+        "cstring": "c",
+        "mman.h": "c"
     }
 }

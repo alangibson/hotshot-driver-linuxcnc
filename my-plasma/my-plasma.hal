@@ -126,6 +126,7 @@ net  x-vel-cmd      joint.0.vel-cmd                                 =>          
 net  x-vel-fb       hotshot.0.axis-x-velocity-fb                    =>                                  pid.x.feedback-deriv
 net  x-output       pid.x.output                                    => hotshot.0.axis-x-velocity-cmd
 
+
 ### Axis Y(L) / Joint 1
 ## Hotshot setup
 setp                hotshot.0.axis-yl-max-velocity-cmd              [JOINT_1]STEPGEN_MAXVEL
@@ -181,10 +182,13 @@ setp                pid.yl.FF2                                       [JOINT_1]FF
 setp                pid.yl.deadband                                  [JOINT_1]DEADBAND
 setp                pid.yl.maxoutput                                 [JOINT_1]MAX_OUTPUT
 setp                pid.yl.error-previous-target                     true
-net  yl-enable      joint.1.amp-enable-out                           => hotshot.0.axis-yl-enable          pid.yl.enable
-net  yl-pos-cmd     joint.1.pos-cmd                                  =>                                   pid.yl.command
-net  yl-pos-fb      hotshot.0.axis-yl-position-fb                    => joint.1.motor-pos-fb              pid.yl.feedback           
+net  yl-enable      joint.1.amp-enable-out                           => hotshot.0.axis-yl-enable        pid.yl.enable
+net  yl-pos-cmd     joint.1.motor-pos-cmd                            => hotshot.0.axis-yl-position-cmd  pid.yl.command
+net  yl-pos-fb      hotshot.0.axis-yl-position-fb                    => joint.1.motor-pos-fb            pid.yl.feedback           
+net  yl-vel-cmd     joint.1.vel-cmd                                  =>                                 pid.yl.command-deriv
+net  yl-vel-fb      hotshot.0.axis-yl-velocity-fb                    =>                                 pid.yl.feedback-deriv
 net  yl-output      pid.yl.output                                    => hotshot.0.axis-yl-velocity-cmd
+
 
 ### Axis Y(R) / Joint 2
 ## Hotshot setup
@@ -241,9 +245,11 @@ setp                pid.yr.FF2                                       [JOINT_2]FF
 setp                pid.yr.deadband                                  [JOINT_2]DEADBAND
 setp                pid.yr.maxoutput                                 [JOINT_2]MAX_OUTPUT
 setp                pid.yr.error-previous-target                     true
-net  yr-enable      joint.2.amp-enable-out                           => hotshot.0.axis-yr-enable          pid.yr.enable
-net  yr-pos-cmd     joint.2.pos-cmd                                  =>                                   pid.yr.command
-net  yr-pos-fb      hotshot.0.axis-yr-position-fb                    => joint.2.motor-pos-fb              pid.yr.feedback           
+net  yr-enable      joint.2.amp-enable-out                           => hotshot.0.axis-yr-enable        pid.yr.enable
+net  yr-pos-cmd     joint.2.motor-pos-cmd                            => hotshot.0.axis-yr-position-cmd  pid.yr.command
+net  yr-pos-fb      hotshot.0.axis-yr-position-fb                    => joint.2.motor-pos-fb            pid.yr.feedback           
+net  yr-vel-cmd     joint.2.vel-cmd                                  =>                                 pid.yr.command-deriv
+net  yr-vel-fb      hotshot.0.axis-yr-velocity-fb                    =>                                 pid.yr.feedback-deriv
 net  yr-output      pid.yr.output                                    => hotshot.0.axis-yr-velocity-cmd
 
 
@@ -304,8 +310,10 @@ setp                pid.z.deadband                                  [JOINT_3]DEA
 setp                pid.z.maxoutput                                 [JOINT_3]MAX_OUTPUT
 setp                pid.z.error-previous-target                     true
 net  z-enable       joint.3.amp-enable-out                          => hotshot.0.axis-z-enable          pid.z.enable
-net  z-pos-cmd      joint.3.pos-cmd                                 =>                                  pid.z.command
+net  z-pos-cmd      joint.3.motor-pos-cmd                           => hotshot.0.axis-z-position-cmd    pid.z.command
 net  z-pos-fb       hotshot.0.axis-z-position-fb                    => joint.3.motor-pos-fb             pid.z.feedback           
+net  z-vel-cmd      joint.3.vel-cmd                                 =>                                  pid.z.command-deriv
+net  z-vel-fb       hotshot.0.axis-z-velocity-fb                    =>                                  pid.z.feedback-deriv
 net  z-output       pid.z.output                                    => hotshot.0.axis-z-velocity-cmd
 
 

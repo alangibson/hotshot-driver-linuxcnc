@@ -47,4 +47,8 @@ typedef struct {
     int32_t                             last_xtarget;
     float64_t                           last_position_fb;
     int32_t                             last_move_distance;
+    // Velocity adjustments when using internal clock
+    long long                           last_tick;
+    int32_t                             last_velocity_xactual;
+    volatile float64_t              *   velocity_factor;
 } joint_t;
