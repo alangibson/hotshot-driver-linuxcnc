@@ -64,11 +64,21 @@ net plasmac:breakaway           <= hotshot.0.torch-breakaway
 net plasmac:ohmic-probe         <= plasmac.ohmic-sense-out
 net plasmac:ohmic-sense-in      <= hotshot.0.ohmic-probe
 
+# Estop
+net  estop-ext     hotshot.0.machine-estop-fb                       => iocontrol.0.emc-enable-in
+net  estop-out     iocontrol.0.user-enable-out                      => hotshot.0.machine-estop-cmd
+net  estop-out     => hotshot.0.machine-estop-cmd
+
+net  tool-number             <= iocontrol.0.tool-prep-number
+net  tool-change-loopback    iocontrol.0.tool-change                => iocontrol.0.tool-changed
+net  tool-prepare-loopback   iocontrol.0.tool-prepare               => iocontrol.0.tool-prepared
+
+
 ### Axis X / Joint 0
 ## Hotshot setup
-setp                hotshot.0.axis-x-max-velocity-cmd               [JOINT_0]STEPGEN_MAXVEL
-setp                hotshot.0.axis-x-max-acceleration-cmd           [JOINT_0]STEPGEN_MAXACCEL
-setp                hotshot.0.axis-x-acceleration-cmd               [JOINT_0]STEPGEN_MAXACCEL
+setp                hotshot.0.axis-x-max-velocity-cmd               [JOINT_0]MAX_VELOCITY
+setp                hotshot.0.axis-x-max-acceleration-cmd           [JOINT_0]MAX_ACCELERATION
+setp                hotshot.0.axis-x-acceleration-cmd               [JOINT_0]MAX_ACCELERATION
 setp                hotshot.0.axis-x-chip                           0
 setp                hotshot.0.axis-x-motor                          0
 setp                hotshot.0.axis-x-pitch                          2
@@ -129,9 +139,9 @@ net  x-output       pid.x.output                                    => hotshot.0
 
 ### Axis Y(L) / Joint 1
 ## Hotshot setup
-setp                hotshot.0.axis-yl-max-velocity-cmd              [JOINT_1]STEPGEN_MAXVEL
-setp                hotshot.0.axis-yl-max-acceleration-cmd          [JOINT_1]STEPGEN_MAXACCEL
-setp                hotshot.0.axis-yl-acceleration-cmd              [JOINT_1]STEPGEN_MAXACCEL
+setp                hotshot.0.axis-yl-max-velocity-cmd              [JOINT_1]MAX_VELOCITY
+setp                hotshot.0.axis-yl-max-acceleration-cmd          [JOINT_1]MAX_ACCELERATION
+setp                hotshot.0.axis-yl-acceleration-cmd              [JOINT_1]MAX_ACCELERATION
 setp                hotshot.0.axis-yl-chip                          0
 setp                hotshot.0.axis-yl-motor                         1
 setp                hotshot.0.axis-yl-pitch                         2
@@ -192,9 +202,9 @@ net  yl-output      pid.yl.output                                    => hotshot.
 
 ### Axis Y(R) / Joint 2
 ## Hotshot setup
-setp                hotshot.0.axis-yr-max-velocity-cmd              [JOINT_2]STEPGEN_MAXVEL
-setp                hotshot.0.axis-yr-max-acceleration-cmd          [JOINT_2]STEPGEN_MAXACCEL
-setp                hotshot.0.axis-yr-acceleration-cmd              [JOINT_2]STEPGEN_MAXACCEL
+setp                hotshot.0.axis-yr-max-velocity-cmd              [JOINT_2]MAX_VELOCITY
+setp                hotshot.0.axis-yr-max-acceleration-cmd          [JOINT_2]MAX_ACCELERATION
+setp                hotshot.0.axis-yr-acceleration-cmd              [JOINT_2]MAX_ACCELERATION
 setp                hotshot.0.axis-yr-chip                          1
 setp                hotshot.0.axis-yr-motor                         0
 setp                hotshot.0.axis-yr-pitch                         2
@@ -255,9 +265,9 @@ net  yr-output      pid.yr.output                                    => hotshot.
 
 ### Axis Z / Joint 3
 ## Hotshot setup
-setp                hotshot.0.axis-z-max-velocity-cmd               [JOINT_3]STEPGEN_MAXVEL
-setp                hotshot.0.axis-z-max-acceleration-cmd           [JOINT_3]STEPGEN_MAXACCEL
-setp                hotshot.0.axis-z-acceleration-cmd               [JOINT_3]STEPGEN_MAXACCEL
+setp                hotshot.0.axis-z-max-velocity-cmd               [JOINT_3]MAX_VELOCITY
+setp                hotshot.0.axis-z-max-acceleration-cmd           [JOINT_3]MAX_ACCELERATION
+setp                hotshot.0.axis-z-acceleration-cmd               [JOINT_3]MAX_ACCELERATION
 setp                hotshot.0.axis-z-chip                           1
 setp                hotshot.0.axis-z-motor                          1
 setp                hotshot.0.axis-z-pitch                          8
@@ -315,13 +325,3 @@ net  z-pos-fb       hotshot.0.axis-z-position-fb                    => joint.3.m
 net  z-vel-cmd      joint.3.vel-cmd                                 =>                                  pid.z.command-deriv
 net  z-vel-fb       hotshot.0.axis-z-velocity-fb                    =>                                  pid.z.feedback-deriv
 net  z-output       pid.z.output                                    => hotshot.0.axis-z-velocity-cmd
-
-
-# net estop-out   => iocontrol.0.emc-enable-in
-net  estop-ext     hotshot.0.machine-estop-fb                       => iocontrol.0.emc-enable-in
-net  estop-out     iocontrol.0.user-enable-out                      => hotshot.0.machine-estop-cmd
-net  estop-out     => hotshot.0.machine-estop-cmd
-
-net  tool-number             <= iocontrol.0.tool-prep-number
-net  tool-change-loopback    iocontrol.0.tool-change                => iocontrol.0.tool-changed
-net  tool-prepare-loopback   iocontrol.0.tool-prepare               => iocontrol.0.tool-prepared

@@ -108,10 +108,10 @@ Disabled = #b0b0b0
 Preview = #000000
 
 [ENABLE_OPTIONS]
-THC enable = True
-Corner lock enable = True
+THC enable = False
+Corner lock enable = False
 Void lock enable = False
-Use auto volts = True
+Use auto volts = False
 Ohmic probe enable = False
 THC auto = False
 
@@ -162,4 +162,8 @@ Leadout = 0
 Hole diameter = 32
 Hole speed = 60
 Grid Size = 0
+
+[SINGLE CUT]
+X length = 0.0
+Y length = 0.0
 
