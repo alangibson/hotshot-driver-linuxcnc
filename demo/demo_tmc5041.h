@@ -1,0 +1,7 @@
+#include "tmc/ic/TMC5041/TMC5041.h"
+#include "TMC-EVALSYSTEM/hal/HAL.h"
+
+TMC5041TypeDef TMC5041_CHIP1;
+TMC5041TypeDef TMC5041_CHIP2;
+
+// const HALTypeDef HAL;

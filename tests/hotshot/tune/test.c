@@ -23,7 +23,7 @@ void wait_for_move(uint8_t chip, uint8_t motor, float64_t mm_per_microstep) {
 
     while (true) {
 
-        // start_spi_conversation(chip);
+        // rpi_start_spi_conversation(chip);
 
         // printf("--------------------\n");
 
@@ -90,7 +90,7 @@ void wait_for_move(uint8_t chip, uint8_t motor, float64_t mm_per_microstep) {
         // if (rampstat_position_reached == 1)
         //     break;
 
-        // end_spi_conversation();
+        // rpi_end_spi_conversation();
     }
 }
 
@@ -146,7 +146,7 @@ int main() {
     // uint8_t chip = BCM2835_SPI_CS0;
     // uint8_t motor = 0; // 0 or 1
 
-    // setup_spi0();
+    // rpi_setup_spi0();
     // config_tmc5041(MICROSTEPS);
 
     // //
@@ -171,14 +171,14 @@ int main() {
     // // Close SPI conversation
     // //
 
-    // // end_spi_conversation();
+    // // rpi_end_spi_conversation();
     // motor = TMC_DEFAULT_MOTOR;
 
     // //
     // // Shut down SPI
     // //
 
-    // teardown_spi0();
+    // rpi_teardown_spi0();
 
     return 0;
 }

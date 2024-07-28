@@ -1,0 +1,5 @@
+*.o
+*.so
+*.dead
+*.off
+*.bak

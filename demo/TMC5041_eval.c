@@ -9,7 +9,13 @@
 
 #include "TMC-EVALSYSTEM/boards/Board.h"
 #include "tmc/ic/TMC5041/TMC5041.h"
-#include "tmc5041.h"
+// #include "tmc5041.h"
+#include "TMC-EVALSYSTEM/hal/HAL.h"
+
+TMC5041TypeDef TMC5041_CHIP1;
+TMC5041TypeDef TMC5041_CHIP2;
+
+// const HALTypeDef HAL;
 
 #define ERRORS_VM        (1<<0)
 #define ERRORS_VM_UNDER  (1<<1)

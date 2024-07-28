@@ -1,15 +1,56 @@
 [PLASMA_PARAMETERS]
 Arc Voltage Offset = 0.0
 Arc Voltage Scale = 1.0
+Setup Feed Rate = 1200.0
+Arc Fail Timeout = 3.0
+Arc OK High = 250.0
+Arc OK Low = 60.0
+Arc Maximum Starts = 3
+Velocity Anti Dive Threshold = 90.0
+Float Switch Travel = 1.5
+Height Per Volt = 0.1
+Void Sense Slope = 500
+Ohmic Maximum Attempts = 0
+Ohmic Probe Offset = 0.0
+Pid P Gain = 10.0
+Pid D Gain = 0.0
+Pid I Gain = 0.0
+Probe Feed Rate = 300.0
+Probe Start Height = 25.0
+Arc Restart Delay = 1.0
+Safe Height = 25.0
+Scribe Arming Delay = 0.0
+Scribe On Delay = 0.0
+Skip IHS Distance = 0.0
+Spotting Threshold = 1.0
+Spotting Time = 0.0
+THC Delay = 0.5
+THC Sample Counts = 50
+THC Sample Threshold = 1.0
+THC Threshold = 1.0
 
 [GUI_OPTIONS]
 Mode = 1
-Estop type = 0
+Estop type = 2
 DRO position = bottom
 Flash error = 0
 Hide run = 0
 Hide pause = 0
 Hide abort = 0
+Autorepeat all = False
+Use keyboard shortcuts = False
+Use soft keyboard = False
+Show materials = True
+Run from line = True
+Tool tips = True
+Exit warning = False
+Exit warning text = 
+Preview cone size = 0.5
+Preview grid size = 0.0
+T view zoom scale = 1.0
+Override jog inhibit via Z+ = False
+Default material = 0
+Custom style = None
 
 [BUTTONS]
 1 Name = OHMIC\TEST
@@ -55,4 +96,57 @@ Hide abort = 0
 
 [POWERMAX]
 Port = 
+
+[COLOR_OPTIONS]
+Foreground = #ffee06
+Highlight = #ffee06
+LED = #ffee06
+Background = #16160e
+Background Alt = #36362e
+Frames = #ffee06
+Estop = #ff0000
+Disabled = #b0b0b0
+Preview = #000000
+
+[ENABLE_OPTIONS]
+THC enable = False
+Corner lock enable = False
+Void lock enable = False
+Use auto volts = False
+Ohmic probe enable = False
+THC auto = False
+
+[CAMERA_OFFSET]
+Camera port = 0
+X axis = 0.0
+Y axis = 0.0
+
+[STATISTICS]
+Cut time = 0.0
+Paused time = 0.0
+Probe time = 0.0
+Program run time = 0.0
+Torch on time = 0.0
+Rapid time = 0.0
+Cut length = 0.0
+Pierce count = 0
+
+[LASER_OFFSET]
+X axis = 0.0
+Y axis = 0.0
+
+[OFFSET_PROBING]
+X axis = 0.0
+Y axis = 0.0
+Delay = 0.0
+
+[CONVERSATIONAL]
+Preamble = G21 G64P0.25 G40 G49 G80 G90 G92.1 G94 G97
+Postamble = G21 G64P0.25 G40 G49 G80 G90 G92.1 G94 G97
+Origin = 0
+Leadin = 0
+Leadout = 0
+Hole diameter = 32
+Hole speed = 60
+Grid Size = 0
 
