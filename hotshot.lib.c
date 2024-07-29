@@ -322,3 +322,8 @@ bool get_neg_limit_switch_state(joint_t * motor, float axis_max_velocity_cmd) {
     }
     return FALSE;
 }
+
+// bool read_arc_freq_state()
+// {
+
+// }

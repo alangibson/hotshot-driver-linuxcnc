@@ -1,5 +1,6 @@
 #include "bcm2835.h"
 
+#include "stdio.h"
 #include <sched.h>
 #include <sys/mman.h>
 #include "string.h"
@@ -88,16 +89,18 @@ void rpi_spi_unselect()
 
 void rpi_gpio_init()
 {
-    bcm2835_gpio_fsel(PIN_ARC_OK, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_set_pud(PIN_ARC_OK, BCM2835_GPIO_PUD_DOWN);
-    bcm2835_gpio_fsel(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_set_pud(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_PUD_DOWN);
-    bcm2835_gpio_fsel(PIN_OHMIC_PROBE, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_set_pud(PIN_OHMIC_PROBE, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_fsel(PIN_ARC_FREQ, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(PIN_ARC_FREQ, BCM2835_GPIO_PUD_DOWN);
+    // bcm2835_gpio_fsel(PIN_ARC_OK, BCM2835_GPIO_FSEL_INPT);
+    // bcm2835_gpio_set_pud(PIN_ARC_OK, BCM2835_GPIO_PUD_DOWN);
+    // bcm2835_gpio_fsel(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_FSEL_INPT);
+    // bcm2835_gpio_set_pud(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_PUD_DOWN);
+    // bcm2835_gpio_fsel(PIN_OHMIC_PROBE, BCM2835_GPIO_FSEL_INPT);
+    // bcm2835_gpio_set_pud(PIN_OHMIC_PROBE, BCM2835_GPIO_PUD_DOWN);
     bcm2835_gpio_fsel(PIN_ESTOP, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_set_pud(PIN_ESTOP, BCM2835_GPIO_PUD_DOWN);
-    bcm2835_gpio_fsel(PIN_TORCH_ON, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(PIN_OHMIC_ENABLE, BCM2835_GPIO_FSEL_OUTP);
+    // bcm2835_gpio_fsel(PIN_TORCH_ON, BCM2835_GPIO_FSEL_OUTP);
+    // bcm2835_gpio_fsel(PIN_OHMIC_ENABLE, BCM2835_GPIO_FSEL_OUTP);
 }
 
 // Raspberry Pi 4 GPIO support
@@ -114,7 +117,19 @@ void rpi_clock_init()
     bcm2835_pwm_set_range(0, 2);
 }
 
+/**
+ * Set up RPi pins, IO, etc.
+ * Can only be called once per program run or we get all
+ * kinds of mysterious exceptions.
+ */
+bool NEEDS_RPI_INIT = TRUE;
 void rpi_init() {
+    if (!NEEDS_RPI_INIT)
+    {
+        return;
+    }
+    NEEDS_RPI_INIT = FALSE;
+
     bcm2835_init();
     rpi_gpio_init();
     rpi_clock_init();

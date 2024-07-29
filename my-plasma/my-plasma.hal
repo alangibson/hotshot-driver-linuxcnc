@@ -3,36 +3,36 @@
 #
 
 loadrt [KINS]KINEMATICS
-loadrt [EMCMOT]EMCMOT base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS num_spindles=[TRAJ]SPINDLES
-loadrt pid names=pid.x,pid.yl,pid.yr,pid.z
+loadrt [EMCMOT]EMCMOT   base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS num_spindles=[TRAJ]SPINDLES base_thread_fp=1
+loadrt pid              names=pid.x,pid.yl,pid.yr,pid.z
 loadrt plasmac
 loadrt hotshot
+loadrt dbounce          names=db_breakaway,db_float,db_ohmic,db_arc-ok
+loadrt encoder          num_chan=1
 
-addf motion-command-handler servo-thread
-addf motion-controller      servo-thread
-addf plasmac                servo-thread
-addf pid.x.do-pid-calcs     servo-thread
-addf pid.yl.do-pid-calcs    servo-thread
-addf pid.yr.do-pid-calcs    servo-thread
-addf pid.z.do-pid-calcs     servo-thread
-addf hotshot.0              servo-thread
-addf hotshot.0.sensors      servo-thread
-
-# ---PLASMA INPUT DEBOUNCE---
-loadrt dbounce names=db_breakaway,db_float,db_ohmic,db_arc-ok
-addf db_float     servo-thread
-addf db_ohmic     servo-thread
-addf db_breakaway servo-thread
-addf db_arc-ok    servo-thread
+addf    motion-command-handler      servo-thread
+addf    motion-controller           servo-thread
+addf    plasmac                     servo-thread
+addf    pid.x.do-pid-calcs          servo-thread
+addf    pid.yl.do-pid-calcs         servo-thread
+addf    pid.yr.do-pid-calcs         servo-thread
+addf    pid.z.do-pid-calcs          servo-thread
+addf    encoder.update-counters     base-thread
+addf    encoder.capture-position    servo-thread
+addf    hotshot.0                   servo-thread
+addf    hotshot.0.sensors           servo-thread
+addf    hotshot.0.arc               base-thread
 
 net in-position <= motion.in-position
 net machine-is-enabled <= motion.motion-enabled
 
+# ---PLASMA INPUT DEBOUNCE---
+addf db_float     servo-thread
+addf db_ohmic     servo-thread
+addf db_breakaway servo-thread
+addf db_arc-ok    servo-thread
 # ---JOINT ASSOCIATED WITH THE Z AXIS---
-# net plasmac:axis-x-position     joint.0.motor-pos-fb    =>  plasmac.axis-x-position
-# net plasmac:axis-y-position      axis.y.pos-cmd    =>  plasmac.axis-y-position
 net plasmac:axis-z-position     joint.3.pos-fb     => plasmac.axis-z-position
-
 # ---PLASMA INPUTS---
 # ---all modes---
 net plasmac:float-switch   => db_float.in
@@ -46,16 +46,11 @@ net plasmac:arc-ok-in      => db_arc-ok.in
 # ---mode 2
 net plasmac:move-up        => plasmac.move-up
 net plasmac:move-down      => plasmac.move-down
-
 # ---PLASMA OUTPUTS---
 # ---all modes---
 net plasmac:ohmic-enable   <= plasmac.ohmic-enable
 net plasmac:scribe-arm     <= plasmac.scribe-arm
 net plasmac:scribe-on      <= plasmac.scribe-on
-
-# Arc voltage
-setp plasmac.lowpass-frequency 100
-net plasmac:arc-voltage-in      <= hotshot.0.arc-voltage
 
 net plasmac:torch-on            => hotshot.0.torch-on
 net plasmac:ohmic-enable        => hotshot.0.ohmic-enable
@@ -73,6 +68,16 @@ net  tool-number             <= iocontrol.0.tool-prep-number
 net  tool-change-loopback    iocontrol.0.tool-change                => iocontrol.0.tool-changed
 net  tool-prepare-loopback   iocontrol.0.tool-prepare               => iocontrol.0.tool-prepared
 
+# Arc voltage
+setp plasmac.lowpass-frequency 10
+# net plasmac:arc-voltage-in      <= hotshot.0.arc-voltage
+# Scale factor, in counts per length unit. For example, if position-scale 
+# is 500, then 1000 counts of the encoder will be reported as a position of 2.0 units.
+# Circuit produces 1 kHz per 1 volt. However, we use a 50:1 voltage div. So scale is 1000/50=20
+setp    encoder.0.counter-mode      1
+setp    encoder.0.position-scale    20
+net     arc-freq	                hotshot.0.arc-freq-state	    => encoder.0.phase-A
+net     plasmac:arc-voltage-in	    <= encoder.0.velocity
 
 ### Axis X / Joint 0
 ## Hotshot setup
@@ -116,9 +121,6 @@ setp                hotshot.0.axis-x-tmc-sw-en-softstop             0
 # net  x-pos-fb       hotshot.0.axis-x-position-fb                    => joint.0.motor-pos-fb
 # net  x-vel-cmd      joint.0.vel-cmd                                 => hotshot.0.axis-x-velocity-cmd
 # net  x-enable       joint.0.amp-enable-out                          => hotshot.0.axis-x-enable
-net  x-homing       joint.0.homing                                  => hotshot.0.axis-x-is-homing
-net  x-home-sw      hotshot.0.axis-x-home-sw                        => joint.0.home-sw-in
-## PID setup
 setp                pid.x.Pgain                                     [JOINT_0]P
 setp                pid.x.Igain                                     [JOINT_0]I
 setp                pid.x.Dgain                                     [JOINT_0]D
@@ -129,13 +131,14 @@ setp                pid.x.FF2                                       [JOINT_0]FF2
 setp                pid.x.deadband                                  [JOINT_0]DEADBAND
 setp                pid.x.maxoutput                                 [JOINT_0]MAX_OUTPUT
 setp                pid.x.error-previous-target                     true
+net  x-homing       joint.0.homing                                  => hotshot.0.axis-x-is-homing
+net  x-home-sw      hotshot.0.axis-x-home-sw                        => joint.0.home-sw-in
 net  x-enable       joint.0.amp-enable-out                          => hotshot.0.axis-x-enable          pid.x.enable
 net  x-pos-cmd      joint.0.motor-pos-cmd                           => hotshot.0.axis-x-position-cmd    pid.x.command
 net  x-pos-fb       hotshot.0.axis-x-position-fb                    => joint.0.motor-pos-fb             pid.x.feedback           
 net  x-vel-cmd      joint.0.vel-cmd                                 =>                                  pid.x.command-deriv
 net  x-vel-fb       hotshot.0.axis-x-velocity-fb                    =>                                  pid.x.feedback-deriv
 net  x-output       pid.x.output                                    => hotshot.0.axis-x-velocity-cmd
-
 
 ### Axis Y(L) / Joint 1
 ## Hotshot setup

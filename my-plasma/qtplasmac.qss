@@ -21,7 +21,8 @@
 #scribe_config, #spotting_config, #utility_frame,
 #gui_frame, #materials_frame, #camview_frame,
 #conv_frame, #stats_frame, #pmx_stats_frame,
-#machinelog_frame, #ub_frame, #sd_frame {
+#machinelog_frame, #ub_frame, #sd_frame,
+#webview_frame {
     border: 1px solid #ffee06;
     background: #16160e;
     border-radius: 4px }
@@ -53,13 +54,13 @@ QToolTip {
     padding: 4 }
 
 /****** MATERIAL LABEL ************/
-#material_label{
+#material_label {
     color: #16160e;
     background: #ffee06;
     border-top-left-radius: 2px }
 
 /****** VELOCITY LABELS ************/
-#velocity_label{
+#velocity_label {
     color: #16160e;
     background: #ffee06 }
 
@@ -180,6 +181,24 @@ QPushButton:checked:pressed, QToolButton:checked:pressed {
     color: #16160e;
     background: #ff0000;
     border-color: #ff0000 }
+
+/****** POWER BUTTON ************/
+#power,
+#power:checked:pressed {
+    color: #ffee06;
+    background: #16160e;
+    border-color: #ffee06 }
+
+#power:disabled {
+    color: #b0b0b0;
+    background: #16160e;
+    border-color: #b0b0b0 }
+
+#power:pressed,
+#power:checked {
+    color: #16160e;
+    background: #ffee06;
+    border-color: #ffee06 }
 
 /****** ERROR LABEL ************/
 #error_label {
@@ -528,8 +547,12 @@ QComboBox#material_selector {
     background: #ffee06;
     border: none;
     border-radius: 0;
-    height: 16px;
-    }
+    height: 16px }
+
+QComboBox#default_material {
+    height: 24px;
+    font: 11pt;
+    padding-left: 60px }
 
 QComboBox::drop-down {
     width: 0;
@@ -584,6 +607,21 @@ QHeaderView::section {
     color: #16160e;
     background-color: #ffee06 }
 
+#filemanager QListView {
+  border: 1px solid #ffee06;
+  border-radius: 4px;
+  font: 11pt 'DejaVuSans';
+  alternate-background-color: #36362e;
+  padding: 2px }
+
+#filemanager QListView::item:selected:active {
+  color: #16160e;
+  background-color: #ffee06 }
+
+#filemanager QListView::item:selected:!active {
+  color: #16160e;
+  background-color: #ffee06 }
+
 #filemanager QComboBox {
     height: 40px;
     padding-right: 6px}
@@ -603,16 +641,19 @@ QHeaderView::section {
 
 /****** ORIGIN OFFSET VIEW ************/
 /* this also uses QHeaderView from FILEMANAGER */
+#originoffsetview QHeaderView::section {
+    padding-top: 0;
+    padding-left: 4;
+    height: 30px;
+    width: 60px }
 
 #originoffsetview {
-    font: 11pt 'DejaVuSans';
+    font: 11pt 'Mono';
     border: 1px solid #ffee06;
     border-radius: 4px;
     alternate-background-color: #16160e;
     padding: 2px;
-    gridline-color: #36362e }
-
-#originoffsetview {
+    gridline-color: #36362e;
     qproperty-styleColorHighlight: #36362e }
 
 #originoffsetview::item:selected:active {
@@ -684,6 +725,12 @@ QScrollBar::add-line:vertical {
 
 QScrollBar::sub-line:vertical {
     height: 0px }
+
+QListView QScrollBar:vertical {
+  margin-left: 1px }
+
+QListView QScrollBar:horizontal {
+  margin-top: 1px }
 
 /****** MENU ************/
 QMenu {
@@ -760,23 +807,22 @@ QPlainTextEdit {
     qproperty-background_color: #000000 }
 
 /****** GCODE EDITOR & GCODE DISPLAY ************/
-
 EditorBase#lexer {
     height: 44 }
 
-/*QTableView::item{
+/*QTableView::item {
     height: 44 }*/
 
 EditorBase {
     qproperty-styleColorBackground: #16160e;
-    qproperty-styleColor0: #ffee06;
-    qproperty-styleColor1: #ffee06;
-    qproperty-styleColor2: #ffee06;
-    qproperty-styleColor3: #ffee06;
-    qproperty-styleColor4: #ffee06;
-    qproperty-styleColor5: #ffee06;
-    qproperty-styleColor6: #ffee06;
-    qproperty-styleColor7: #ffee06;
+    qproperty-styleColor0: #ffee06;   /* parameters */
+    qproperty-styleColor1: #ffee06;   /* comments */
+    qproperty-styleColor2: #ffee06;   /* g codes */
+    qproperty-styleColor3: #ffee06;   /* m codes */
+    qproperty-styleColor4: #ffee06;   /* axes */
+    qproperty-styleColor5: #ffee06;   /* non axes */
+    qproperty-styleColor6: #ffee06;   /* axes values */
+    qproperty-styleColor7: #ffee06;   /* non axes values */
     qproperty-styleColorMarginText: #ffee06;
     qproperty-styleColorMarginBackground: #16160e;
     qproperty-styleFont0: 'DejaVuSansMono,11,-1,0,60,0,0,0,0,0';
@@ -821,12 +867,12 @@ EditorBase {
     height: 40px }
 
 /****** MESSAGE BOX ************/
-QMessageBox{
+QMessageBox {
     border: 1px solid #ffee06;
     border-radius: 4px;
     margin: 2 }
 
-QMessageBox QLabel{
+QMessageBox QLabel {
     font: 11pt }
 
 QMessageBox QPushButton {
@@ -835,15 +881,15 @@ QMessageBox QPushButton {
     font: 11pt }
 
 /****** INPUT DIALOG ************/
-QInputDialog{
+QInputDialog {
     border: 1px solid #ffee06;
     border-radius: 4px;
     margin: 2 }
 
-QInputDialog QLabel{
+QInputDialog QLabel {
     font: 11pt }
 
-QInputDialog QLineEdit{
+QInputDialog QLineEdit {
     background: #36362e;
     border: 1px solid #ffee06;
     border-radius: 4px;
@@ -869,6 +915,25 @@ Calculator QLineEdit {
     font: 20pt }
 
 /****** KEYBOARD ************/
-KeyboardDialog QLineEdit{
+KeyboardDialog QLineEdit {
     font: 20pt;
     height: 36px }
+
+/****** WEBVIEW ************/
+QWebView {
+    color: black;
+    background: white }
+
+#webview_back, #webview_reload, #webview_forward {
+    color: #16160e;
+    background: #ffee06;
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px }
+
+#webview_back {
+    border-top-left-radius: 2px }
+
+#webview_forward {
+    border-top-right-radius: 2px }

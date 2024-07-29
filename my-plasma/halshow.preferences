@@ -1,37 +1,45 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 1322x712+0+95
-placeFrames 0.3297062023939064
-set ::ratio 0.3297062023939064
-set ::old_w_leftf 160
+wm geometry . 1187x1003+313+61
+placeFrames 0.2996987951807229
+set ::ratio 0.2996987951807229
+set ::old_w_leftf 398
 set ::watchlist {
-    pin+pid.x.command
-    pin+pid.x.command-deriv
-    pin+pid.x.feedback
-    pin+pid.x.feedback-deriv
-    pin+pid.x.enable
-    pin+hotshot.0.axis-x-enable
+    sig+machine-is-on
+    sig+plasmac:breakaway
+    sig+plasmac:breakaway-switch-out
+    sig+plasmac:state
+    pin+plasmac.external-estop
+    pin+plasmac.stop-type-out
+    pin+qtplasmac.ext_abort
     pin+hotshot.0.axis-x-position-cmd
     pin+hotshot.0.axis-x-position-fb
-    pin+hotshot.0.axis-x-velocity-cmd
+    pin+iocontrol.0.user-enable-out
+    pin+iocontrol.0.emc-enable-in
+    pin+hotshot.0.axis-x-enable
+    pin+hotshot.0.axis-x-home-sw
+    pin+hotshot.0.axis-x-is-homing
+    pin+hotshot.0.axis-x-neg-limit-sw
+    pin+hotshot.0.torch-breakaway
+    pin+motion.motion-enabled
+    pin+pid.x.enable
+    pin+pid.x.command
+    pin+pid.x.feedback
     pin+hotshot.0.axis-x-velocity-fb
-    pin+pid.x.error
-    pin+pid.x.error-previous-target
-    pin+pid.x.Pgain
-    pin+pid.x.Igain
-    pin+pid.x.Dgain
-    pin+pid.x.FF0
-    pin+pid.x.FF1
-    pin+pid.x.FF2
-    pin+pid.x.tune-cycles
-    pin+pid.x.tune-effort
-    pin+pid.x.tune-mode
-    pin+pid.x.tune-type
-    pin+pid.x.tune-start
-    pin+joint.0.f-error
-    pin+joint.0.error
-    pin+joint.0.f-errored
-    pin+joint.0.f-error-lim
+    pin+hotshot.0.axis-x-sg-stop-fb
+    pin+halui.machine.is-on
+    pin+joint.0.motor-pos-cmd
+    pin+joint.0.pos-cmd
+    sig+x-pos-cmd
+    pin+hotshot.0.axis-x-tmc-position-fb
+    pin+hotshot.0.axis-x-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-x-tmc-velocity-fb
+    pin+hotshot.0.axis-x-tmc-max-acceleration-fb
+    pin+hotshot.0.axis-x-tmc-max-velocity-fb
+    pin+hotshot.0.axis-x-max-velocity-cmd
+    pin+hotshot.0.axis-x-max-acceleration-cmd
+    pin+encoder.0.counts
+    pin+encoder.0.velocity
 }
 set ::workmode watchhal
 set ::watchInterval 100

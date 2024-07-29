@@ -15,8 +15,8 @@ MachineLogDialog_play_sound = True
 MachineLogDialog_sound_type = READY
 
 [BOOK_KEEPING]
-last_loaded_directory = /home/alangibson
-RecentPath_0 = /home/alangibson/free-wolf-svg-bundle-free-wolf_2_plasmac-TEST.tap
+last_loaded_directory = /home/alangibson/linuxcnc/nc_files/examples/plasmac
+RecentPath_0 = /home/alangibson/linuxcnc/nc_files/examples/plasmac/metric_circles.ngc
 style_QSS_Path = DEFAULT
 
 [SCREEN_OPTIONS]
@@ -27,7 +27,8 @@ desktop_notify = True
 notify_max_msgs = 10
 shutdown_check = False
 sound_player_on = False
-mainwindow_geometry = 0 27 1920 1051
+mainwindow_geometry = 267 97 1386 905
+MainWindow-geometry = 0 64 1920 1136
 
 [MCH_MSG_OPTIONS]
 mchnMsg_play_sound = True

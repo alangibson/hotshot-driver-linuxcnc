@@ -43,8 +43,6 @@ gdb plasma
 
 
 # Install HAL realtime component
-ssh linuxcnc.local
-cd dev/plasma/hotshot/hotshot-driver-linuxcnc
 ./install.sh
 
 

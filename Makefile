@@ -17,7 +17,7 @@ complex-objs := bcm2835.o rpi.o tmc5041.o hotshot.lib.o hotshot.hal.o
 include Makefile.modinc
 
 clean:
-	$(Q)rm *.o *.so *.ver *.tmp *.sym hotshot.test 2>/dev/null || true
+	$(Q)rm -f *.o *.so *.ver *.tmp *.sym hotshot.test 2>/dev/null || true
 
 bcm2835.o:
 	$(Q)gcc -Werror bcm2835.c -o bcm2835.o -c

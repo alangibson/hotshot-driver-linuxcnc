@@ -3,7 +3,8 @@ license "GPL";
 
 // plasmac requires floating-point
 function _ fp;
-function sensors fp;
+function sensors;
+function arc;
 // function axis_0 fp;
 // function axis_1 fp;
 
@@ -11,7 +12,8 @@ function sensors fp;
 option extra_cleanup;
 
 pin out bit arc_ok;          // wire to plasmac.arc-ok-in
-pin out float arc_voltage;   // wire to plasmac.arc-voltage-in
+// pin out float arc_voltage;   // wire to plasmac.arc-voltage-in
+pin out bit arc_freq_state;
 pin out bit torch_breakaway; // wire to plasmac.breakaway
 pin in bit torch_on;         // wire to plasmac.torch-on
 pin in bit ohmic_enable;     // wire to plasmac.ohmic-enable
@@ -522,17 +524,29 @@ pin in bit machine_estop_cmd;
 #undef axis_z_tmc_chop_vsense_cmd
 #undef axis_z_tmc_sw_en_softstop
 
-bool needs_setup = TRUE;
+// bool NEEDS_RPI_INIT = TRUE;
+bool NEEDS_MOTOR_INIT = TRUE;
 // 0 = X, 1 = YL, 2 = YR, 3 = Z
-joint_t motors[MOTOR_COUNT];
+joint_t MOTORS[MOTOR_COUNT];
 
-// main function
+// EXTRA_SETUP() {
+//     rpi_init();
+// }
+
 FUNCTION(_)
 {
-    // Set up motors exactly once.
-    if (needs_setup) {
 
-        motors[0] = (joint_t) {
+    rpi_init();
+    // if (NEEDS_RPI_INIT)
+    // {
+    //     rpi_init();
+    //     NEEDS_RPI_INIT = FALSE;
+    // }
+
+    // Set up motors exactly once.
+    if (NEEDS_MOTOR_INIT)
+    {
+        MOTORS[0] = (joint_t) {
             .max_velocity_cmd               = __comp_inst->axis_x_max_velocity_cmd,
             .max_acceleration_cmd           = __comp_inst->axis_x_max_acceleration_cmd,
             .pitch_cmd                      = __comp_inst->axis_x_pitch,
@@ -600,7 +614,7 @@ FUNCTION(_)
             }
         };
 
-        motors[1] = (joint_t) {
+        MOTORS[1] = (joint_t) {
             .max_velocity_cmd               = __comp_inst->axis_yl_max_velocity_cmd,
             .max_acceleration_cmd           = __comp_inst->axis_yl_max_acceleration_cmd,
             .pitch_cmd                      = __comp_inst->axis_yl_pitch,
@@ -667,7 +681,7 @@ FUNCTION(_)
             }
         };
 
-        motors[2] = (joint_t) {
+        MOTORS[2] = (joint_t) {
             .max_velocity_cmd               = __comp_inst->axis_yr_max_velocity_cmd,
             .max_acceleration_cmd           = __comp_inst->axis_yr_max_acceleration_cmd,
             .pitch_cmd                      = __comp_inst->axis_yr_pitch,
@@ -734,7 +748,7 @@ FUNCTION(_)
             }
         };
 
-        motors[3] = (joint_t) {
+        MOTORS[3] = (joint_t) {
             .max_velocity_cmd               = __comp_inst->axis_z_max_velocity_cmd,
             .max_acceleration_cmd           = __comp_inst->axis_z_max_acceleration_cmd,
             .pitch_cmd                      = __comp_inst->axis_z_pitch,
@@ -801,72 +815,98 @@ FUNCTION(_)
             }
         };
 
-        hotshot_init(motors, MOTOR_COUNT);
+        // hotshot_init(MOTORS, MOTOR_COUNT);
 
-        needs_setup = FALSE;
+        NEEDS_MOTOR_INIT = FALSE;
     }
 
-    handle_joints(motors, MOTOR_COUNT);
+    handle_joints(MOTORS, MOTOR_COUNT);
 }
 
 // FUNCTION(axis_0)
 // {
-//     handle_joint(&motors[0]);
+//     handle_joint(&MOTORS[0]);
 // }
 
 // FUNCTION(axis_1)
 // {
-//     handle_joint(&motors[1]);
+//     handle_joint(&MOTORS[1]);
 // }
 
-FUNCTION(sensors) {
+FUNCTION(arc) 
+{
+    rpi_init();
 
-    // #ifdef DEBUG
-    // printf("sensors: Entering\n");
-    // #endif
+    // This is only here because EXTRA_SETUP causes insmod to fail.
+    // This can be done only in one component function!
+    // It also has to be done in a base-thread function because that will
+    // get called first.
+    // if (NEEDS_RPI_INIT)
+    // {
+    //     rpi_init();
+    //     NEEDS_RPI_INIT = FALSE;
+    // }
+    
+    uint8_t arc_freq_level = bcm2835_gpio_lev(PIN_ARC_FREQ);
+    if (arc_freq_level == HIGH)
+    {
+        arc_freq_state = TRUE;
+    }
+    else
+    {
+        arc_freq_state = FALSE;
+    }
+}
 
-    rpi_spi_select(BCM2835_SPI_CS1);
+FUNCTION(sensors)
+{
+    rpi_init();
 
-    // TODO go into estop mode on estop-cmd?
+    // if (NEEDS_RPI_INIT)
+    // {
+    //     rpi_init();
+    //     NEEDS_RPI_INIT = FALSE;
+    // }
 
-    // // TODO maybe set abort-fb
-    // abort_fb = FALSE;
-
-    // Read in arc voltage and set arc_voltage pin
-    float V_ref = 5;
-    arc_voltage = thc_voltage(BCM2835_SPI_CS1, V_ref);
-    // TODO implmement moving average? https://forums.raspberrypi.com/viewtopic.php?t=40248
-    //      (new result) = (previous result)*(1 - ratio) + (new sample) * (ratio)
-    //      using a ratio of 0.025
-    rpi_spi_unselect();
+    // rpi_spi_select(BCM2835_SPI_CS1);
+    // // TODO go into estop mode on estop-cmd?
+    // // // TODO maybe set abort-fb
+    // // abort_fb = FALSE;
+    // // Read in arc voltage and set arc_voltage pin
+    // float V_ref = 5;
+    // arc_voltage = thc_voltage(BCM2835_SPI_CS1, V_ref);
+    // // TODO implmement moving average? https://forums.raspberrypi.com/viewtopic.php?t=40248
+    // //      (new result) = (previous result)*(1 - ratio) + (new sample) * (ratio)
+    // //      using a ratio of 0.025
+    // rpi_spi_unselect();
 
     // Read in arc ok switch state and set arc_ok bin bit
     //  plasmac.arc-ok-in bit in
     //    external arc ok input signal [mode 1 & mode 2]
-    uint8_t arc_ok_level = bcm2835_gpio_lev(PIN_ARC_OK);
-    if (arc_ok_level == HIGH)
-    {
-        arc_ok = TRUE;
-    }
-    else
-    {
-        arc_ok = FALSE;
-    }
+    // uint8_t arc_ok_level = bcm2835_gpio_lev(PIN_ARC_OK);
+    // if (arc_ok_level == HIGH)
+    // {
+    //     arc_ok = TRUE;
+    // }
+    // else
+    // {
+    //     arc_ok = FALSE;
+    // }
 
     // Removed in favor of Stallguard based breakaway
     //
     // Read in breakaway switch state and set breakaway pin bit
     //  plasmac.breakaway bit in
     //      torch breakaway switch (optional, see float_switch)
-    // uint8_t torch_breakaway_level = bcm2835_gpio_lev(PIN_TORCH_BREAKAWAY);
-    // if (torch_breakaway_level == LOW)
-    // {
-    //     torch_breakaway = TRUE;
-    // }
-    // else
-    // {
-    //     torch_breakaway = FALSE;
-    // }
+    uint8_t torch_breakaway_level = bcm2835_gpio_lev(PIN_TORCH_BREAKAWAY);
+    if (torch_breakaway_level == LOW)
+    {
+        torch_breakaway = TRUE;
+    }
+    else
+    {
+        torch_breakaway = FALSE;
+    }
 
     // Read in ohmic probe contact state and set ohmic_probe pin bit
     //  plasmac.ohmic-probe bit in
@@ -917,316 +957,11 @@ FUNCTION(sensors) {
     {
         bcm2835_gpio_clr(PIN_TORCH_ON);
     }
-
-    // #ifdef DEBUG
-    // printf("sensors: Exiting\n");
-    // #endif
 }
-
-/*
-#undef axis_x_position_fb
-#undef axis_x_velocity_fb
-#undef axis_x_velocity_factor_fb
-#undef axis_x_acceleration_fb
-#undef axis_x_sg_stop_fb
-#undef axis_x_home_sw
-#undef machine_estop_fb
-#undef torch_breakaway
-#undef axis_x_tmc_position_fb
-#undef axis_x_tmc_velocity_fb
-#undef axis_x_tmc_motor_standstill_fb
-#undef axis_x_tmc_motor_full_stepping_fb
-#undef axis_x_tmc_motor_overtemp_warning_fb
-#undef axis_x_tmc_motor_overtemp_alarm_fb
-#undef axis_x_tmc_motor_load_fb
-#undef axis_x_tmc_motor_current_fb
-#undef axis_x_tmc_motor_stall_fb
-#undef axis_x_tmc_microstep_resolution_fb
-EXTRA_SETUP() // static int extra_setup(struct __comp_state *__comp_inst, char *prefix, long extra_arg);
-{
-    // Set up motors exactly once.
-    if (needs_setup) {
-
-        motors[0] = (joint_t) {
-            .max_velocity_cmd               = __comp_inst->axis_x_max_velocity_cmd,
-            .max_acceleration_cmd           = __comp_inst->axis_x_max_acceleration_cmd,
-            .pitch_cmd                      = __comp_inst->axis_x_pitch,
-            .teeth_cmd                      = __comp_inst->axis_x_teeth,
-            .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_x_motor_fullsteps_per_rev_cmd,
-            .microsteps_cmd                 = __comp_inst->axis_x_microsteps_cmd,
-            .is_enabled_cmd                 = __comp_inst->axis_x_enable,
-            .is_homing_cmd                  = __comp_inst->axis_x_is_homing,
-            .position_cmd                   = __comp_inst->axis_x_position_cmd,
-            .velocity_cmd                   = __comp_inst->axis_x_velocity_cmd,
-            .acceleration_cmd               = __comp_inst->axis_x_acceleration_cmd,
-            .position_fb                    = __comp_inst->axis_x_position_fb,
-            .velocity_fb                    = __comp_inst->axis_x_velocity_fb,
-            .velocity_factor                = __comp_inst->axis_x_velocity_factor_fb,
-            .acceleration_fb                = __comp_inst->axis_x_acceleration_fb,
-            .sg_stop_fb                     = __comp_inst->axis_x_sg_stop_fb,
-            .home_sw_fb                     = __comp_inst->axis_x_home_sw,
-            .estop_fb                       = __comp_inst->machine_estop_fb,
-            .torch_breakaway_fb             = __comp_inst->torch_breakaway,
-            .tmc = (tmc5041_motor_t) {
-                .chip = (tmc5041_chip_t) {
-                    .chip = axis_x_chip
-                },
-                .motor = axis_x_motor,
-                .run_current_cmd            = __comp_inst->axis_x_tmc_run_current_cmd,
-                .hold_current_cmd           = __comp_inst->axis_x_tmc_hold_current_cmd,
-                .cs_thresh_cmd              = __comp_inst->axis_x_tmc_cs_thresh_cmd,
-                .sg_stop_cmd                = __comp_inst->axis_x_tmc_sg_stop_cmd,
-                .sg_thresh_cmd              = __comp_inst->axis_x_tmc_sg_thresh_cmd,
-                .current_hold_delay_cmd     = __comp_inst->axis_x_tmc_current_hold_delay_cmd,
-                .ramp_mode_cmd              = __comp_inst->axis_x_tmc_ramp_mode_cmd,
-                .ramp_vstart_cmd            = __comp_inst->axis_x_tmc_ramp_vstart_cmd,
-                .ramp_vstop_cmd             = __comp_inst->axis_x_tmc_ramp_vstop_cmd,
-                .ramp_v1_cmd                = __comp_inst->axis_x_tmc_ramp_v1_cmd,
-                .ramp_a1_cmd                = __comp_inst->axis_x_tmc_ramp_a1_cmd,
-                .ramp_dmax_cmd              = __comp_inst->axis_x_tmc_ramp_dmax_cmd,
-                .ramp_d1_cmd                = __comp_inst->axis_x_tmc_ramp_d1_cmd,
-                .ramp_tzerowait_cmd         = __comp_inst->axis_x_tmc_ramp_tzerowait_cmd,
-                .coolstep_sfilt_cmd         = __comp_inst->axis_x_tmc_coolstep_sfilt_cmd,
-                .coolstep_seimin_cmd        = __comp_inst->axis_x_tmc_coolstep_seimin_cmd,
-                .coolstep_sedn_cmd          = __comp_inst->axis_x_tmc_coolstep_sedn_cmd,
-                .coolstep_seup_cmd          = __comp_inst->axis_x_tmc_coolstep_seup_cmd,
-                .coolstep_semin_cmd         = __comp_inst->axis_x_tmc_coolstep_semin_cmd,
-                .coolstep_semax_cmd         = __comp_inst->axis_x_tmc_coolstep_semax_cmd,
-                .chop_mode_cmd              = __comp_inst->axis_x_tmc_chop_mode_cmd,
-                .chop_vhigh_cmd             = __comp_inst->axis_x_tmc_chop_vhigh_cmd,
-                .chop_vhighchm_cmd          = __comp_inst->axis_x_tmc_chop_vhighchm_cmd,
-                .chop_vhighfs_cmd           = __comp_inst->axis_x_tmc_chop_vhighfs_cmd,
-                .chop_tbl_cmd               = __comp_inst->axis_x_tmc_chop_tbl_cmd,
-                .chop_hend_cmd              = __comp_inst->axis_x_tmc_chop_hend_cmd,
-                .chop_hstrt_cmd             = __comp_inst->axis_x_tmc_chop_hstrt_cmd,
-                .chop_toff_cmd              = __comp_inst->axis_x_tmc_chop_toff_cmd,
-                .chop_vsense_cmd            = __comp_inst->axis_x_tmc_chop_vsense_cmd,
-                .sw_en_softstop             = __comp_inst->axis_x_tmc_sw_en_softstop,
-                .position_fb                = __comp_inst->axis_x_tmc_position_fb,
-                .velocity_fb                = __comp_inst->axis_x_tmc_velocity_fb,
-                .motor_standstill_fb        = __comp_inst->axis_x_tmc_motor_standstill_fb,
-                .motor_full_stepping_fb     = __comp_inst->axis_x_tmc_motor_full_stepping_fb,
-                .motor_overtemp_warning_fb  = __comp_inst->axis_x_tmc_motor_overtemp_warning_fb,
-                .motor_overtemp_alarm_fb    = __comp_inst->axis_x_tmc_motor_overtemp_alarm_fb,
-                .motor_load_fb              = __comp_inst->axis_x_tmc_motor_load_fb,
-                .motor_current_fb           = __comp_inst->axis_x_tmc_motor_current_fb,
-                .motor_stall_fb             = __comp_inst->axis_x_tmc_motor_stall_fb,
-                .microstep_resolution_fb    = __comp_inst->axis_x_tmc_microstep_resolution_fb,
-            }
-        };
-
-        // motors[1] = (joint_t) {
-        //     .max_velocity_cmd               = __comp_inst->axis_yl_max_velocity_cmd,
-        //     .max_acceleration_cmd           = __comp_inst->axis_yl_max_acceleration_cmd,
-        //     .pitch_cmd                      = __comp_inst->axis_yl_pitch,
-        //     .teeth_cmd                      = __comp_inst->axis_yl_teeth,
-        //     .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_yl_motor_fullsteps_per_rev_cmd,
-        //     .microsteps_cmd                 = __comp_inst->axis_yl_microsteps_cmd,
-        //     .is_enabled_cmd                 = __comp_inst->axis_yl_enable,
-        //     .is_homing_cmd                  = __comp_inst->axis_yl_is_homing,
-        //     .position_cmd                   = __comp_inst->axis_yl_position_cmd,
-        //     .velocity_cmd                   = __comp_inst->axis_yl_velocity_cmd,
-        //     .acceleration_cmd               = __comp_inst->axis_yl_acceleration_cmd,
-        //     .position_fb                    = &axis_yl_position_fb,
-        //     .velocity_fb                    = &axis_yl_velocity_fb,
-        //     .acceleration_fb                = &axis_yl_acceleration_fb,
-        //     .sg_stop_fb                     = &axis_yl_sg_stop_fb,
-        //     .home_sw_fb                     = &axis_yl_home_sw,
-        //     .estop_fb                       = &machine_estop_fb,
-        //     .torch_breakaway_fb             = &torch_breakaway,
-        //     .tmc = (tmc5041_motor_t) {
-        //         .chip = (tmc5041_chip_t) {
-        //             .chip = axis_yl_chip
-        //         },
-        //         .motor = axis_yl_motor,
-        //         .run_current_cmd            = __comp_inst->axis_yl_tmc_run_current_cmd,
-        //         .hold_current_cmd           = __comp_inst->axis_yl_tmc_hold_current_cmd,
-        //         .cs_thresh_cmd              = __comp_inst->axis_yl_tmc_cs_thresh_cmd,
-        //         .sg_stop_cmd                = __comp_inst->axis_yl_tmc_sg_stop_cmd,
-        //         .sg_thresh_cmd              = __comp_inst->axis_yl_tmc_sg_thresh_cmd,
-        //         .current_hold_delay_cmd     = __comp_inst->axis_yl_tmc_current_hold_delay_cmd,
-        //         .ramp_mode_cmd              = __comp_inst->axis_yl_tmc_ramp_mode_cmd,
-        //         .ramp_vstart_cmd            = __comp_inst->axis_yl_tmc_ramp_vstart_cmd,
-        //         .ramp_vstop_cmd             = __comp_inst->axis_yl_tmc_ramp_vstop_cmd,
-        //         .ramp_v1_cmd                = __comp_inst->axis_yl_tmc_ramp_v1_cmd,
-        //         .ramp_a1_cmd                = __comp_inst->axis_yl_tmc_ramp_a1_cmd,
-        //         .ramp_dmax_cmd              = __comp_inst->axis_yl_tmc_ramp_dmax_cmd,
-        //         .ramp_d1_cmd                = __comp_inst->axis_yl_tmc_ramp_d1_cmd,
-        //         .ramp_tzerowait_cmd         = __comp_inst->axis_yl_tmc_ramp_tzerowait_cmd,
-        //         .coolstep_sfilt_cmd         = __comp_inst->axis_yl_tmc_coolstep_sfilt_cmd,
-        //         .coolstep_seimin_cmd        = __comp_inst->axis_yl_tmc_coolstep_seimin_cmd,
-        //         .coolstep_sedn_cmd          = __comp_inst->axis_yl_tmc_coolstep_sedn_cmd,
-        //         .coolstep_seup_cmd          = __comp_inst->axis_yl_tmc_coolstep_seup_cmd,
-        //         .coolstep_semin_cmd         = __comp_inst->axis_yl_tmc_coolstep_semin_cmd,
-        //         .coolstep_semax_cmd         = __comp_inst->axis_yl_tmc_coolstep_semax_cmd,
-        //         .chop_mode_cmd              = __comp_inst->axis_yl_tmc_chop_mode_cmd,
-        //         .chop_vhigh_cmd             = __comp_inst->axis_yl_tmc_chop_vhigh_cmd,
-        //         .chop_vhighchm_cmd          = __comp_inst->axis_yl_tmc_chop_vhighchm_cmd,
-        //         .chop_vhighfs_cmd           = __comp_inst->axis_yl_tmc_chop_vhighfs_cmd,
-        //         .chop_tbl_cmd               = __comp_inst->axis_yl_tmc_chop_tbl_cmd,
-        //         .chop_hend_cmd              = __comp_inst->axis_yl_tmc_chop_hend_cmd,
-        //         .chop_hstrt_cmd             = __comp_inst->axis_yl_tmc_chop_hstrt_cmd,
-        //         .chop_toff_cmd              = __comp_inst->axis_yl_tmc_chop_toff_cmd,
-        //         .chop_vsense_cmd            = __comp_inst->axis_yl_tmc_chop_vsense_cmd,
-        //         .sw_en_softstop             = __comp_inst->axis_yl_tmc_sw_en_softstop,
-        //         .position_fb                = &axis_yl_tmc_position_fb,
-        //         .velocity_fb                = &axis_yl_tmc_velocity_fb,
-        //         .motor_standstill_fb        = &axis_yl_tmc_motor_standstill_fb,
-        //         .motor_full_stepping_fb     = &axis_yl_tmc_motor_full_stepping_fb,
-        //         .motor_overtemp_warning_fb  = &axis_yl_tmc_motor_overtemp_warning_fb,
-        //         .motor_overtemp_alarm_fb    = &axis_yl_tmc_motor_overtemp_alarm_fb,
-        //         .motor_load_fb              = &axis_yl_tmc_motor_load_fb,
-        //         .motor_current_fb           = &axis_yl_tmc_motor_current_fb,
-        //         .motor_stall_fb             = &axis_yl_tmc_motor_stall_fb,
-        //         .microstep_resolution_fb    = &axis_yl_tmc_microstep_resolution_fb,
-        //     }
-        // };
-
-        // motors[2] = (joint_t) {
-        //     .max_velocity_cmd               = __comp_inst->axis_yr_max_velocity_cmd,
-        //     .max_acceleration_cmd           = __comp_inst->axis_yr_max_acceleration_cmd,
-        //     .pitch_cmd                      = __comp_inst->axis_yr_pitch,
-        //     .teeth_cmd                      = __comp_inst->axis_yr_teeth,
-        //     .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_yr_motor_fullsteps_per_rev_cmd,
-        //     .microsteps_cmd                 = __comp_inst->axis_yr_microsteps_cmd,
-        //     .is_enabled_cmd                 = __comp_inst->axis_yr_enable,
-        //     .is_homing_cmd                  = __comp_inst->axis_yr_is_homing,
-        //     .position_cmd                   = __comp_inst->axis_yr_position_cmd,
-        //     .velocity_cmd                   = __comp_inst->axis_yr_velocity_cmd,
-        //     .acceleration_cmd               = __comp_inst->axis_yr_acceleration_cmd,
-        //     .position_fb                    = &axis_yr_position_fb,
-        //     .velocity_fb                    = &axis_yr_velocity_fb,
-        //     .acceleration_fb                = &axis_yr_acceleration_fb,
-        //     .sg_stop_fb                     = &axis_yr_sg_stop_fb,
-        //     .home_sw_fb                     = &axis_yr_home_sw,
-        //     .estop_fb                       = &machine_estop_fb,
-        //     .torch_breakaway_fb             = &torch_breakaway,
-        //     .tmc = (tmc5041_motor_t) {
-        //         .chip = (tmc5041_chip_t) {
-        //             .chip = axis_yr_chip
-        //         },
-        //         .motor = axis_yr_motor,
-        //         .run_current_cmd            = __comp_inst->axis_yr_tmc_run_current_cmd,
-        //         .hold_current_cmd           = __comp_inst->axis_yr_tmc_hold_current_cmd,
-        //         .cs_thresh_cmd              = __comp_inst->axis_yr_tmc_cs_thresh_cmd,
-        //         .sg_stop_cmd                = __comp_inst->axis_yr_tmc_sg_stop_cmd,
-        //         .sg_thresh_cmd              = __comp_inst->axis_yr_tmc_sg_thresh_cmd,
-        //         .current_hold_delay_cmd     = __comp_inst->axis_yr_tmc_current_hold_delay_cmd,
-        //         .ramp_mode_cmd              = __comp_inst->axis_yr_tmc_ramp_mode_cmd,
-        //         .ramp_vstart_cmd            = __comp_inst->axis_yr_tmc_ramp_vstart_cmd,
-        //         .ramp_vstop_cmd             = __comp_inst->axis_yr_tmc_ramp_vstop_cmd,
-        //         .ramp_v1_cmd                = __comp_inst->axis_yr_tmc_ramp_v1_cmd,
-        //         .ramp_a1_cmd                = __comp_inst->axis_yr_tmc_ramp_a1_cmd,
-        //         .ramp_dmax_cmd              = __comp_inst->axis_yr_tmc_ramp_dmax_cmd,
-        //         .ramp_d1_cmd                = __comp_inst->axis_yr_tmc_ramp_d1_cmd,
-        //         .ramp_tzerowait_cmd         = __comp_inst->axis_yr_tmc_ramp_tzerowait_cmd,
-        //         .coolstep_sfilt_cmd         = __comp_inst->axis_yr_tmc_coolstep_sfilt_cmd,
-        //         .coolstep_seimin_cmd        = __comp_inst->axis_yr_tmc_coolstep_seimin_cmd,
-        //         .coolstep_sedn_cmd          = __comp_inst->axis_yr_tmc_coolstep_sedn_cmd,
-        //         .coolstep_seup_cmd          = __comp_inst->axis_yr_tmc_coolstep_seup_cmd,
-        //         .coolstep_semin_cmd         = __comp_inst->axis_yr_tmc_coolstep_semin_cmd,
-        //         .coolstep_semax_cmd         = __comp_inst->axis_yr_tmc_coolstep_semax_cmd,
-        //         .chop_mode_cmd              = __comp_inst->axis_yr_tmc_chop_mode_cmd,
-        //         .chop_vhigh_cmd             = __comp_inst->axis_yr_tmc_chop_vhigh_cmd,
-        //         .chop_vhighchm_cmd          = __comp_inst->axis_yr_tmc_chop_vhighchm_cmd,
-        //         .chop_vhighfs_cmd           = __comp_inst->axis_yr_tmc_chop_vhighfs_cmd,
-        //         .chop_tbl_cmd               = __comp_inst->axis_yr_tmc_chop_tbl_cmd,
-        //         .chop_hend_cmd              = __comp_inst->axis_yr_tmc_chop_hend_cmd,
-        //         .chop_hstrt_cmd             = __comp_inst->axis_yr_tmc_chop_hstrt_cmd,
-        //         .chop_toff_cmd              = __comp_inst->axis_yr_tmc_chop_toff_cmd,
-        //         .chop_vsense_cmd            = __comp_inst->axis_yr_tmc_chop_vsense_cmd,
-        //         .sw_en_softstop             = __comp_inst->axis_yr_tmc_sw_en_softstop,
-        //         .position_fb                = &axis_yr_tmc_position_fb,
-        //         .velocity_fb                = &axis_yr_tmc_velocity_fb,
-        //         .motor_standstill_fb        = &axis_yr_tmc_motor_standstill_fb,
-        //         .motor_full_stepping_fb     = &axis_yr_tmc_motor_full_stepping_fb,
-        //         .motor_overtemp_warning_fb  = &axis_yr_tmc_motor_overtemp_warning_fb,
-        //         .motor_overtemp_alarm_fb    = &axis_yr_tmc_motor_overtemp_alarm_fb,
-        //         .motor_load_fb              = &axis_yr_tmc_motor_load_fb,
-        //         .motor_current_fb           = &axis_yr_tmc_motor_current_fb,
-        //         .motor_stall_fb             = &axis_yr_tmc_motor_stall_fb,
-        //         .microstep_resolution_fb    = &axis_yr_tmc_microstep_resolution_fb,
-        //     }
-        // };
-
-        // motors[3] = (joint_t) {
-        //     .max_velocity_cmd               = __comp_inst->axis_z_max_velocity_cmd,
-        //     .max_acceleration_cmd           = __comp_inst->axis_z_max_acceleration_cmd,
-        //     .pitch_cmd                      = __comp_inst->axis_z_pitch,
-        //     .teeth_cmd                      = __comp_inst->axis_z_teeth,
-        //     .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_z_motor_fullsteps_per_rev_cmd,
-        //     .microsteps_cmd                 = __comp_inst->axis_z_microsteps_cmd,
-        //     .is_enabled_cmd                 = __comp_inst->axis_z_enable,
-        //     .is_homing_cmd                  = __comp_inst->axis_z_is_homing,
-        //     .position_cmd                   = __comp_inst->axis_z_position_cmd,
-        //     .velocity_cmd                   = __comp_inst->axis_z_velocity_cmd,
-        //     .acceleration_cmd               = __comp_inst->axis_z_acceleration_cmd,
-        //     .position_fb                    = &axis_z_position_fb,
-        //     .velocity_fb                    = &axis_z_velocity_fb,
-        //     .acceleration_fb                = &axis_z_acceleration_fb,
-        //     .sg_stop_fb                     = &axis_z_sg_stop_fb,
-        //     .home_sw_fb                     = &axis_z_home_sw,
-        //     .estop_fb                       = &machine_estop_fb,
-        //     .torch_breakaway_fb             = &torch_breakaway,
-        //     .tmc = (tmc5041_motor_t) {
-        //         .chip = (tmc5041_chip_t) {
-        //             .chip = axis_z_chip
-        //         },
-        //         .motor = axis_z_motor,
-        //         .run_current_cmd            = __comp_inst->axis_z_tmc_run_current_cmd,
-        //         .hold_current_cmd           = __comp_inst->axis_z_tmc_hold_current_cmd,
-        //         .cs_thresh_cmd              = __comp_inst->axis_z_tmc_cs_thresh_cmd,
-        //         .sg_stop_cmd                = __comp_inst->axis_z_tmc_sg_stop_cmd,
-        //         .sg_thresh_cmd              = __comp_inst->axis_z_tmc_sg_thresh_cmd,
-        //         .current_hold_delay_cmd     = __comp_inst->axis_z_tmc_current_hold_delay_cmd,
-        //         .ramp_mode_cmd              = __comp_inst->axis_z_tmc_ramp_mode_cmd,
-        //         .ramp_vstart_cmd            = __comp_inst->axis_z_tmc_ramp_vstart_cmd,
-        //         .ramp_vstop_cmd             = __comp_inst->axis_z_tmc_ramp_vstop_cmd,
-        //         .ramp_v1_cmd                = __comp_inst->axis_z_tmc_ramp_v1_cmd,
-        //         .ramp_a1_cmd                = __comp_inst->axis_z_tmc_ramp_a1_cmd,
-        //         .ramp_dmax_cmd              = __comp_inst->axis_z_tmc_ramp_dmax_cmd,
-        //         .ramp_d1_cmd                = __comp_inst->axis_z_tmc_ramp_d1_cmd,
-        //         .ramp_tzerowait_cmd         = __comp_inst->axis_z_tmc_ramp_tzerowait_cmd,
-        //         .coolstep_sfilt_cmd         = __comp_inst->axis_z_tmc_coolstep_sfilt_cmd,
-        //         .coolstep_seimin_cmd        = __comp_inst->axis_z_tmc_coolstep_seimin_cmd,
-        //         .coolstep_sedn_cmd          = __comp_inst->axis_z_tmc_coolstep_sedn_cmd,
-        //         .coolstep_seup_cmd          = __comp_inst->axis_z_tmc_coolstep_seup_cmd,
-        //         .coolstep_semin_cmd         = __comp_inst->axis_z_tmc_coolstep_semin_cmd,
-        //         .coolstep_semax_cmd         = __comp_inst->axis_z_tmc_coolstep_semax_cmd,
-        //         .chop_mode_cmd              = __comp_inst->axis_z_tmc_chop_mode_cmd,
-        //         .chop_vhigh_cmd             = __comp_inst->axis_z_tmc_chop_vhigh_cmd,
-        //         .chop_vhighchm_cmd          = __comp_inst->axis_z_tmc_chop_vhighchm_cmd,
-        //         .chop_vhighfs_cmd           = __comp_inst->axis_z_tmc_chop_vhighfs_cmd,
-        //         .chop_tbl_cmd               = __comp_inst->axis_z_tmc_chop_tbl_cmd,
-        //         .chop_hend_cmd              = __comp_inst->axis_z_tmc_chop_hend_cmd,
-        //         .chop_hstrt_cmd             = __comp_inst->axis_z_tmc_chop_hstrt_cmd,
-        //         .chop_toff_cmd              = __comp_inst->axis_z_tmc_chop_toff_cmd,
-        //         .chop_vsense_cmd            = __comp_inst->axis_z_tmc_chop_vsense_cmd,
-        //         .sw_en_softstop             = __comp_inst->axis_z_tmc_sw_en_softstop,
-        //         .position_fb                = &axis_z_tmc_position_fb,
-        //         .velocity_fb                = &axis_z_tmc_velocity_fb,
-        //         .motor_standstill_fb        = &axis_z_tmc_motor_standstill_fb,
-        //         .motor_full_stepping_fb     = &axis_z_tmc_motor_full_stepping_fb,
-        //         .motor_overtemp_warning_fb  = &axis_z_tmc_motor_overtemp_warning_fb,
-        //         .motor_overtemp_alarm_fb    = &axis_z_tmc_motor_overtemp_alarm_fb,
-        //         .motor_load_fb              = &axis_z_tmc_motor_load_fb,
-        //         .motor_current_fb           = &axis_z_tmc_motor_current_fb,
-        //         .motor_stall_fb             = &axis_z_tmc_motor_stall_fb,
-        //         .microstep_resolution_fb    = &axis_z_tmc_microstep_resolution_fb,
-        //     }
-        // };
-
-        // TODO we should really call hotshot_init here since we call hotshot_end at shutdown time
-        // rpi_init();
-
-        needs_setup = FALSE;
-    }
-}
-*/
 
 EXTRA_CLEANUP()
 {
-    hotshot_end(motors, MOTOR_COUNT);
+    hotshot_end(MOTORS, MOTOR_COUNT);
 }
 
 // HAL Module
