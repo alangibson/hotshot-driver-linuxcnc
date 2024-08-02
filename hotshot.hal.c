@@ -72,6 +72,11 @@ void handle_joint(joint_t * joint)
             hotshot_joint_init(joint);
             joint->is_setup = TRUE;
         }
+        // else
+        // {
+        //     // Always call this so we can configure drivers on the fly
+        //     tmc5041_motor_set_config_registers(&joint->tmc);
+        // }
 
         if (! joint->tmc.is_power_on)
         {
@@ -82,21 +87,24 @@ void handle_joint(joint_t * joint)
         // Check switches
         //
         // Note: Reading RAMP_STAT clears sg_stop
+        // FIXME if we read RAMP_STAT register, then Stallguard never stops motor 
+        //       since reading this register clears the stop flag.
+        //       We need a different way to read Stallguard status; 
+        //       maybe use *joint->tmc.motor_stall_fb instead?
         // ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(&joint->tmc);
         // *joint->sg_stop_fb = ramp_stat.event_stop_sg;
+
         // TODO
         // axis_x_tmc_position_reached_fb = ramp_stat.position_reached;
         // axis_x_tmc_t_zerowait_active_fb = ramp_stat.t_zerowait_active;
         // axis_x_tmc_velocity_reached_fb = ramp_stat.velocity_reached;
-        // printf("status_sg=%d\n", *joint->sg_stop_fb);
 
         // Handle StallGuard state
         //
         if (*joint->sg_stop_fb)
         {
             // StallGuard has been triggered
-
-            printf("stallguard triggered\n");
+            printf("Stallguard triggered\n");
 
             #ifdef DEBUG
             printf("handle_joint(%d, %d): StallGuard triggered sg_stop_cmd=%d sg_thresh_cmd=%d\n", 
@@ -105,11 +113,11 @@ void handle_joint(joint_t * joint)
                 joint->tmc.chip, joint->tmc.motor);
             #endif
 
-            // *joint->is_enabled_cmd = FALSE;
-             *joint->estop_fb = TRUE;
-
             if (*joint->is_homing_cmd) {
                 // We are homing and we have hit a Stallguard stop event, so trigger home switch
+
+                printf("handle_joint(%d, %d): Is homing\n",
+                    joint->tmc.chip, joint->tmc.motor);
 
                 #ifdef DEBUG
                 printf("handle_joint(%d, %d): Setting home position\n",
@@ -118,20 +126,29 @@ void handle_joint(joint_t * joint)
 
                 joint->home_sw = tmc5041_motor_set_home(&joint->tmc);
             } else {
-                // We've hit a Stallguard stop, but we're not homing
+                // We've hit a Stallguard stop, but we're not homing.
+                //
+                // TODO if torch is on, then trigger torch breakaway
+                // TODO if torch is not on, then assume we have hit an axis limit
 
-                #ifdef DEBUG
-                printf("handle_joint(%d, %d): Triggering torch breakaway\n",
+                printf("handle_joint(%d, %d): Is NOT homing\n",
                     joint->tmc.chip, joint->tmc.motor);
-                #endif
+
+                // TODO Don't power off, go to holding current instead
+                // tmc5041_motor_power_off(&joint->tmc);
+
+                // #ifdef DEBUG
+                // printf("handle_joint(%d, %d): Triggering torch breakaway\n",
+                //     joint->tmc.chip, joint->tmc.motor);
+                // #endif
 
                 // TODO shut off torch
                 
                 // Stop motion controller or joint will twitch every time we read RAMP_STAT
                 // TODO we should probably just set XTARGET=XACTUAL and leave chopper on
-                tmc5041_motor_power_off(&joint->tmc);
+                // tmc5041_motor_power_off(&joint->tmc);
 
-                *joint->torch_breakaway_fb = TRUE;
+                // *joint->torch_breakaway_fb = TRUE;
 
                 // TODO "breakaway" for the x axis should indicate negative limit switch is triggered
                 // There is currently no negative limit switch for X and YL/YR
@@ -152,14 +169,14 @@ void handle_joint(joint_t * joint)
 
         // Get driver state
         // 
-        // drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&joint->tmc);
-        // *joint->tmc.motor_standstill_fb = drv_status.standstill;
-        // *joint->tmc.motor_full_stepping_fb = drv_status.full_stepping;
-        // *joint->tmc.motor_overtemp_warning_fb = drv_status.overtemp_warning;
-        // *joint->tmc.motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
-        // *joint->tmc.motor_load_fb = drv_status.sg_result;
-        // *joint->tmc.motor_current_fb = drv_status.cs_actual;
-        // *joint->tmc.motor_stall_fb = drv_status.sg_status;
+        drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&joint->tmc);
+        *joint->tmc.motor_standstill_fb = drv_status.standstill;
+        *joint->tmc.motor_full_stepping_fb = drv_status.full_stepping;
+        *joint->tmc.motor_overtemp_warning_fb = drv_status.overtemp_warning;
+        *joint->tmc.motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
+        *joint->tmc.motor_load_fb = drv_status.sg_result;
+        *joint->tmc.motor_current_fb = drv_status.cs_actual;
+        *joint->tmc.motor_stall_fb = drv_status.sg_status;
 
         // Get chopper state
         //

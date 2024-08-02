@@ -151,3 +151,4 @@ bool tmc5041_motor_set_home(tmc5041_motor_t * motor);
 void tmc5041_motor_end(tmc5041_motor_t * motor);
 void tmc5041_motor_power_on(tmc5041_motor_t * motor);
 void tmc5041_motor_power_off(tmc5041_motor_t * motor);
+void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor);

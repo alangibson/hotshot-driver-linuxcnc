@@ -1,45 +1,42 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 1187x1003+313+61
+wm geometry . 1187x1003+-349+52
 placeFrames 0.2996987951807229
 set ::ratio 0.2996987951807229
 set ::old_w_leftf 398
 set ::watchlist {
-    sig+machine-is-on
-    sig+plasmac:breakaway
-    sig+plasmac:breakaway-switch-out
-    sig+plasmac:state
-    pin+plasmac.external-estop
-    pin+plasmac.stop-type-out
-    pin+qtplasmac.ext_abort
-    pin+hotshot.0.axis-x-position-cmd
-    pin+hotshot.0.axis-x-position-fb
-    pin+iocontrol.0.user-enable-out
-    pin+iocontrol.0.emc-enable-in
-    pin+hotshot.0.axis-x-enable
-    pin+hotshot.0.axis-x-home-sw
-    pin+hotshot.0.axis-x-is-homing
-    pin+hotshot.0.axis-x-neg-limit-sw
-    pin+hotshot.0.torch-breakaway
-    pin+motion.motion-enabled
-    pin+pid.x.enable
-    pin+pid.x.command
-    pin+pid.x.feedback
-    pin+hotshot.0.axis-x-velocity-fb
     pin+hotshot.0.axis-x-sg-stop-fb
-    pin+halui.machine.is-on
-    pin+joint.0.motor-pos-cmd
-    pin+joint.0.pos-cmd
-    sig+x-pos-cmd
-    pin+hotshot.0.axis-x-tmc-position-fb
+    pin+hotshot.0.axis-yl-sg-stop-fb
+    pin+hotshot.0.axis-yr-sg-stop-fb
+    pin+hotshot.0.axis-z-sg-stop-fb
+    pin+hotshot.0.axis-x-home-sw
+    pin+hotshot.0.axis-yl-home-sw
+    pin+hotshot.0.axis-yr-home-sw
+    pin+hotshot.0.axis-z-home-sw
     pin+hotshot.0.axis-x-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-x-tmc-velocity-fb
-    pin+hotshot.0.axis-x-tmc-max-acceleration-fb
-    pin+hotshot.0.axis-x-tmc-max-velocity-fb
-    pin+hotshot.0.axis-x-max-velocity-cmd
-    pin+hotshot.0.axis-x-max-acceleration-cmd
-    pin+encoder.0.counts
-    pin+encoder.0.velocity
+    pin+hotshot.0.axis-yl-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-yr-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-z-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-x-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-yl-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-yr-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-z-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-x-tmc-motor-stall-fb
+    pin+hotshot.0.axis-yl-tmc-motor-stall-fb
+    pin+hotshot.0.axis-yr-tmc-motor-stall-fb
+    pin+hotshot.0.axis-z-tmc-motor-stall-fb
+    pin+hotshot.0.axis-x-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-yl-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-yr-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-z-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-x-tmc-motor-load-fb
+    pin+hotshot.0.axis-yl-tmc-motor-load-fb
+    pin+hotshot.0.axis-yr-tmc-motor-load-fb
+    pin+hotshot.0.axis-z-tmc-motor-load-fb
+    pin+hotshot.0.axis-x-tmc-sw-en-softstop
+    pin+hotshot.0.axis-yl-tmc-sw-en-softstop
+    pin+hotshot.0.axis-yr-tmc-sw-en-softstop
+    pin+hotshot.0.axis-z-tmc-sw-en-softstop
 }
 set ::workmode watchhal
 set ::watchInterval 100

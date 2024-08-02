@@ -126,7 +126,7 @@ void update(joint_t * joint)
         // float64_t d_sec = d_msec / 1000.0;
         int32_t diff = xactual - (*joint->tmc.position_fb);
         float64_t diff_mm = microsteps_to_mm(joint->microstep_per_mm, diff);
-        printf("Position jump detected:\n");
+        // printf("Position jump detected:\n");
         // printf("    xactual=%d, position_fb=%d, d_sec=%f, diff=%d us, %f mm\n", 
         //     xactual, *joint->tmc.position_fb, d_sec, diff, diff_mm);
         // float64_t factor = 1 / d_sec;

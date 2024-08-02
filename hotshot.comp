@@ -537,11 +537,6 @@ FUNCTION(_)
 {
 
     rpi_init();
-    // if (NEEDS_RPI_INIT)
-    // {
-    //     rpi_init();
-    //     NEEDS_RPI_INIT = FALSE;
-    // }
 
     // Set up motors exactly once.
     if (NEEDS_MOTOR_INIT)
@@ -837,16 +832,6 @@ FUNCTION(arc)
 {
     rpi_init();
 
-    // This is only here because EXTRA_SETUP causes insmod to fail.
-    // This can be done only in one component function!
-    // It also has to be done in a base-thread function because that will
-    // get called first.
-    // if (NEEDS_RPI_INIT)
-    // {
-    //     rpi_init();
-    //     NEEDS_RPI_INIT = FALSE;
-    // }
-    
     uint8_t arc_freq_level = bcm2835_gpio_lev(PIN_ARC_FREQ);
     if (arc_freq_level == HIGH)
     {
@@ -862,51 +847,20 @@ FUNCTION(sensors)
 {
     rpi_init();
 
-    // if (NEEDS_RPI_INIT)
-    // {
-    //     rpi_init();
-    //     NEEDS_RPI_INIT = FALSE;
-    // }
-
-    // rpi_spi_select(BCM2835_SPI_CS1);
-    // // TODO go into estop mode on estop-cmd?
-    // // // TODO maybe set abort-fb
-    // // abort_fb = FALSE;
-    // // Read in arc voltage and set arc_voltage pin
-    // float V_ref = 5;
-    // arc_voltage = thc_voltage(BCM2835_SPI_CS1, V_ref);
-    // // TODO implmement moving average? https://forums.raspberrypi.com/viewtopic.php?t=40248
-    // //      (new result) = (previous result)*(1 - ratio) + (new sample) * (ratio)
-    // //      using a ratio of 0.025
-    // rpi_spi_unselect();
-
-    // Read in arc ok switch state and set arc_ok bin bit
-    //  plasmac.arc-ok-in bit in
-    //    external arc ok input signal [mode 1 & mode 2]
-    // uint8_t arc_ok_level = bcm2835_gpio_lev(PIN_ARC_OK);
-    // if (arc_ok_level == HIGH)
-    // {
-    //     arc_ok = TRUE;
-    // }
-    // else
-    // {
-    //     arc_ok = FALSE;
-    // }
-
     // Removed in favor of Stallguard based breakaway
     //
     // Read in breakaway switch state and set breakaway pin bit
     //  plasmac.breakaway bit in
     //      torch breakaway switch (optional, see float_switch)
-    uint8_t torch_breakaway_level = bcm2835_gpio_lev(PIN_TORCH_BREAKAWAY);
-    if (torch_breakaway_level == LOW)
-    {
-        torch_breakaway = TRUE;
-    }
-    else
-    {
-        torch_breakaway = FALSE;
-    }
+    // uint8_t torch_breakaway_level = bcm2835_gpio_lev(PIN_TORCH_BREAKAWAY);
+    // if (torch_breakaway_level == LOW)
+    // {
+    //     torch_breakaway = TRUE;
+    // }
+    // else
+    // {
+    //     torch_breakaway = FALSE;
+    // }
 
     // Read in ohmic probe contact state and set ohmic_probe pin bit
     //  plasmac.ohmic-probe bit in
@@ -932,6 +886,17 @@ FUNCTION(sensors)
     else
     {
         machine_estop_fb = FALSE;
+    }
+
+    // Read ARC_OK signal
+    uint8_t arc_ok_level = bcm2835_gpio_lev(PIN_ARC_OK);
+    if (arc_ok_level == HIGH)
+    {
+        arc_ok = TRUE;
+    }
+    else
+    {
+        arc_ok = FALSE;
     }
 
     // Read in ohmic_enable pin and enable/disable ohmic sensor relay

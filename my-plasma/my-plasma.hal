@@ -75,7 +75,7 @@ setp plasmac.lowpass-frequency 10
 # is 500, then 1000 counts of the encoder will be reported as a position of 2.0 units.
 # Circuit produces 1 kHz per 1 volt. However, we use a 50:1 voltage div. So scale is 1000/50=20
 setp    encoder.0.counter-mode      1
-setp    encoder.0.position-scale    20
+setp    encoder.0.position-scale    0.5
 net     arc-freq	                hotshot.0.arc-freq-state	    => encoder.0.phase-A
 net     plasmac:arc-voltage-in	    <= encoder.0.velocity
 
@@ -92,9 +92,9 @@ setp                hotshot.0.axis-x-microsteps-cmd                 256
 setp                hotshot.0.axis-x-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-x-tmc-run-current-cmd            30
 setp                hotshot.0.axis-x-tmc-hold-current-cmd           6
-setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              5
-setp                hotshot.0.axis-x-tmc-sg-stop-cmd                0
-setp                hotshot.0.axis-x-tmc-cs-thresh-cmd              50000
+setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              8
+setp                hotshot.0.axis-x-tmc-sg-stop-cmd                1
+setp                hotshot.0.axis-x-tmc-cs-thresh-cmd              40000
 setp                hotshot.0.axis-x-tmc-current-hold-delay-cmd     1
 setp                hotshot.0.axis-x-tmc-ramp-mode-cmd              0
 setp                hotshot.0.axis-x-tmc-ramp-vstart-cmd            0
