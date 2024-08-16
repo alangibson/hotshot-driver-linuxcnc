@@ -22,8 +22,8 @@ typedef struct {
     volatile uint32_t               *   pitch_cmd;
     volatile uint32_t               *   teeth_cmd;
     volatile uint32_t               *   motor_fullsteps_per_rev_cmd;
-    volatile pin_enable_t           *   is_enabled_cmd;
-    volatile bool                   *   is_homing_cmd;
+    volatile pin_enable_t           *   enable_cmd;
+    volatile bool                   *   homing_cmd;
     volatile float64_t              *   max_velocity_cmd;         // maximum velocity
     volatile float64_t              *   max_acceleration_cmd;     // maximum acceleration
     volatile pin_velocity_t         *   velocity_cmd;
@@ -33,7 +33,6 @@ typedef struct {
     volatile pin_velocity_t         *   velocity_fb;
     volatile float64_t              *   acceleration_fb;
     volatile uint32_t               *   microsteps_cmd;           // desired microsteps (1/microsteps_cmd)
-    bool                                home_sw;
     bool                                neg_limit_sw;
     uint16_t                            load;
     uint8_t                             current;
@@ -41,8 +40,8 @@ typedef struct {
     bool                                t_zerowait_active;
     bool                                velocity_reached;
     volatile pin_torch_breakaway_t  *   torch_breakaway_fb;
-    volatile pin_sg_stop_t          *   sg_stop_fb;
     volatile pin_home_sw_t          *   home_sw_fb;
+    uint32_t                            home_sw_debounce;
     volatile bool                   *   estop_fb;
     int32_t                             last_xtarget;
     float64_t                           last_position_fb;

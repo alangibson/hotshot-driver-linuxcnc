@@ -92,16 +92,16 @@ setp                hotshot.0.axis-x-microsteps-cmd                 256
 setp                hotshot.0.axis-x-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-x-tmc-run-current-cmd            30
 setp                hotshot.0.axis-x-tmc-hold-current-cmd           6
-setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              8
-setp                hotshot.0.axis-x-tmc-sg-stop-cmd                1
-setp                hotshot.0.axis-x-tmc-cs-thresh-cmd              40000
+setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              10
+setp                hotshot.0.axis-x-tmc-sg-stop-cmd                0
+setp                hotshot.0.axis-x-tmc-cs-thresh-cmd              20000
 setp                hotshot.0.axis-x-tmc-current-hold-delay-cmd     1
 setp                hotshot.0.axis-x-tmc-ramp-mode-cmd              0
 setp                hotshot.0.axis-x-tmc-ramp-vstart-cmd            0
-setp                hotshot.0.axis-x-tmc-ramp-vstop-cmd             10
+setp                hotshot.0.axis-x-tmc-ramp-vstop-cmd             11
 setp                hotshot.0.axis-x-tmc-ramp-v1-cmd                0
 setp                hotshot.0.axis-x-tmc-ramp-tzerowait-cmd         0
-setp                hotshot.0.axis-x-tmc-coolstep-sfilt-cmd         0
+setp                hotshot.0.axis-x-tmc-coolstep-sfilt-cmd         1
 setp                hotshot.0.axis-x-tmc-coolstep-seimin-cmd        0
 setp                hotshot.0.axis-x-tmc-coolstep-sedn-cmd          0
 setp                hotshot.0.axis-x-tmc-coolstep-seup-cmd          0
@@ -117,10 +117,6 @@ setp                hotshot.0.axis-x-tmc-chop-hstrt-cmd             5
 setp                hotshot.0.axis-x-tmc-chop-toff-cmd              5
 setp                hotshot.0.axis-x-tmc-chop-vsense-cmd            0
 setp                hotshot.0.axis-x-tmc-sw-en-softstop             0
-# net  x-pos-cmd      joint.0.motor-pos-cmd                           => hotshot.0.axis-x-position-cmd
-# net  x-pos-fb       hotshot.0.axis-x-position-fb                    => joint.0.motor-pos-fb
-# net  x-vel-cmd      joint.0.vel-cmd                                 => hotshot.0.axis-x-velocity-cmd
-# net  x-enable       joint.0.amp-enable-out                          => hotshot.0.axis-x-enable
 setp                pid.x.Pgain                                     [JOINT_0]P
 setp                pid.x.Igain                                     [JOINT_0]I
 setp                pid.x.Dgain                                     [JOINT_0]D
@@ -153,7 +149,7 @@ setp                hotshot.0.axis-yl-microsteps-cmd                256
 setp                hotshot.0.axis-yl-motor-fullsteps-per-rev-cmd   200
 setp                hotshot.0.axis-yl-tmc-run-current-cmd           30
 setp                hotshot.0.axis-yl-tmc-hold-current-cmd          6
-setp                hotshot.0.axis-yl-tmc-sg-thresh-cmd             4
+setp                hotshot.0.axis-yl-tmc-sg-thresh-cmd             8
 setp                hotshot.0.axis-yl-tmc-sg-stop-cmd               0
 setp                hotshot.0.axis-yl-tmc-cs-thresh-cmd             50000
 setp                hotshot.0.axis-yl-tmc-current-hold-delay-cmd    1
@@ -216,7 +212,7 @@ setp                hotshot.0.axis-yr-microsteps-cmd                256
 setp                hotshot.0.axis-yr-motor-fullsteps-per-rev-cmd   200
 setp                hotshot.0.axis-yr-tmc-run-current-cmd           30
 setp                hotshot.0.axis-yr-tmc-hold-current-cmd          6
-setp                hotshot.0.axis-yr-tmc-sg-thresh-cmd             4
+setp                hotshot.0.axis-yr-tmc-sg-thresh-cmd             8
 setp                hotshot.0.axis-yr-tmc-sg-stop-cmd               0
 setp                hotshot.0.axis-yr-tmc-cs-thresh-cmd             50000
 setp                hotshot.0.axis-yr-tmc-current-hold-delay-cmd    1
@@ -279,7 +275,7 @@ setp                hotshot.0.axis-z-microsteps-cmd                 256
 setp                hotshot.0.axis-z-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-z-tmc-run-current-cmd            23
 setp                hotshot.0.axis-z-tmc-hold-current-cmd           3
-setp                hotshot.0.axis-z-tmc-sg-thresh-cmd              4
+setp                hotshot.0.axis-z-tmc-sg-thresh-cmd              7
 setp                hotshot.0.axis-z-tmc-sg-stop-cmd                0
 setp                hotshot.0.axis-z-tmc-cs-thresh-cmd              50000
 setp                hotshot.0.axis-z-tmc-current-hold-delay-cmd     1

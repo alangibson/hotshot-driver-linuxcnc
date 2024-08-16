@@ -1,18 +1,10 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 1187x1003+-349+52
+wm geometry . 955x1059+-217+45
 placeFrames 0.2996987951807229
 set ::ratio 0.2996987951807229
 set ::old_w_leftf 398
 set ::watchlist {
-    pin+hotshot.0.axis-x-sg-stop-fb
-    pin+hotshot.0.axis-yl-sg-stop-fb
-    pin+hotshot.0.axis-yr-sg-stop-fb
-    pin+hotshot.0.axis-z-sg-stop-fb
-    pin+hotshot.0.axis-x-home-sw
-    pin+hotshot.0.axis-yl-home-sw
-    pin+hotshot.0.axis-yr-home-sw
-    pin+hotshot.0.axis-z-home-sw
     pin+hotshot.0.axis-x-tmc-sg-stop-cmd
     pin+hotshot.0.axis-yl-tmc-sg-stop-cmd
     pin+hotshot.0.axis-yr-tmc-sg-stop-cmd
@@ -37,6 +29,52 @@ set ::watchlist {
     pin+hotshot.0.axis-yl-tmc-sw-en-softstop
     pin+hotshot.0.axis-yr-tmc-sw-en-softstop
     pin+hotshot.0.axis-z-tmc-sw-en-softstop
+    pin+hotshot.0.axis-x-tmc-cs-thresh-cmd
+    pin+hotshot.0.axis-yl-tmc-cs-thresh-cmd
+    pin+hotshot.0.axis-yr-tmc-cs-thresh-cmd
+    pin+hotshot.0.axis-z-tmc-cs-thresh-cmd
+    pin+hotshot.0.axis-x-is-homing
+    pin+hotshot.0.axis-yl-is-homing
+    pin+hotshot.0.axis-yr-is-homing
+    pin+hotshot.0.axis-z-is-homing
+    pin+hotshot.0.axis-x-home-sw
+    pin+hotshot.0.axis-yl-home-sw
+    pin+hotshot.0.axis-yr-home-sw
+    pin+hotshot.0.axis-z-home-sw
+    pin+hotshot.0.axis-x-velocity-fb
+    pin+hotshot.0.axis-yl-velocity-fb
+    pin+hotshot.0.axis-yr-velocity-fb
+    pin+hotshot.0.axis-z-velocity-fb
+    pin+plasmac.current-velocity
+    pin+plasmac.requested-velocity
+    pin+hotshot.0.axis-x-tmc-velocity-fb
+    pin+hotshot.0.axis-yl-tmc-velocity-fb
+    pin+hotshot.0.axis-yr-tmc-velocity-fb
+    pin+hotshot.0.axis-z-tmc-velocity-fb
+    pin+hotshot.0.axis-x-velocity-cmd
+    pin+hotshot.0.axis-yl-velocity-cmd
+    pin+hotshot.0.axis-yr-velocity-cmd
+    pin+hotshot.0.axis-z-velocity-cmd
+    pin+hotshot.0.axis-x-max-velocity-cmd
+    pin+hotshot.0.axis-yl-max-velocity-cmd
+    pin+hotshot.0.axis-yr-max-velocity-cmd
+    pin+hotshot.0.axis-z-max-velocity-cmd
+    pin+hotshot.0.axis-x-tmc-velocity-reached-fb
+    pin+hotshot.0.axis-yl-tmc-velocity-reached-fb
+    pin+hotshot.0.axis-yr-tmc-velocity-reached-fb
+    pin+hotshot.0.axis-z-tmc-velocity-reached-fb
+    pin+hotshot.0.axis-x-tmc-event-stop-sg-fb
+    pin+hotshot.0.axis-yl-tmc-event-stop-sg-fb
+    pin+hotshot.0.axis-yr-tmc-event-stop-sg-fb
+    pin+hotshot.0.axis-z-tmc-event-stop-sg-fb
+    pin+hotshot.0.axis-x-position-cmd
+    pin+hotshot.0.axis-yl-position-cmd
+    pin+hotshot.0.axis-yr-position-cmd
+    pin+hotshot.0.axis-z-position-cmd
+    pin+hotshot.0.axis-x-position-fb
+    pin+hotshot.0.axis-yl-position-fb
+    pin+hotshot.0.axis-yr-position-fb
+    pin+hotshot.0.axis-z-position-fb
 }
 set ::workmode watchhal
 set ::watchInterval 100

@@ -130,7 +130,6 @@ int main() {
     // Set dynamically by Hotshot
     float64_t axis_x_position_fb;
     float64_t axis_x_velocity_fb;
-    bool axis_x_sg_stop_fb;
     bool axis_x_home_sw;
     bool torch_breakaway;
     int32_t axis_x_tmc_position_fb;
@@ -161,13 +160,12 @@ int main() {
         .motor_fullsteps_per_rev_cmd = &axis_x_motor_fullsteps_per_rev_cmd,
         // Set dynamically by HAL
         .velocity_cmd           = &axis_x_velocity_cmd,
-        .is_enabled_cmd         = &axis_x_enable,
-        .is_homing_cmd          = &axis_x_is_homing,
+        .enable_cmd         = &axis_x_enable,
+        .homing_cmd          = &axis_x_is_homing,
         .position_cmd           = &axis_x_position_cmd,
         // Set dynamically by Hotshot
         .position_fb            = &axis_x_position_fb,
         .velocity_fb            = &axis_x_velocity_fb,
-        .sg_stop_fb             = &axis_x_sg_stop_fb,
         .home_sw_fb             = &axis_x_home_sw,
         .torch_breakaway_fb     = &torch_breakaway,               
         .velocity_factor        = &axis_x_velocity_factor,
@@ -235,10 +233,10 @@ int main() {
             last_move = tick;
 
             // xtarget += 10; // in mm
-            *motors[0].is_enabled_cmd = TRUE;
+            *motors[0].enable_cmd = TRUE;
             *motors[0].velocity_cmd = 25.0;
 
-            handle_joints(motors, MOTOR_COUNT);
+            hotshot_handle_joints(motors, MOTOR_COUNT);
         }
 
         /*

@@ -38,6 +38,7 @@ void move(joint_t * joint)
 {
     // VMAX is set on the fly by PID
     int32_t vmax = mm_to_microsteps(joint->microstep_per_mm, *joint->velocity_cmd);
+    *joint->tmc.velocity_cmd = vmax;
     // int32_t xactual = tmc5041_get_register_XACTUAL(&joint->tmc);
 
     // Velocity scaling
@@ -90,7 +91,7 @@ void move(joint_t * joint)
     // TODO else ???
     
     // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
-    tmc5041_set_register_VMAX(&joint->tmc, abs(vmax));
+    tmc5041_set_velocity(&joint->tmc, abs(vmax));
 
     // drv_status_register_t drvstatus = tmc5041_get_register_DRV_STATUS(&joint->tmc);
     // if (drvstatus.full_stepping)
@@ -114,6 +115,9 @@ void move(joint_t * joint)
     // #endif
 }
 
+/**
+ * Update joint struct with current position and velocity information.
+ */
 void update(joint_t * joint)
 {
     // Update pins
@@ -122,21 +126,21 @@ void update(joint_t * joint)
     int32_t vactual             = tmc5041_get_register_VACTUAL(&joint->tmc);
     float64_t vactual_mm        = microsteps_to_mm(joint->microstep_per_mm, vactual);
 
-    if ((xactual - (*joint->tmc.position_fb)) > 1000) {
-        // float64_t d_sec = d_msec / 1000.0;
-        int32_t diff = xactual - (*joint->tmc.position_fb);
-        float64_t diff_mm = microsteps_to_mm(joint->microstep_per_mm, diff);
-        // printf("Position jump detected:\n");
-        // printf("    xactual=%d, position_fb=%d, d_sec=%f, diff=%d us, %f mm\n", 
-        //     xactual, *joint->tmc.position_fb, d_sec, diff, diff_mm);
-        // float64_t factor = 1 / d_sec;
-        // float64_t mm_sec = diff_mm * factor;
-        // printf("    computed velocity = %f mm/sec\n", mm_sec);
-        // printf("    tick=%d, d_msec=%f\n", 
-        //     tick, d_msec);
-        // printf("    vmax=%d, velocity_factor=%f, last_velocity_factor=%f\n", 
-        //     vmax, *joint->velocity_factor, last_velocity_factor);
-    }
+    // if ((xactual - (*joint->tmc.position_fb)) > 1000) {
+    //     // float64_t d_sec = d_msec / 1000.0;
+    //     int32_t diff = xactual - (*joint->tmc.position_fb);
+    //     float64_t diff_mm = microsteps_to_mm(joint->microstep_per_mm, diff);
+    //     // printf("Position jump detected:\n");
+    //     // printf("    xactual=%d, position_fb=%d, d_sec=%f, diff=%d us, %f mm\n", 
+    //     //     xactual, *joint->tmc.position_fb, d_sec, diff, diff_mm);
+    //     // float64_t factor = 1 / d_sec;
+    //     // float64_t mm_sec = diff_mm * factor;
+    //     // printf("    computed velocity = %f mm/sec\n", mm_sec);
+    //     // printf("    tick=%d, d_msec=%f\n", 
+    //     //     tick, d_msec);
+    //     // printf("    vmax=%d, velocity_factor=%f, last_velocity_factor=%f\n", 
+    //     //     vmax, *joint->velocity_factor, last_velocity_factor);
+    // }
 
     *joint->tmc.velocity_fb     = vactual;
     *joint->tmc.position_fb     = xactual;
@@ -238,15 +242,14 @@ void follow(joint_t * joint)
     // Move
     //
 
-    joint->tmc.velocity_cmd     = vmax;
+    *joint->tmc.velocity_cmd     = vmax;
     joint->tmc.acceleration_cmd = amax;
 
     if (next_move_distance != 0) 
     {
         tmc5041_set_register_XTARGET(&joint->tmc, xtarget);
-        // tmc5041_set_register_VSTART(&joint->tmc, vmax);
-        // tmc5041_set_register_VSTOP(&joint->tmc, vmax);
-        tmc5041_set_register_VMAX(&joint->tmc, vmax);
+        // tmc5041_set_register_VMAX(&joint->tmc, vmax);
+        tmc5041_set_velocity(&joint->tmc, vmax);
         tmc5041_set_register_AMAX(&joint->tmc, amax);        
     }
 
@@ -322,8 +325,3 @@ bool get_neg_limit_switch_state(joint_t * motor, float axis_max_velocity_cmd) {
     }
     return FALSE;
 }
-
-// bool read_arc_freq_state()
-// {
-
-// }

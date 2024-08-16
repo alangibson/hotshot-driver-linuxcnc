@@ -6,14 +6,12 @@
 setp db_float.delay     5
 # set to zero if using internal ohmic sensing
 setp db_ohmic.delay     0
-setp db_breakaway.delay 5
+setp db_breakaway.delay 0
 setp db_arc-ok.delay    5
 
 # ---OHMIC SENSE CONTACT DEBOUNCE---
 setp plasmac.ohmic-sense-off-delay  3
 setp plasmac.ohmic-sense-on-delay   3
-
-
 
 ########################################
 # The following variables are available for fine tuning some parameters.

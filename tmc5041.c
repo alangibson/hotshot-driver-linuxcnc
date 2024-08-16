@@ -7,25 +7,16 @@
 // ----------------------------------------------------------------------------
 // Taken from TMC5041.c and modified
 
-void tmc5041_readWriteArray(uint8_t chip, uint8_t *data, size_t length) {
-    // printf("tmc5041_readWriteArray: select chip=%d\n", chip);
-    // bcm2835_spi_chipSelect(chip);
+void tmc5041_readWriteArray(uint8_t chip, uint8_t *data, size_t length)
+{
     bcm2835_spi_transfernb(data, data, length);
-    // bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
 
 int32_t tmc5041_writeDatagram(tmc5041_motor_t * motor, uint8_t address, uint8_t x1, uint8_t x2, uint8_t x3, uint8_t x4)
 {
 	uint8_t data[5] = {address | TMC5041_WRITE_BIT, x1, x2, x3, x4 };
 	tmc5041_readWriteArray(motor->chip.chip, data, 5);
-
 	int32_t value = ((uint32_t)x1 << 24) | ((uint32_t)x2 << 16) | (x3 << 8) | x4;
-
-	// Write to the shadow register and mark the register dirty
-	// address = TMC_ADDRESS(address);
-	// tmc5041->config->shadowRegister[address] = value;
-	// tmc5041->registerAccess[address] |= TMC_ACCESS_DIRTY;
-
     return value;
 }
 
@@ -38,13 +29,10 @@ int32_t tmc5041_writeInt(tmc5041_motor_t * motor, uint8_t address, int32_t value
 int32_t tmc5041_readInt(tmc5041_motor_t * motor, uint8_t address)
 {
 	uint8_t data[5] = { 0, 0, 0, 0, 0 };
-
 	data[0] = address;
 	tmc5041_readWriteArray(motor->chip.chip, &data[0], 5);
-
 	data[0] = address;
 	tmc5041_readWriteArray(motor->chip.chip, &data[0], 5);
-
 	return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | (data[3] << 8) | data[4];
 }
 
@@ -165,9 +153,8 @@ spi_status_t tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget
     return parse_spi_status(message);
 }
 
-
-// Returns true if StallGuard event is triggered
-ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor) {
+ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor)
+{
     // Reading the register will clear the stall condition and the motor may
     // re-start motion, unless the motion controller has been stopped.
     // (Flag and interrupt condition are cleared upon reading)
@@ -193,6 +180,22 @@ ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor) {
     reg.status_stop_l      = FIELD_GET(reply, TMC5041_STATUS_STOP_L_MASK, TMC5041_STATUS_STOP_L_SHIFT);
 
     return reg;
+}
+
+void tmc5041_pull_register_RAMP_STAT(tmc5041_motor_t * motor)
+{
+    ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(motor);
+    *motor->velocity_reached_fb = ramp_stat.velocity_reached;
+    *motor->position_reached_fb = ramp_stat.position_reached;
+    *motor->status_sg_fb = ramp_stat.status_sg;
+    *motor->event_pos_reached_fb = ramp_stat.event_pos_reached;
+    *motor->event_stop_sg_fb = ramp_stat.event_stop_sg;
+    *motor->event_stop_r_fb = ramp_stat.event_stop_r;
+    *motor->event_stop_l_fb = ramp_stat.event_stop_l;
+    *motor->status_latch_r_fb = ramp_stat.status_latch_r;
+    *motor->status_latch_l_fb = ramp_stat.status_latch_l;
+    *motor->status_stop_r_fb = ramp_stat.status_stop_r;
+    *motor->status_stop_l_fb = ramp_stat.status_stop_l;
 }
 
 // DRV_STATUS register access
@@ -232,6 +235,9 @@ int32_t tmc5041_get_register_XLATCH(tmc5041_motor_t * motor) {
 
 bool tmc5041_motor_set_home(tmc5041_motor_t * motor)
 {
+    // Disable stallguard stop on stall
+    *motor->sg_stop_cmd = 0;
+    tmc5041_push_register_SW_MODE(motor);
     // Switch the ramp generator to hold mode
     tmc5041_set_register_RAMPMODE(motor, TMC5041_MODE_HOLD);
     // TODO and calculate the difference between the latched position and the actual position.
@@ -244,15 +250,20 @@ bool tmc5041_motor_set_home(tmc5041_motor_t * motor)
     // StallGuard stop event event_stop_sg and releases the motor from the stop condition.
     tmc5041_get_register_RAMP_STAT(motor);
     // Switch back into positioning mode
-    tmc5041_set_register_RAMPMODE(motor, TMC5041_MODE_POSITION);
+    // tmc5041_set_register_RAMPMODE(motor, TMC5041_MODE_POSITION);
 
     return TRUE;
 }
 
+/**
+ * Reset driver back to power-on state.
+ */
 void tmc5041_motor_reset(tmc5041_motor_t * motor)
 {
     // Stop chopper
     tmc5041_motor_power_off(motor);
+    // Clear stallguard
+    tmc5041_motor_clear_stall(motor);
     // Reset XACTUAL to 0
     tmc5041_motor_set_home(motor);
 }
@@ -291,6 +302,33 @@ void tmc5041_chip_init()
     //
     uint8_t gconf[40] = {TMC5041_GSTAT, ____, ____, ____, ____};
     bcm2835_spi_transfernb(gconf, spi_status, 5);
+}
+
+/**
+ * Set velocity and coolstep threshold
+ */
+void tmc5041_set_velocity(tmc5041_motor_t * motor, int32_t vmax)
+{
+    // When VCOOLTHRS == VMAX, then coolstep/stallguard is disabled 
+    // for acceleration and deceleration.
+    if (*motor->cs_thresh_cmd > vmax)
+    {
+        tmc5041_set_register_VCOOLTHRS(motor, *motor->cs_thresh_cmd);
+    }
+    else
+    {
+        tmc5041_set_register_VCOOLTHRS(motor, vmax);
+    }
+    
+    tmc5041_set_register_VMAX(motor, vmax);
+}
+
+void tmc5041_set_register_VCOOLTHRS(tmc5041_motor_t * motor, int32_t vcoolthrs)
+{
+    int32_t write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_VCOOLTHRS_MASK, TMC5041_VCOOLTHRS_SHIFT, vcoolthrs);
+    uint8_t vcoolthrs_message[40] = {TMC5041_VCOOLTHRS(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(vcoolthrs_message, vcoolthrs_message, 5);
 }
 
 void tmc5041_set_register_VMAX(tmc5041_motor_t * motor, int32_t vmax) 
@@ -335,6 +373,63 @@ void tmc5041_set_register_VSTOP(tmc5041_motor_t * motor, int32_t vstop)
     bcm2835_spi_transfernb(vstop_message, vstop_message, 5);
 }
 
+void tmc5041_push_register_SW_MODE(tmc5041_motor_t * motor)
+{
+    // SW_MODE: Reference Switch & StallGuard2 Event Configuration Register
+    //
+    int32_t write_payload = 0x00;
+    // Attention: Do not use soft stop in combination with StallGuard2.
+    write_payload = FIELD_SET(write_payload, TMC5041_EN_SOFTSTOP_MASK, TMC5041_EN_SOFTSTOP_SHIFT, *motor->sw_en_softstop);
+    // Note: set VCOOLTHRS to a suitable value before enabling this
+    write_payload = FIELD_SET(write_payload, TMC5041_SG_STOP_MASK, TMC5041_SG_STOP_SHIFT, *motor->sg_stop_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_R_INACTIVE_MASK, TMC5041_LATCH_R_INACTIVE_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_R_ACTIVE_MASK, TMC5041_LATCH_R_ACTIVE_SHIFT, 1);
+    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_L_INACTIVE_MASK, TMC5041_LATCH_L_INACTIVE_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_L_ACTIVE_MASK, TMC5041_LATCH_L_ACTIVE_SHIFT, 1);
+    write_payload = FIELD_SET(write_payload, TMC5041_SWAP_LR_MASK, TMC5041_SWAP_LR_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_POL_STOP_R_MASK, TMC5041_POL_STOP_R_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_POL_STOP_L_MASK, TMC5041_POL_STOP_L_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_STOP_R_ENABLE_MASK, TMC5041_STOP_R_ENABLE_SHIFT, 0);
+    write_payload = FIELD_SET(write_payload, TMC5041_STOP_L_ENABLE_MASK, TMC5041_STOP_L_ENABLE_SHIFT, 0);
+    uint8_t swmode[40] = {TMC5041_SWMODE(motor->motor)|TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(swmode, swmode, 5);
+
+}
+
+void tmc5041_push_register_COOLCONF(tmc5041_motor_t * motor)
+{
+    // COOLCONF: Smart Energy Control CoolStep and StallGuard2
+    //
+    // When the load increases, SG falls below SEMIN, and CoolStep increases the current.
+    // When the load decreases, SG rises above (SEMIN + SEMAX + 1) * 32, and the current is reduced.
+    //
+    int32_t write_payload = 0x00;
+    write_payload = 0x00;
+    write_payload = FIELD_SET(write_payload, TMC5041_SFILT_MASK, TMC5041_SFILT_SHIFT, *motor->coolstep_sfilt_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_SGT_MASK, TMC5041_SGT_SHIFT, *motor->sg_thresh_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEIMIN_MASK, TMC5041_SEIMIN_SHIFT, *motor->coolstep_seimin_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEUP_MASK, TMC5041_SEUP_SHIFT, *motor->coolstep_seup_cmd);
+    write_payload = FIELD_SET(write_payload, TMC5041_SEDN_MASK, TMC5041_SEDN_SHIFT, *motor->coolstep_sedn_cmd);
+    // coolstep deactivated when SG >= (SEMIN+SEMAX+1)*32
+    write_payload = FIELD_SET(write_payload, TMC5041_SEMAX_MASK, TMC5041_SEMAX_SHIFT, *motor->coolstep_semax_cmd);
+    // coolstep activated when SG < SEMIN*32
+    write_payload = FIELD_SET(write_payload, TMC5041_SEMIN_MASK, TMC5041_SEMIN_SHIFT, *motor->coolstep_semin_cmd);
+    uint8_t coolconf[40] = {TMC5041_COOLCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
+    bcm2835_spi_transfernb(coolconf, coolconf, 5);
+
+}
+
+void tmc5041_pull_register_DRV_STATUS(tmc5041_motor_t * motor)
+{
+    drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(motor);
+    *motor->motor_standstill_fb = drv_status.standstill;
+    *motor->motor_full_stepping_fb = drv_status.full_stepping;
+    *motor->motor_overtemp_warning_fb = drv_status.overtemp_warning;
+    *motor->motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
+    *motor->motor_load_fb = drv_status.sg_result;
+    *motor->motor_current_fb = drv_status.cs_actual;
+    *motor->motor_stall_fb = drv_status.sg_status;
+}
 
 void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 {
@@ -421,8 +516,13 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     write_payload = FIELD_SET(write_payload, TMC5041_HSTRT_MASK, TMC5041_HSTRT_SHIFT, *motor->chop_hstrt_cmd);
     // TOFF: off time and driver enable
     write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, *motor->chop_toff_cmd);
+    // Start chopper in off mode. We will set this when we turn the motor on.
+    // write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0);
     uint8_t chop_conf[40] = {TMC5041_CHOPCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
     bcm2835_spi_transfernb(chop_conf, spi_status, 5);
+
+    // Setting TOFF != 0 turns motor on, so set flag
+    motor->is_motor_on = TRUE;
 
     // VCOOLTHRS
     //
@@ -430,16 +530,13 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     // energy CoolStep and StallGuard feature. Further it is the upper
     // operation velocity for StealthChop.
     // Hint: May be adapted to disable CoolStep during acceleration and deceleration phase by setting identical to VMAX.
-    // Enable CoolStep and StallGuard at 5mm per second
     // TMC5041 data sheet uses 30 RPM (20 mm/sec on X axis)
     //
     // Lower ramp generator velocity threshold. Below this velocity CoolStep and StallGuard becomes disabled (not used
     // in Step/Dir mode). Adapt to the lower limit of the velocity range where StallGuard2 gives a stable result
     //
-    write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_VCOOLTHRS_MASK, TMC5041_VCOOLTHRS_SHIFT, *motor->cs_thresh_cmd);
-    uint8_t vcoolthrs_message[40] = {TMC5041_VCOOLTHRS(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vcoolthrs_message, spi_status, 5);
+    // This is a default. It will very likely be overwritten by tmc5041_set_velocity().
+    tmc5041_set_register_VCOOLTHRS(motor, *motor->cs_thresh_cmd);
 
     // VHIGH
     //
@@ -463,45 +560,13 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     bcm2835_spi_transfernb(vhigh_message, spi_status, 5);
 
     // COOLCONF: Smart Energy Control CoolStep and StallGuard2
-    //
-    // When the load increases, SG falls below SEMIN, and CoolStep increases the current.
-    // When the load decreases, SG rises above (SEMIN + SEMAX + 1) * 32, and the current is reduced.
-    //
-    write_payload = 0x00;
-    write_payload = FIELD_SET(write_payload, TMC5041_SFILT_MASK, TMC5041_SFILT_SHIFT, *motor->coolstep_sfilt_cmd);
-    write_payload = FIELD_SET(write_payload, TMC5041_SGT_MASK, TMC5041_SGT_SHIFT, *motor->sg_thresh_cmd);
-    write_payload = FIELD_SET(write_payload, TMC5041_SEIMIN_MASK, TMC5041_SEIMIN_SHIFT, *motor->coolstep_seimin_cmd);
-    write_payload = FIELD_SET(write_payload, TMC5041_SEUP_MASK, TMC5041_SEUP_SHIFT, *motor->coolstep_seup_cmd);
-    write_payload = FIELD_SET(write_payload, TMC5041_SEDN_MASK, TMC5041_SEDN_SHIFT, *motor->coolstep_sedn_cmd);
-    // coolstep deactivated when SG >= (SEMIN+SEMAX+1)*32
-    write_payload = FIELD_SET(write_payload, TMC5041_SEMAX_MASK, TMC5041_SEMAX_SHIFT, *motor->coolstep_semax_cmd);
-    // coolstep activated when SG < SEMIN*32
-    write_payload = FIELD_SET(write_payload, TMC5041_SEMIN_MASK, TMC5041_SEMIN_SHIFT, *motor->coolstep_semin_cmd);
-    uint8_t coolconf[40] = {TMC5041_COOLCONF(motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(coolconf, spi_status, 5);
+    tmc5041_push_register_COOLCONF(motor);
 
     //
     // Switch Configuration
     //
-
     // SW_MODE: Reference Switch & StallGuard2 Event Configuration Register
-    //
-    write_payload = 0x00;
-    // Attention: Do not use soft stop in combination with StallGuard2.
-    write_payload = FIELD_SET(write_payload, TMC5041_EN_SOFTSTOP_MASK, TMC5041_EN_SOFTSTOP_SHIFT, *motor->sw_en_softstop);
-    // Note: set VCOOLTHRS to a suitable value before enabling this
-    write_payload = FIELD_SET(write_payload, TMC5041_SG_STOP_MASK, TMC5041_SG_STOP_SHIFT, *motor->sg_stop_cmd);
-    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_R_INACTIVE_MASK, TMC5041_LATCH_R_INACTIVE_SHIFT, 0);
-    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_R_ACTIVE_MASK, TMC5041_LATCH_R_ACTIVE_SHIFT, 1);
-    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_L_INACTIVE_MASK, TMC5041_LATCH_L_INACTIVE_SHIFT, 0);
-    write_payload = FIELD_SET(write_payload, TMC5041_LATCH_L_ACTIVE_MASK, TMC5041_LATCH_L_ACTIVE_SHIFT, 1);
-    write_payload = FIELD_SET(write_payload, TMC5041_SWAP_LR_MASK, TMC5041_SWAP_LR_SHIFT, 0);
-    write_payload = FIELD_SET(write_payload, TMC5041_POL_STOP_R_MASK, TMC5041_POL_STOP_R_SHIFT, 0);
-    write_payload = FIELD_SET(write_payload, TMC5041_POL_STOP_L_MASK, TMC5041_POL_STOP_L_SHIFT, 0);
-    write_payload = FIELD_SET(write_payload, TMC5041_STOP_R_ENABLE_MASK, TMC5041_STOP_R_ENABLE_SHIFT, 0);
-    write_payload = FIELD_SET(write_payload, TMC5041_STOP_L_ENABLE_MASK, TMC5041_STOP_L_ENABLE_SHIFT, 0);
-    uint8_t swmode[40] = {TMC5041_SWMODE(motor->motor)|TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(swmode, spi_status, 5);
+    tmc5041_push_register_SW_MODE(motor);
 
     //
     // Ramp Configuration
@@ -576,9 +641,6 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
         printf("start spi convo\n");
         printf("Motor is %d %d\n", 
             motor->chip, motor->motor);
-        #endif
-
-        #ifdef DEBUG
         printf("start spi convo with chip %d\n", motor->chip);
         #endif
 
@@ -606,10 +668,10 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
 void tmc5041_motor_power_off(tmc5041_motor_t * motor)
 {
     int32_t chopconf = tmc5041_readInt(motor, TMC5041_CHOPCONF(motor->motor));
-    chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0);
+    chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0); // 0 = off
     tmc5041_writeInt(motor, TMC5041_CHOPCONF(motor->motor), chopconf);
 
-    motor->is_power_on = FALSE;
+    motor->is_motor_on = FALSE;
 }
 
 void tmc5041_motor_power_on(tmc5041_motor_t * motor)
@@ -623,12 +685,62 @@ void tmc5041_motor_power_on(tmc5041_motor_t * motor)
     tmc5041_set_register_XACTUAL(motor, motor->position_cmd);
 
     int32_t chopconf = tmc5041_readInt(motor, TMC5041_CHOPCONF(motor->motor));
-    chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0b0100);
+    chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, *motor->chop_toff_cmd);
     tmc5041_writeInt(motor, TMC5041_CHOPCONF(motor->motor), chopconf);
 
-    motor->is_power_on = TRUE;
+    motor->is_motor_on = TRUE;
 }
 
+// Put motor in "hold position" mode
+void tmc5041_motor_position_hold(tmc5041_motor_t * motor)
+{
+    *motor->ramp_mode_cmd = 3; // hold mode
+    tmc5041_set_register_RAMPMODE(motor, *motor->ramp_mode_cmd);
+}
+
+/**
+ * Clear Stallguard motor stall flag.
+ * Returns true if motor was stalled.
+ */
+bool tmc5041_motor_clear_stall(tmc5041_motor_t * motor)
+{
+    // Release by setting SW_MODE sg_stop = 0
+    // "Disable to release motor after stop event."
+    // bool orig_stop_cmd = *motor->sg_stop_cmd;
+    // *motor->sg_stop_cmd = 0;
+    // tmc5041_push_register_SW_MODE(motor);
+    // *motor->sg_stop_cmd = orig_stop_cmd;
+    // tmc5041_push_register_SW_MODE(motor);
+
+    // Clear stallguard with by reading RAMP_STAT register
+    // ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(motor);
+    tmc5041_pull_register_RAMP_STAT(motor);
+
+    // printf("hotshot(%d, %d): RAMP_STAT status_sg=%d, position_reached=%d, velocity_reached=%d, event_pos_reached=%d, event_stop_sg=%d, event_stop_r=%d, event_stop_l=%d, status_latch_r=%d, status_latch_l=%d, status_stop_r=%d, status_stop_l=%d\n", 
+    //     motor->chip.chip, motor->motor,
+    //     motor->status_sg,
+    //     motor->position_reached,
+    //     motor->velocity_reached_fb,
+    //     motor->event_pos_reached,
+    //     motor->event_stop_sg,
+    //     motor->event_stop_r,
+    //     motor->event_stop_l,
+    //     motor->status_latch_r,
+    //     motor->status_latch_l,
+    //     motor->status_stop_r,
+    //     motor->status_stop_l
+    // );
+
+    // tmc5041_pull_register_DRV_STATUS(motor);
+
+    // printf("tmc5041_motor_clear_stall: status_sg=%d, motor_load_fb=%d, motor_stall_fb=%d\n",
+    //     ramp_stat.status_sg,
+    //     *motor->motor_load_fb,
+    //     *motor->motor_stall_fb);
+
+    return *motor->motor_stall_fb;
+    // return FALSE;
+}
 
 void tmc5041_motor_end(tmc5041_motor_t * motor)
 {
