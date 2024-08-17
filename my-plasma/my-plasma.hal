@@ -83,7 +83,6 @@ net     plasmac:arc-voltage-in	    <= encoder.0.velocity
 ## Hotshot setup
 setp                hotshot.0.axis-x-max-velocity-cmd               [JOINT_0]MAX_VELOCITY
 setp                hotshot.0.axis-x-max-acceleration-cmd           [JOINT_0]MAX_ACCELERATION
-setp                hotshot.0.axis-x-acceleration-cmd               [JOINT_0]MAX_ACCELERATION
 setp                hotshot.0.axis-x-chip                           0
 setp                hotshot.0.axis-x-motor                          0
 setp                hotshot.0.axis-x-pitch                          2
@@ -140,7 +139,6 @@ net  x-output       pid.x.output                                    => hotshot.0
 ## Hotshot setup
 setp                hotshot.0.axis-yl-max-velocity-cmd              [JOINT_1]MAX_VELOCITY
 setp                hotshot.0.axis-yl-max-acceleration-cmd          [JOINT_1]MAX_ACCELERATION
-setp                hotshot.0.axis-yl-acceleration-cmd              [JOINT_1]MAX_ACCELERATION
 setp                hotshot.0.axis-yl-chip                          0
 setp                hotshot.0.axis-yl-motor                         1
 setp                hotshot.0.axis-yl-pitch                         2
@@ -203,7 +201,6 @@ net  yl-output      pid.yl.output                                    => hotshot.
 ## Hotshot setup
 setp                hotshot.0.axis-yr-max-velocity-cmd              [JOINT_2]MAX_VELOCITY
 setp                hotshot.0.axis-yr-max-acceleration-cmd          [JOINT_2]MAX_ACCELERATION
-setp                hotshot.0.axis-yr-acceleration-cmd              [JOINT_2]MAX_ACCELERATION
 setp                hotshot.0.axis-yr-chip                          1
 setp                hotshot.0.axis-yr-motor                         0
 setp                hotshot.0.axis-yr-pitch                         2
@@ -266,7 +263,6 @@ net  yr-output      pid.yr.output                                    => hotshot.
 ## Hotshot setup
 setp                hotshot.0.axis-z-max-velocity-cmd               [JOINT_3]MAX_VELOCITY
 setp                hotshot.0.axis-z-max-acceleration-cmd           [JOINT_3]MAX_ACCELERATION
-setp                hotshot.0.axis-z-acceleration-cmd               [JOINT_3]MAX_ACCELERATION
 setp                hotshot.0.axis-z-chip                           1
 setp                hotshot.0.axis-z-motor                          1
 setp                hotshot.0.axis-z-pitch                          8
@@ -275,9 +271,9 @@ setp                hotshot.0.axis-z-microsteps-cmd                 256
 setp                hotshot.0.axis-z-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-z-tmc-run-current-cmd            23
 setp                hotshot.0.axis-z-tmc-hold-current-cmd           3
-setp                hotshot.0.axis-z-tmc-sg-thresh-cmd              7
+setp                hotshot.0.axis-z-tmc-sg-thresh-cmd              8
 setp                hotshot.0.axis-z-tmc-sg-stop-cmd                0
-setp                hotshot.0.axis-z-tmc-cs-thresh-cmd              50000
+setp                hotshot.0.axis-z-tmc-cs-thresh-cmd              20000
 setp                hotshot.0.axis-z-tmc-current-hold-delay-cmd     1
 setp                hotshot.0.axis-z-tmc-ramp-mode-cmd              0
 setp                hotshot.0.axis-z-tmc-ramp-vstart-cmd            0
@@ -300,10 +296,6 @@ setp                hotshot.0.axis-z-tmc-chop-hstrt-cmd             5
 setp                hotshot.0.axis-z-tmc-chop-toff-cmd              5
 setp                hotshot.0.axis-z-tmc-chop-vsense-cmd            0
 setp                hotshot.0.axis-z-tmc-sw-en-softstop             0
-# net  z-pos-cmd      joint.3.motor-pos-cmd                           => hotshot.0.axis-z-position-cmd
-# net  z-pos-fb       hotshot.0.axis-z-position-fb                    => joint.3.motor-pos-fb
-# net  z-vel-cmd      joint.3.vel-cmd                                 => hotshot.0.axis-z-velocity-cmd
-# net  z-enable       joint.3.amp-enable-out                          => hotshot.0.axis-z-enable
 net  z-homing       joint.3.homing                                  => hotshot.0.axis-z-is-homing
 net  z-home-sw      hotshot.0.axis-z-home-sw                        => joint.3.home-sw-in
 net  z-neg-lim-sw   hotshot.0.axis-z-neg-limit-sw                   => joint.3.neg-lim-sw-in

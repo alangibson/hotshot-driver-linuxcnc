@@ -1,8 +1,8 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 955x1059+-217+45
-placeFrames 0.2996987951807229
-set ::ratio 0.2996987951807229
+wm geometry . 955x1059+-307+27
+placeFrames 0.3806998939554613
+set ::ratio 0.3806998939554613
 set ::old_w_leftf 398
 set ::watchlist {
     pin+hotshot.0.axis-x-tmc-sg-stop-cmd
@@ -51,10 +51,6 @@ set ::watchlist {
     pin+hotshot.0.axis-yl-tmc-velocity-fb
     pin+hotshot.0.axis-yr-tmc-velocity-fb
     pin+hotshot.0.axis-z-tmc-velocity-fb
-    pin+hotshot.0.axis-x-velocity-cmd
-    pin+hotshot.0.axis-yl-velocity-cmd
-    pin+hotshot.0.axis-yr-velocity-cmd
-    pin+hotshot.0.axis-z-velocity-cmd
     pin+hotshot.0.axis-x-max-velocity-cmd
     pin+hotshot.0.axis-yl-max-velocity-cmd
     pin+hotshot.0.axis-yr-max-velocity-cmd
@@ -75,6 +71,16 @@ set ::watchlist {
     pin+hotshot.0.axis-yl-position-fb
     pin+hotshot.0.axis-yr-position-fb
     pin+hotshot.0.axis-z-position-fb
+    pin+hotshot.0.axis-x-tmc-motor-current-fb
+    pin+hotshot.0.axis-yl-tmc-motor-current-fb
+    pin+hotshot.0.axis-yr-tmc-motor-current-fb
+    pin+hotshot.0.axis-z-tmc-motor-current-fb
+    pin+hotshot.0.axis-x-tmc-position-fb
+    pin+hotshot.0.axis-x-tmc-velocity-cmd
+    pin+hotshot.0.axis-x-velocity-cmd
+    pin+hotshot.0.axis-yl-velocity-cmd
+    pin+hotshot.0.axis-yr-velocity-cmd
+    pin+hotshot.0.axis-z-velocity-cmd
 }
 set ::workmode watchhal
 set ::watchInterval 100

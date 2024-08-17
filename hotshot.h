@@ -18,7 +18,6 @@ typedef struct {
     bool                                is_on;
     float                               mm_per_rev;
     uint32_t                            microstep_per_mm;
-    uint32_t                            cs_thresh_cmd;              // coolStep threshold in machine units / time
     volatile uint32_t               *   pitch_cmd;
     volatile uint32_t               *   teeth_cmd;
     volatile uint32_t               *   motor_fullsteps_per_rev_cmd;

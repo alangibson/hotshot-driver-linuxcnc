@@ -455,6 +455,14 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
     static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
     uint32_t write_payload = 0x00;
 
+    // Prevent unexpected moves before we do anything else
+    // Always start in hold mode to prevent unexpected movement
+    tmc5041_set_register_RAMPMODE(motor, 3);
+    // Make sure target velocity is 0
+    tmc5041_set_register_VMAX(motor, 0);
+    tmc5041_set_register_XACTUAL(motor, 0);
+    tmc5041_set_register_XTARGET(motor, 0);
+
     //
     // Power Configuration
     //
@@ -629,7 +637,8 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor)
 
     // Ramp mode
     //
-    tmc5041_set_register_RAMPMODE(motor, *motor->ramp_mode_cmd);
+    // Removed since we can't assume positioning mode anymore
+    // tmc5041_set_register_RAMPMODE(motor, *motor->ramp_mode_cmd);
 }
 
 
@@ -644,7 +653,7 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
         printf("start spi convo with chip %d\n", motor->chip);
         #endif
 
-        rpi_spi_select(motor->chip.chip);
+        // rpi_spi_select(motor->chip.chip);
 
         #ifdef DEBUG
         printf("Reset motor\n");
@@ -662,7 +671,7 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
         printf("end spi convo\n");
         #endif
 
-        rpi_spi_unselect();
+        // rpi_spi_unselect();
 }
 
 void tmc5041_motor_power_off(tmc5041_motor_t * motor)
@@ -696,6 +705,7 @@ void tmc5041_motor_position_hold(tmc5041_motor_t * motor)
 {
     *motor->ramp_mode_cmd = 3; // hold mode
     tmc5041_set_register_RAMPMODE(motor, *motor->ramp_mode_cmd);
+    tmc5041_set_register_VMAX(motor, 0);
 }
 
 /**
