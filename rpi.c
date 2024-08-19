@@ -33,7 +33,6 @@ void rpi_spi0_init()
 // Call once to configure SPI1
 void rpi_spi1_init()
 {
-
     // Start SPI1 operations.
     int spi_begin_success = bcm2835_aux_spi_begin();
 
@@ -112,15 +111,30 @@ void rpi_gpio_init()
 // Raspberry Pi 4 GPIO support
 // ============================================================================
 
+#define PWM_CHANNEL 0
+
 void rpi_clock_init()
 {
+    // Set up GPCLK0
+    //
+    // gpio4 GPCLK0 ALT0
+    // clock source: 1 = 19.2 MHz oscillator 
+    // The integer divider may be 2-4095.
+    // The fractional divider may be 0-4095.
+
+    // Set up PWM
+    //
     bcm2835_pwm_set_clock(BCM2835_PWM_CLOCK_DIVIDER_2);
     // Set the GPIO pin to alternate function 5 (PWM0 output)
-    bcm2835_gpio_fsel(PIN_CLOCK, BCM2835_GPIO_FSEL_ALT5);
+    // bcm2835_gpio_fsel(PIN_CLOCK, BCM2835_GPIO_FSEL_ALT5);
+    // PWM channel 0 in ALT FUN 5 = Pin 12, GPIO 18
+    bcm2835_gpio_fsel(RPI_GPIO_P1_12, BCM2835_GPIO_FSEL_ALT5);
     // PWM channel 0, markspace mode, enabled
-    bcm2835_pwm_set_mode(0, 1, 1);
+    bcm2835_pwm_set_mode(PWM_CHANNEL, 1, 1);
     // Range is 2 to achieve a 50% duty cycle
-    bcm2835_pwm_set_range(0, 2);
+    bcm2835_pwm_set_range(PWM_CHANNEL, 2);
+    // Start PWM
+    bcm2835_pwm_set_data(PWM_CHANNEL, 1);
 }
 
 /**
@@ -128,14 +142,8 @@ void rpi_clock_init()
  * Can only be called once per program run or we get all
  * kinds of mysterious exceptions.
  */
-bool NEEDS_RPI_INIT = TRUE;
+// bool NEEDS_RPI_INIT = TRUE;
 void rpi_init() {
-    if (!NEEDS_RPI_INIT)
-    {
-        return;
-    }
-    NEEDS_RPI_INIT = FALSE;
-
     bcm2835_init();
     rpi_gpio_init();
     rpi_clock_init();

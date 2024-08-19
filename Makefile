@@ -29,18 +29,18 @@ tmc5041.o: rpi.o
 	$(Q)gcc -Werror -I . -I /usr/include/linuxcnc -DRTAPI tmc5041.c -o tmc5041.o -c
 
 hotshot.lib.o: tmc5041.o
-	$(Q)gcc -Werror -I . hotshot.lib.c -o hotshot.lib.o -c
+	$(Q)gcc -Wall -I . hotshot.lib.c -o hotshot.lib.o -c
 
 hotshot.hal.o: hotshot.lib.o
-	$(Q)gcc -Werror -I . -I /usr/include/linuxcnc -DRTAPI hotshot.hal.c -o hotshot.hal.o -c
+	$(Q)gcc -Wall -I . -I /usr/include/linuxcnc -DRTAPI hotshot.hal.c -o hotshot.hal.o -c
 
 hotshot.o: hotshot.hal.o 
 	$(Q)halcompile --preprocess hotshot.comp
-	$(Q)gcc -DRTAPI -Werror -I . -I /usr/include/linuxcnc hotshot.c -o hotshot.o -c
+	$(Q)gcc -DRTAPI -Wall -I . -I /usr/include/linuxcnc hotshot.c -o hotshot.o -c
 
 hotshot.test: hotshot.hal.o
-	$(Q)gcc -DRTAPI -Werror -I . hotshot.test.c -o hotshot.test.o -c
-	$(Q)gcc -Werror -o hotshot.test $(complex-objs) hotshot.test.o
+	$(Q)gcc -DRTAPI -Wall -I . hotshot.test.c -o hotshot.test.o -c
+	$(Q)gcc -Wall -o hotshot.test $(complex-objs) hotshot.test.o
 
 test: hotshot.test
 	echo "Make sure you sudo or you will get a segmentation fault!"

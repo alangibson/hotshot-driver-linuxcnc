@@ -247,9 +247,9 @@ int main() {
             printf("-------------------------------------------------------------------\n");
             
             for (size_t i = 0; i < MOTOR_COUNT; i++) {
-                rpi_spi_select(motors[i].tmc.chip.chip);
+                rpi_spi_select(motors[i].tmc.chip);
     
-                printf("chip=%d\n", motors[i].tmc.chip.chip);
+                printf("chip=%d\n", motors[i].tmc.chip);
 
                 int32_t gstat = tmc5041_readInt(&motors[i].tmc, TMC5041_GSTAT);
                 printf("GSTAT\n");
@@ -258,7 +258,7 @@ int main() {
                 printf("    drv_err_2=%d\n", FIELD_GET(gstat, TMC5041_DRV_ERR2_MASK, TMC5041_DRV_ERR2_SHIFT));
                 printf("    undervoltage=%d\n", FIELD_GET(gstat, TMC5041_UV_CP_MASK, TMC5041_UV_CP_SHIFT));
 
-                printf("chip=%d motor=%d\n", motors[i].tmc.chip.chip, motors[i].tmc.motor);
+                printf("chip=%d motor=%d\n", motors[i].tmc.chip, motors[i].tmc.motor);
 
                 printf("PINS\n");
                 printf("    position_fb=%d\n", *motors[i].position_fb);

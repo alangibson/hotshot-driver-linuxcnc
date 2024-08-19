@@ -8,14 +8,31 @@
 #include "global.h"
 #include "bcm2835.h"
 #include "rpi.h"
+#include "hotshot.h"
+#include "hotshot.lib.h"
 #include "hotshot.hal.h"
+
+#define HOME_UNKNOWN 0
+#define HOME_SEARCHING 1
+#define HOME_BACKING 2
+#define HOME_LATCHING 3
+#define HOME_HOMED 4
 
 /**
  * Initialize Hotshot board and driver.
  */
-void hotshot_init()
+void hotshot_init(joint_t * joints, uint8_t motor_count)
 {
+    // Init the Raspberry Pi
     rpi_init();
+
+    // Init each TMC5041 motor
+    for (uint8_t i = 0; i < motor_count; i++)
+    {
+        rpi_spi_select(*joints[i].tmc.chip); 
+        hotshot_joint_init(&joints[i]);
+        rpi_spi_unselect();
+    }
 }
 
 /**
@@ -24,45 +41,18 @@ void hotshot_init()
  */
 bool hotshot_joint_init(joint_t * joint)
 {
-    #ifdef DEBUG
-    rtapi_print("hotshot_joint_init: pitch=%d teeth=%d\n", *joint->pitch_cmd, *joint->teeth_cmd);
-    rtapi_print("hotshot_joint_init: microsteps_cmd=%d\n", *joint->microsteps_cmd);
-    #endif
+    // Calculate machine unit <-> step pulse conversion factor
+    uint32_t units_per_rev  = (*joint->pitch_cmd) * (*joint->teeth_cmd);
+    uint32_t pulses_per_rev = (*joint->motor_fullsteps_per_rev_cmd) * (*joint->microsteps_cmd);
 
-    uint32_t microstep_per_mm = microsteps_per_mm(
-        *joint->motor_fullsteps_per_rev_cmd, 
-        (*joint->pitch_cmd) * (*joint->teeth_cmd), 
-        *joint->microsteps_cmd);
+    // Set microstepping
+    joint->tmc.mres = microsteps_to_tmc_mres(*joint->microsteps_cmd);
 
-    joint->microstep_per_mm = microstep_per_mm;
+    float64_t unit_pulse_factor = (float64_t)units_per_rev / (float64_t)pulses_per_rev;
+    joint->unit_pulse_factor = unit_pulse_factor;
 
-    #ifdef DEBUG
-    rtapi_print("hotshot_joint_init: microstep_per_mm=%d\n", microstep_per_mm);
-    rtapi_print("hotshot_joint_init: joint->microstep_per_mm=%d\n", joint->microstep_per_mm );
-    #endif
-
-    uint32_t tmc_max_acceleration_cmd = mm_to_microsteps(microstep_per_mm, *joint->max_acceleration_cmd);
-
-    #ifdef DEBUG
-    rtapi_print("hotshot_joint_init: tmc_max_acceleration_cmd=%d\n", tmc_max_acceleration_cmd);
-    #endif
-
+    uint32_t tmc_max_acceleration_cmd = units_to_pulses(*joint->max_acceleration_cmd, unit_pulse_factor);
     joint->tmc.max_acceleration_cmd = tmc_max_acceleration_cmd;
-
-    #ifdef DEBUG
-    rtapi_print("hotshot_joint_init: joint->tmc.max_acceleration_cmd=%d\n", joint->tmc.max_acceleration_cmd);
-    #endif
-
-    // uint32_t a1 = tmc_max_acceleration_cmd * 2;
-    // *joint->tmc.ramp_a1_cmd = a1;
-    // rtapi_print("calling motor init 1\n");
-    // *joint->tmc.ramp_dmax_cmd = tmc_max_acceleration_cmd;
-    // rtapi_print("calling motor init 2\n");
-    // joint->tmc.ramp_d1_cmd = joint->tmc.ramp_a1_cmd;
-
-    #ifdef DEBUG
-    rtapi_print("calling motor init\n");
-    #endif
 
     tmc5041_motor_init(&joint->tmc);
 
@@ -71,69 +61,63 @@ bool hotshot_joint_init(joint_t * joint)
 
 void hotshot_handle_homing(joint_t * joint)
 {
-    // Return immediately if we are not homing.
+    // Reset and return immediately if we are not homing.
     if (*joint->homing_cmd != 1) {
         // Switch can never be triggered on if we are not homing
         *joint->home_sw_fb = 0;
         joint->home_sw_debounce = 0;
+        // Reset state so we can home again
+        joint->home_state = HOME_UNKNOWN;
         return;
     }
 
-    // This happens for us on every thread iteration
-    // tmc5041_pull_register_DRV_STATUS(&joint->tmc);
-
+    // Calculate everything we need to know in order to determine where
+    // we are in the homing sequence.
+    //
     // TODO get this via pin
     int32_t SG_TRIGGER_THRESH = 100;
-
     int32_t sg_load = *joint->tmc.motor_load_fb;
     int32_t vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
     int32_t velocity_cmd = *joint->tmc.velocity_cmd;
     // TODO Maybe when velocity_cmd and velocity_fb are within some percent of each other?
     int32_t velocity_diff = velocity_cmd - *joint->tmc.velocity_fb;
     int32_t threshold_diff = abs(vactual) - *joint->tmc.cs_thresh_cmd;
+    int32_t stall_diff = sg_load - SG_TRIGGER_THRESH;
+    // TODO compare current velocity against HOME_SEARCH_VEL and HOME_LATCH_VEL ?
 
-    if (*joint->home_sw_fb == 1
-        && ( sg_load > SG_TRIGGER_THRESH || velocity_cmd == 0 ) )
+    // Enter SEARCHING state?
+    if (joint->home_state < HOME_SEARCHING)
     {
-        // Reset switch
+        // homing_cmd is true, so we are searching at a minimum.
 
-        if (joint->home_sw_debounce > 5)
-        {
-            // Debounce threshold crossed. Switch off.
-            // rtapi_print("Switch triggered off\n");
+        // rtapi_print("State->HOME_SEARCHING. %d -> %d\n", joint->home_state, HOME_SEARCHING);
+        joint->home_state = HOME_SEARCHING;
+    }
 
-            *joint->home_sw_fb = 0;
-            joint->home_sw_debounce = 0;
-        }
-        else
-        {
-            // Increment debounce counter
-            joint->home_sw_debounce += 1;
-        }
-    }
-    else if (velocity_diff == 0 && sg_load == 0)
-    {
-        // If everything is 0, do nothing. This just shouldn't be possible, but it happens.
-        // No clue why this happens.
-    }
-    else if (
-        *joint->home_sw_fb == 0
-        && sg_load <= SG_TRIGGER_THRESH 
+    if  // Enter BACKING state?
+    (
+        joint->home_state == HOME_SEARCHING
+        && *joint->home_sw_fb == 0
+        && stall_diff <= 0
         && velocity_diff == 0 
         && threshold_diff > 0
-        && *joint->tmc.velocity_fb != 0 )
+        && *joint->tmc.velocity_fb != 0
+    )
     {
-        // rtapi_print("Home threshold met. %d < %d. velocity_fb=%d, velocity_diff=%d. threshold_diff=%d. switch=%d. debounce=%d\n", 
-        //     sg_load, SG_TRIGGER_THRESH, *joint->tmc.velocity_fb, velocity_diff, threshold_diff,
-        //     *joint->home_sw_fb, joint->home_sw_debounce);
+        // Switch has been triggered while in searching phase
 
+        // Indicate switch on
         if (joint->home_sw_debounce > 5)
         {
-            // Debounce threshold crossed. Switch on.
-            // rtapi_print("Switch triggered on\n");
+            // rtapi_print("State->HOME_BACKING. %d -> %d\n", joint->home_state, HOME_BACKING);
 
+            // Debounce threshold crossed. Switch on.
             *joint->home_sw_fb = 1;
             joint->home_sw_debounce = 0;
+
+            // Searching phase is complete. Go to next state.
+            joint->home_state = HOME_BACKING;
+           
         }
         else
         {
@@ -141,39 +125,79 @@ void hotshot_handle_homing(joint_t * joint)
             joint->home_sw_debounce += 1;
         }
     }
-    else
+    else if // Enter LATCHING state?
+    (
+        joint->home_state == HOME_BACKING
+        && velocity_diff == 0 
+        && *joint->tmc.velocity_fb != 0
+    )
     {
-        // Just reset debounce counter
+        // Backing phase is complete, so turn switch off
 
-        // rtapi_print("Debounce reset. %d < %d. velocity_cmd=%d, velocity_fb=%d. threshold_diff=%d. switch=%d\n", 
-        //     sg_load, SG_TRIGGER_THRESH, *joint->tmc.velocity_cmd, *joint->tmc.velocity_fb, threshold_diff, *joint->home_sw_fb);
-        
+        // Indicate switch off after a period of distance
+        // TODO we need to move far enough back that we can reach VMAX
+        if (joint->home_sw_debounce > 1000)
+        {
+            // rtapi_print("State->HOME_LATCHING. %d -> %d\n", joint->home_state, HOME_LATCHING);
+
+            // Debounce threshold crossed. Switch on.
+            *joint->home_sw_fb = 0;
+            joint->home_sw_debounce = 0;
+
+            // Backing phase is complete. Go to next state.
+            joint->home_state = HOME_LATCHING;
+        }
+        else
+        {
+            // Increment debounce counter
+            joint->home_sw_debounce += 1;
+        }    
+    }
+    else if // Enter HOMED state?
+    (
+        joint->home_state == HOME_LATCHING
+        && *joint->home_sw_fb == 0
+        && stall_diff <= 0
+        && velocity_diff == 0 
+        && threshold_diff > 0
+        && *joint->tmc.velocity_fb != 0
+    )
+    {
+        // Switch has been triggered while in latching phase
+
+        // Indicate switch on
+        if (joint->home_sw_debounce > 5)
+        {
+            // rtapi_print("State->HOME_HOMED. %d -> %d\n", joint->home_state, HOME_HOMED);
+
+            // Debounce threshold crossed. Switch on.
+            *joint->home_sw_fb = 1;
+            joint->home_sw_debounce = 0;
+
+            // Backing phase is complete. Go to next state.
+            joint->home_state = HOME_HOMED;
+        }
+        else
+        {
+            // Increment debounce counter
+            joint->home_sw_debounce += 1;
+        }
+    }
+    else 
+    {
+        // We havent changed states, so do nothing but reset debouce counter
+
+        // rtapi_print("DEBUG: %d < %d. stall_diff=%d, velocity_cmd=%d, velocity_fb=%d, velocity_diff=%d, threshold_diff=%d. switch=%d\n", 
+        //     sg_load, SG_TRIGGER_THRESH, 
+        //     stall_diff,
+        //     velocity_cmd, 
+        //     *joint->tmc.velocity_fb, 
+        //     velocity_diff, 
+        //     threshold_diff, 
+        //     *joint->home_sw_fb);
+
         joint->home_sw_debounce = 0;
     }
-
-    // Get motor's current status
-    // tmc5041_pull_register_DRV_STATUS(&joint->tmc);
-    // rtapi_print("hotshot(%d, %d): DRV_STATUS status_sg=%d, motor_load_fb=%d, motor_stall_fb=%d\n",
-    //     joint->tmc.chip.chip, joint->tmc.motor,
-    //     ramp_stat.status_sg,
-    //     *motor->motor_load_fb,
-    //     *motor->motor_stall_fb);
-
-    // tmc5041_pull_register_RAMP_STAT(&joint->tmc);
-    // rtapi_print("hotshot(%d, %d): RAMP_STAT status_sg=%d, position_reached=%d, velocity_reached=%d, event_pos_reached=%d, event_stop_sg=%d, event_stop_r=%d, event_stop_l=%d, status_latch_r=%d, status_latch_l=%d, status_stop_r=%d, status_stop_l=%d\n", 
-    //     joint->tmc.chip.chip, joint->tmc.motor,
-    //     *joint->tmc.status_sg_fb,
-    //     *joint->tmc.position_reached_fb,
-    //     *joint->tmc.velocity_reached_fb,
-    //     *joint->tmc.event_pos_reached_fb,
-    //     *joint->tmc.event_stop_sg_fb,
-    //     *joint->tmc.event_stop_r_fb,
-    //     *joint->tmc.event_stop_l_fb,
-    //     *joint->tmc.status_latch_r_fb,
-    //     *joint->tmc.status_latch_l_fb,
-    //     *joint->tmc.status_stop_r_fb,
-    //     *joint->tmc.status_stop_l_fb
-    // );
 }
 
 void hotshot_handle_stall(joint_t * joint)
@@ -235,169 +259,66 @@ void hotshot_handle_move(joint_t * joint)
 {
     if (*joint->enable_cmd == 1) // Power is on in LinuxCNC
     {
-        // // Run joint setup exactly once
-        if (! joint->is_setup)
+        // LinuxCNC power button is off, so power motor off
+        if (joint->tmc.is_motor_on == FALSE)
         {
-            joint->is_setup = hotshot_joint_init(joint);
-        }
-        else
-        {
-        //     // TODO update any registers that are always safe to update
-
-        //     // Always call this so we can configure drivers on the fly
-        //     // tmc5041_motor_set_config_registers(&joint->tmc);
-
-        //     // These inputs should always be up to date
-            tmc5041_pull_register_DRV_STATUS(&joint->tmc);
-        //     // These outputs should always be up to date
-        //     // tmc5041_push_register_COOLCONF(&joint->tmc);
+            tmc5041_motor_power_on(&joint->tmc);
         }
 
-        // TODO toggle hold mode instead of turning driver power on and off
-        // if (! joint->tmc.is_motor_on) // TMC5041 chopper is on
-        // {
-        //     joint->tmc.position_cmd = mm_to_microsteps(joint->microstep_per_mm, *joint->position_cmd);
-        //     tmc5041_motor_power_on(&joint->tmc);
-        // }
+        // Move joint and update pins
+        // VMAX is set on the fly by PID
+        int32_t vmax = units_to_pulses(*joint->velocity_cmd, joint->unit_pulse_factor);
+        *joint->tmc.velocity_cmd = vmax;
 
-        // Check switches
-        //
-        // Note: Reading RAMP_STAT clears sg_stop
-        // FIXME if we read RAMP_STAT register, then Stallguard never stops motor 
-        //       since reading this register clears the stop flag.
-        //       We need a different way to read Stallguard status; 
-        //       maybe use *joint->tmc.motor_stall_fb instead?
-        // ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(&joint->tmc);
-        //
-        // TODO
-        // axis_x_tmc_position_reached_fb = ramp_stat.position_reached;
-        // axis_x_tmc_t_zerowait_active_fb = ramp_stat.t_zerowait_active;
-        // axis_x_tmc_velocity_reached_fb = ramp_stat.velocity_reached;
-        //
-        // Get driver state
-        // 
-        // drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&joint->tmc);
-        // *joint->tmc.motor_standstill_fb = drv_status.standstill;
-        // *joint->tmc.motor_full_stepping_fb = drv_status.full_stepping;
-        // *joint->tmc.motor_overtemp_warning_fb = drv_status.overtemp_warning;
-        // *joint->tmc.motor_overtemp_alarm_fb = drv_status.overtemp_alarm;
-        // *joint->tmc.motor_load_fb = drv_status.sg_result;
-        // *joint->tmc.motor_current_fb = drv_status.cs_actual;
-        // *joint->tmc.motor_stall_fb = drv_status.sg_status;
-        // tmc5041_pull_register_DRV_STATUS(&joint->tmc);
-        //
-        // tmc5041_pull_register_RAMP_STAT(&joint->tmc);
-        // tmc5041_motor_clear_stall(&joint->tmc);
+        // Debugging use only since we don't use positioning mode
+        *joint->tmc.position_cmd = units_to_pulses(*joint->position_cmd, joint->unit_pulse_factor);
 
-        // Handle StallGuard state
-        //
-        // if (*joint->tmc.motor_stall_fb) // StallGuard has been triggered
-        // {
-        //     #ifdef DEBUG
-        //     rtapi_print("Stallguard triggered\n");
-        //     rtapi_print("hotshot_handle_move(%d, %d): StallGuard triggered sg_stop_cmd=%d sg_thresh_cmd=%d\n", 
-        //         joint->tmc.chip, joint->tmc.motor, *joint->tmc.sg_stop_cmd, *joint->tmc.sg_thresh_cmd);
-        //     rtapi_print("hotshot_handle_move(%d, %d): Disable axis\n",
-        //         joint->tmc.chip, joint->tmc.motor);
-        //     #endif
-
-        //     // Go into "hold position" mode so motor doesn't twitch
-        //     // tmc5041_motor_position_hold(&joint->tmc);
-        //     // tmc5041_motor_clear_stall(&joint->tmc);
-
-        //     if (*joint->homing_cmd) {
-
-        //         #ifdef DEBUG
-        //         rtapi_print("hotshot_handle_move(%d, %d): Is homing\n",
-        //             joint->tmc.chip, joint->tmc.motor);
-        //         rtapi_print("hotshot_handle_move(%d, %d): Setting home position\n",
-        //             joint->tmc.chip, joint->tmc.motor);
-        //         #endif
-
-        //         // We are homing and we have hit a Stallguard stop event, 
-        //         // so trigger home switch
-        //         joint->home_sw = tmc5041_motor_set_home(&joint->tmc);
-
-        //     } else {
-        //         // We've hit a Stallguard stop, but we're not homing.
-
-        //         #ifdef DEBUG
-        //         rtapi_print("hotshot_handle_move(%d, %d): Is NOT homing\n",
-        //             joint->tmc.chip, joint->tmc.motor);
-        //         rtapi_print("hotshot_handle_move(%d, %d): Triggering torch breakaway\n",
-        //             joint->tmc.chip, joint->tmc.motor);
-        //         #endif
-
-        //         // Set torch breakaway pin and let LinuxCNC handle the rest
-        //         *joint->torch_breakaway_fb = TRUE;
-        //     }             
-        // } 
-        // else // StallGuard NOT triggered
-        // {
-        //     // No active StallGuard switches, so move joint and reset all switches
-        //     //
-        //     // Move joint
-        //     move(joint);
-        //     // Update pins
-        //     update(joint);
-
-        //     // Ensure switches aren't triggered because there's no other way to clear them
-        //     // joint->home_sw = FALSE;
-        //     *joint->torch_breakaway_fb = FALSE;
-        // }
-
-        // Move joint
-        move(joint);
-        // Update pins
-        update(joint);
-
-    } else {
-        // Joint is not enabled in LinuxCNC.
-        // This can happen automatically when torch breakaway is fired.
-
-        // Cut power to joint
-        // tmc5041_motor_power_off(&joint->tmc);
-
-        tmc5041_motor_position_hold(&joint->tmc);
-
-        // Clear stallguard with by reading RAMP_STAT register
-        // ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(&joint->tmc);
+        // RAMPMODE:
+        //  1: Velocity mode to positive VMAX (using AMAX acceleration)
+        //  2: Velocity mode to negative VMAX (using AMAX acceleration)
+        if (vmax > 0)
+            tmc5041_set_register_RAMPMODE(&joint->tmc, 1);
+        else if (vmax < 0)
+            tmc5041_set_register_RAMPMODE(&joint->tmc, 2);
+        // else vmax == 0. do nothing while decelaration ramp finishes
         
-        // TODO chancel any moves
-        // VACTUAL = 0
-        // XTARGET = XACTUAL
+        // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
+        vmax = abs(vmax);
+        tmc5041_set_velocity(&joint->tmc, vmax);
+    } 
+    else 
+    {
+        // LinuxCNC power button is off, so power motor on
+        tmc5041_motor_position_hold(&joint->tmc);
+        tmc5041_motor_power_off(&joint->tmc);
     }
 }
 
 void hotshot_handle_joints(joint_t * joints, uint8_t motor_count) {
-    // Do something with each joints
-    for (uint8_t i = 0; i < motor_count; i++) {
+    // Do something with each joint
+    for (uint8_t i = 0; i < motor_count; i++)
+    {
+        rpi_spi_select(*joints[i].tmc.chip); 
 
-        rpi_spi_select(joints[i].tmc.chip.chip); 
+        // Always keep these registers up to date
+        //
+        tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
 
-        // if (! joints[i].is_setup)
-        // {
-        //     joints[i].is_setup = hotshot_joint_init(&joints[i]);
-        // }
-        // // These should always be up to date
-        // tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
-
-        // Run joint setup exactly once
-        // if (! joints[i].is_setup)
-        // {
-        //     joints[i].is_setup = hotshot_joint_init(&joints[i]);
-        // }
-        // else
-        // {
-        //     tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
-
-        //     hotshot_handle_move(&joints[i]);
-        //     hotshot_handle_homing(&joints[i]);
-
-        // }
-
+        // Handle joints
         hotshot_handle_move(&joints[i]);
         hotshot_handle_homing(&joints[i]);
+
+        // Always keep these registers up to date
+        //
+        // Position
+        *joints[i].tmc.position_fb  = tmc5041_get_register_XACTUAL(&joints[i].tmc);
+        // FIXME TMC5041's internal position is up to 50% different than LinxuCNC's
+        // float64_t xactual_mm        = pulses_to_units(*joints[i].tmc.position_fb, joints[i].unit_pulse_factor);
+        // FIXME Lying about position for testing
+        *joints[i].position_fb      = *joints[i].position_cmd;
+        // Velocity
+        *joints[i].tmc.velocity_fb  = tmc5041_get_register_VACTUAL(&joints[i].tmc);
+        *joints[i].velocity_fb      = pulses_to_units(*joints[i].tmc.velocity_fb, joints[i].unit_pulse_factor);
 
         rpi_spi_unselect();
     }

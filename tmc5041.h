@@ -69,14 +69,10 @@ typedef int32_t     tmc_velocity_t;
 typedef float64_t   velocity_t;
 
 typedef struct {
-	uint8_t chip;
-} tmc5041_chip_t;
-
-typedef struct {
-	tmc5041_chip_t					    chip;
-	uint8_t							    motor;
+    volatile uint32_t               *   chip;
+	volatile uint32_t               *   motor;
     uint8_t     					    mres;
-    tmc_position_t     	                position_cmd;
+    volatile tmc_position_t     	*   position_cmd;
     tmc_position_t     	                last_position_cmd;
     volatile tmc_velocity_t         *   velocity_cmd;
     uint32_t                            acceleration_cmd;
@@ -151,6 +147,7 @@ void tmc5041_motor_init(tmc5041_motor_t * motor);
 void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor);
 void tmc5041_init(tmc5041_motor_t * motors, size_t motor_count);
 void tmc5041_end(tmc5041_motor_t * motors, size_t motor_count);
+uint8_t microsteps_to_tmc_mres(uint16_t usteps);
 
 //
 // Register access

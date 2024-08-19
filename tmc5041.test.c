@@ -147,7 +147,7 @@ int main() {
 
             for (size_t i = 0; i < MOTOR_COUNT; i++) {
                 xtarget += 100;
-                rpi_spi_select(tmc5041_motors[i].chip.chip);
+                rpi_spi_select(tmc5041_motors[i].chip);
                 spi_status_t spi_status = tmc5041_set_register_XTARGET(&tmc5041_motors[i], xtarget);
             }
         }
@@ -159,9 +159,9 @@ int main() {
             printf("-------------------------------------------------------------------\n");
             
             for (size_t i = 0; i < MOTOR_COUNT; i++) {
-                rpi_spi_select(tmc5041_motors[i].chip.chip);
+                rpi_spi_select(tmc5041_motors[i].chip);
     
-                printf("chip=%d\n", tmc5041_motors[i].chip.chip);
+                printf("chip=%d\n", tmc5041_motors[i].chip);
 
                 int32_t gstat = tmc5041_readInt(&tmc5041_motors[i], TMC5041_GSTAT);
                 printf("GSTAT\n");
@@ -170,7 +170,7 @@ int main() {
                 printf("    drv_err_2=%d\n", FIELD_GET(gstat, TMC5041_DRV_ERR2_MASK, TMC5041_DRV_ERR2_SHIFT));
                 printf("    undervoltage=%d\n", FIELD_GET(gstat, TMC5041_UV_CP_MASK, TMC5041_UV_CP_SHIFT));
 
-                printf("chip=%d motor=%d\n", tmc5041_motors[i].chip.chip, tmc5041_motors[i].motor);
+                printf("chip=%d motor=%d\n", tmc5041_motors[i].chip, tmc5041_motors[i].motor);
 
                 // printf("SPI_STATUS motor=%d\n", tmc5041_motors[i].motor);
                 // printf("    driver_error1=%d\n", spi_status.driver_error1);

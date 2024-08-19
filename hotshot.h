@@ -1,4 +1,5 @@
-#include "tmc/helpers/Types.h"
+#include "stdint.h"
+// #include "tmc/helpers/Types.h"
 #include "tmc5041.h"
 
 typedef bool        pin_enable_t;
@@ -16,14 +17,13 @@ typedef struct {
     tmc5041_motor_t                     tmc;
     bool                                is_setup;
     bool                                is_on;
-    float                               mm_per_rev;
-    uint32_t                            microstep_per_mm;
     volatile uint32_t               *   pitch_cmd;
     volatile uint32_t               *   teeth_cmd;
     volatile uint32_t               *   motor_fullsteps_per_rev_cmd;
+    volatile uint32_t               *   microsteps_cmd;           // desired microsteps (1/microsteps_cmd)
+    float64_t                           unit_pulse_factor;
     volatile pin_enable_t           *   enable_cmd;
     volatile bool                   *   homing_cmd;
-    volatile float64_t              *   max_velocity_cmd;         // maximum velocity
     volatile float64_t              *   max_acceleration_cmd;     // maximum acceleration
     volatile pin_velocity_t         *   velocity_cmd;
     volatile pin_position_t         *   position_cmd;             // position in machine units (mm or inch)
@@ -31,7 +31,6 @@ typedef struct {
     volatile pin_position_t         *   position_fb;
     volatile pin_velocity_t         *   velocity_fb;
     volatile float64_t              *   acceleration_fb;
-    volatile uint32_t               *   microsteps_cmd;           // desired microsteps (1/microsteps_cmd)
     bool                                neg_limit_sw;
     uint16_t                            load;
     uint8_t                             current;
@@ -49,4 +48,5 @@ typedef struct {
     long long                           last_tick;
     int32_t                             last_velocity_xactual;
     volatile float64_t              *   velocity_factor;
+    uint8_t                             home_state;
 } joint_t;

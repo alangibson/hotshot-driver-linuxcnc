@@ -1,86 +1,21 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 955x1059+-307+27
+wm geometry . 955x1059+23+27
 placeFrames 0.3806998939554613
 set ::ratio 0.3806998939554613
 set ::old_w_leftf 398
 set ::watchlist {
-    pin+hotshot.0.axis-x-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-yl-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-yr-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-z-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-x-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-yl-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-yr-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-z-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-x-tmc-motor-stall-fb
-    pin+hotshot.0.axis-yl-tmc-motor-stall-fb
-    pin+hotshot.0.axis-yr-tmc-motor-stall-fb
-    pin+hotshot.0.axis-z-tmc-motor-stall-fb
-    pin+hotshot.0.axis-x-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-yl-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-yr-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-z-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-x-tmc-motor-load-fb
-    pin+hotshot.0.axis-yl-tmc-motor-load-fb
-    pin+hotshot.0.axis-yr-tmc-motor-load-fb
-    pin+hotshot.0.axis-z-tmc-motor-load-fb
-    pin+hotshot.0.axis-x-tmc-sw-en-softstop
-    pin+hotshot.0.axis-yl-tmc-sw-en-softstop
-    pin+hotshot.0.axis-yr-tmc-sw-en-softstop
-    pin+hotshot.0.axis-z-tmc-sw-en-softstop
-    pin+hotshot.0.axis-x-tmc-cs-thresh-cmd
-    pin+hotshot.0.axis-yl-tmc-cs-thresh-cmd
-    pin+hotshot.0.axis-yr-tmc-cs-thresh-cmd
-    pin+hotshot.0.axis-z-tmc-cs-thresh-cmd
-    pin+hotshot.0.axis-x-is-homing
-    pin+hotshot.0.axis-yl-is-homing
-    pin+hotshot.0.axis-yr-is-homing
-    pin+hotshot.0.axis-z-is-homing
-    pin+hotshot.0.axis-x-home-sw
-    pin+hotshot.0.axis-yl-home-sw
-    pin+hotshot.0.axis-yr-home-sw
-    pin+hotshot.0.axis-z-home-sw
-    pin+hotshot.0.axis-x-velocity-fb
-    pin+hotshot.0.axis-yl-velocity-fb
-    pin+hotshot.0.axis-yr-velocity-fb
-    pin+hotshot.0.axis-z-velocity-fb
-    pin+plasmac.current-velocity
-    pin+plasmac.requested-velocity
-    pin+hotshot.0.axis-x-tmc-velocity-fb
-    pin+hotshot.0.axis-yl-tmc-velocity-fb
-    pin+hotshot.0.axis-yr-tmc-velocity-fb
-    pin+hotshot.0.axis-z-tmc-velocity-fb
-    pin+hotshot.0.axis-x-max-velocity-cmd
-    pin+hotshot.0.axis-yl-max-velocity-cmd
-    pin+hotshot.0.axis-yr-max-velocity-cmd
-    pin+hotshot.0.axis-z-max-velocity-cmd
-    pin+hotshot.0.axis-x-tmc-velocity-reached-fb
-    pin+hotshot.0.axis-yl-tmc-velocity-reached-fb
-    pin+hotshot.0.axis-yr-tmc-velocity-reached-fb
-    pin+hotshot.0.axis-z-tmc-velocity-reached-fb
-    pin+hotshot.0.axis-x-tmc-event-stop-sg-fb
-    pin+hotshot.0.axis-yl-tmc-event-stop-sg-fb
-    pin+hotshot.0.axis-yr-tmc-event-stop-sg-fb
-    pin+hotshot.0.axis-z-tmc-event-stop-sg-fb
-    pin+hotshot.0.axis-x-position-cmd
-    pin+hotshot.0.axis-yl-position-cmd
-    pin+hotshot.0.axis-yr-position-cmd
-    pin+hotshot.0.axis-z-position-cmd
-    pin+hotshot.0.axis-x-position-fb
-    pin+hotshot.0.axis-yl-position-fb
-    pin+hotshot.0.axis-yr-position-fb
-    pin+hotshot.0.axis-z-position-fb
-    pin+hotshot.0.axis-x-tmc-motor-current-fb
-    pin+hotshot.0.axis-yl-tmc-motor-current-fb
-    pin+hotshot.0.axis-yr-tmc-motor-current-fb
-    pin+hotshot.0.axis-z-tmc-motor-current-fb
-    pin+hotshot.0.axis-x-tmc-position-fb
-    pin+hotshot.0.axis-x-tmc-velocity-cmd
+    sig+x-vel-cmd
     pin+hotshot.0.axis-x-velocity-cmd
-    pin+hotshot.0.axis-yl-velocity-cmd
-    pin+hotshot.0.axis-yr-velocity-cmd
-    pin+hotshot.0.axis-z-velocity-cmd
+    pin+hotshot.0.axis-x-tmc-velocity-cmd
+    pin+hotshot.0.axis-x-tmc-velocity-fb
+    pin+hotshot.0.axis-x-velocity-fb
+    sig+x-pos-cmd
+    pin+hotshot.0.axis-x-position-cmd
+    pin+hotshot.0.axis-x-tmc-position-fb
+    pin+hotshot.0.axis-x-position-fb
+    pin+pid.x.error
+    pin+hotshot.0.axis-x-tmc-position-cmd
 }
 set ::workmode watchhal
 set ::watchInterval 100
