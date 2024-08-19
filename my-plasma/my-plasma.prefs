@@ -109,7 +109,7 @@ Disabled = #b0b0b0
 Preview = #000000
 
 [ENABLE_OPTIONS]
-THC enable = True
+THC enable = False
 Corner lock enable = False
 Void lock enable = False
 Use auto volts = False

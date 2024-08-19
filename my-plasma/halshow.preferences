@@ -1,6 +1,6 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 955x1059+23+27
+wm geometry . 955x1059+-297+38
 placeFrames 0.3806998939554613
 set ::ratio 0.3806998939554613
 set ::old_w_leftf 398
@@ -16,6 +16,44 @@ set ::watchlist {
     pin+hotshot.0.axis-x-position-fb
     pin+pid.x.error
     pin+hotshot.0.axis-x-tmc-position-cmd
+    sig+yr-homing
+    pin+hotshot.0.axis-yr-is-homing
+    sig+yl-homing
+    pin+hotshot.0.axis-yl-is-homing
+    pin+joint.3.homing
+    pin+joint.2.homing
+    pin+joint.0.homing
+    pin+joint.1.homing
+    pin+halui.joint.0.home
+    pin+halui.joint.0.is-homed
+    pin+halui.joint.0.unhome
+    pin+halui.joint.1.home
+    pin+halui.joint.1.is-homed
+    pin+halui.joint.1.unhome
+    pin+halui.joint.2.home
+    pin+halui.joint.2.is-homed
+    pin+halui.joint.2.unhome
+    pin+halui.joint.3.home
+    pin+halui.joint.3.is-homed
+    pin+halui.joint.3.unhome
+    pin+halui.joint.selected.is-homed
+    pin+halui.joint.selected.unhome
+    pin+ini.0.home
+    pin+ini.1.home
+    pin+ini.2.home
+    pin+ini.3.home
+    pin+joint.0.home-state
+    pin+joint.0.home-sw-in
+    pin+joint.0.homed
+    pin+joint.1.home-state
+    pin+joint.1.home-sw-in
+    pin+joint.1.homed
+    pin+joint.2.home-state
+    pin+joint.2.home-sw-in
+    pin+joint.2.homed
+    pin+joint.3.home-state
+    pin+joint.3.home-sw-in
+    pin+joint.3.homed
 }
 set ::workmode watchhal
 set ::watchInterval 100

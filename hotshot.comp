@@ -607,7 +607,6 @@ void ensure_initialized(struct __comp_state * __comp_inst)
     }
 
     __comp_inst->joints[0] = (joint_t) {
-        // .max_velocity_cmd               = __comp_inst->axis_x_max_velocity_cmd,
         .max_acceleration_cmd           = __comp_inst->axis_x_max_acceleration_cmd,
         .pitch_cmd                      = __comp_inst->axis_x_pitch,
         .teeth_cmd                      = __comp_inst->axis_x_teeth,
@@ -684,7 +683,6 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         }
     };
     __comp_inst->joints[1] = (joint_t) {
-        // .max_velocity_cmd               = __comp_inst->axis_yl_max_velocity_cmd,
         .max_acceleration_cmd           = __comp_inst->axis_yl_max_acceleration_cmd,
         .pitch_cmd                      = __comp_inst->axis_yl_pitch,
         .teeth_cmd                      = __comp_inst->axis_yl_teeth,
@@ -760,7 +758,6 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         }
     };
     __comp_inst->joints[2] = (joint_t) {
-        // .max_velocity_cmd               = __comp_inst->axis_yr_max_velocity_cmd,
         .max_acceleration_cmd           = __comp_inst->axis_yr_max_acceleration_cmd,
         .pitch_cmd                      = __comp_inst->axis_yr_pitch,
         .teeth_cmd                      = __comp_inst->axis_yr_teeth,
@@ -836,7 +833,6 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         }
     };
     __comp_inst->joints[3] = (joint_t) {
-        // .max_velocity_cmd               = __comp_inst->axis_z_max_velocity_cmd,
         .max_acceleration_cmd           = __comp_inst->axis_z_max_acceleration_cmd,
         .pitch_cmd                      = __comp_inst->axis_z_pitch,
         .teeth_cmd                      = __comp_inst->axis_z_teeth,

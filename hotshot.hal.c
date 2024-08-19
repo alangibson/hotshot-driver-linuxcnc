@@ -12,6 +12,8 @@
 #include "hotshot.lib.h"
 #include "hotshot.hal.h"
 
+// #define DEBUG_HOMING 1
+
 #define HOME_UNKNOWN 0
 #define HOME_SEARCHING 1
 #define HOME_BACKING 2
@@ -61,6 +63,11 @@ bool hotshot_joint_init(joint_t * joint)
 
 void hotshot_handle_homing(joint_t * joint)
 {
+    // if (*joint->tmc.chip == 1 && *joint->tmc.motor == 0)
+    //     rtapi_print("hotshot(%d,%d): homing_cmd=%d, home_state=%d\n", 
+    //         *joint->tmc.chip,  *joint->tmc.motor, 
+    //         *joint->homing_cmd, joint->home_state);
+
     // Reset and return immediately if we are not homing.
     if (*joint->homing_cmd != 1) {
         // Switch can never be triggered on if we are not homing
@@ -70,6 +77,10 @@ void hotshot_handle_homing(joint_t * joint)
         joint->home_state = HOME_UNKNOWN;
         return;
     }
+
+    // if (*joint->tmc.chip == 1 && *joint->tmc.motor == 0)
+    //     rtapi_print("hotshot(%d,%d): home_state=%d\n", 
+    //         *joint->tmc.chip,  *joint->tmc.motor, joint->home_state);
 
     // Calculate everything we need to know in order to determine where
     // we are in the homing sequence.
@@ -89,8 +100,11 @@ void hotshot_handle_homing(joint_t * joint)
     if (joint->home_state < HOME_SEARCHING)
     {
         // homing_cmd is true, so we are searching at a minimum.
+        #ifdef DEBUG_HOMING
+        rtapi_print("hotshot(%d,%d): State->HOME_SEARCHING. %d -> %d\n", 
+            *joint->tmc.chip, *joint->tmc.motor, joint->home_state, HOME_SEARCHING);
+        #endif
 
-        // rtapi_print("State->HOME_SEARCHING. %d -> %d\n", joint->home_state, HOME_SEARCHING);
         joint->home_state = HOME_SEARCHING;
     }
 
@@ -109,7 +123,10 @@ void hotshot_handle_homing(joint_t * joint)
         // Indicate switch on
         if (joint->home_sw_debounce > 5)
         {
-            // rtapi_print("State->HOME_BACKING. %d -> %d\n", joint->home_state, HOME_BACKING);
+            #ifdef DEBUG_HOMING
+            rtapi_print("hotshot(%d,%d): State->HOME_BACKING. %d -> %d\n", 
+                *joint->tmc.chip, *joint->tmc.motor, joint->home_state, HOME_BACKING);
+            #endif
 
             // Debounce threshold crossed. Switch on.
             *joint->home_sw_fb = 1;
@@ -138,7 +155,10 @@ void hotshot_handle_homing(joint_t * joint)
         // TODO we need to move far enough back that we can reach VMAX
         if (joint->home_sw_debounce > 1000)
         {
-            // rtapi_print("State->HOME_LATCHING. %d -> %d\n", joint->home_state, HOME_LATCHING);
+            #ifdef DEBUG_HOMING
+            rtapi_print("hotshot(%d,%d): State->HOME_LATCHING. %d -> %d\n", 
+                *joint->tmc.chip, *joint->tmc.motor, joint->home_state, HOME_LATCHING);
+            #endif
 
             // Debounce threshold crossed. Switch on.
             *joint->home_sw_fb = 0;
@@ -168,7 +188,10 @@ void hotshot_handle_homing(joint_t * joint)
         // Indicate switch on
         if (joint->home_sw_debounce > 5)
         {
-            // rtapi_print("State->HOME_HOMED. %d -> %d\n", joint->home_state, HOME_HOMED);
+            #ifdef DEBUG_HOMING
+            rtapi_print("hotshot(%d,%d): State->HOME_HOMED. %d -> %d\n", 
+                *joint->tmc.chip, *joint->tmc.motor, joint->home_state, HOME_HOMED);
+            #endif
 
             // Debounce threshold crossed. Switch on.
             *joint->home_sw_fb = 1;
@@ -187,71 +210,18 @@ void hotshot_handle_homing(joint_t * joint)
     {
         // We havent changed states, so do nothing but reset debouce counter
 
-        // rtapi_print("DEBUG: %d < %d. stall_diff=%d, velocity_cmd=%d, velocity_fb=%d, velocity_diff=%d, threshold_diff=%d. switch=%d\n", 
-        //     sg_load, SG_TRIGGER_THRESH, 
-        //     stall_diff,
-        //     velocity_cmd, 
-        //     *joint->tmc.velocity_fb, 
-        //     velocity_diff, 
-        //     threshold_diff, 
-        //     *joint->home_sw_fb);
+        #ifdef DEBUG_HOMING
+        rtapi_print("hotshot(%d,%d): %d < %d. stall_diff=%d, velocity_fb=%d, velocity_diff=%d, threshold_diff=%d. switch=%d\n", 
+            *joint->tmc.chip, *joint->tmc.motor, 
+            sg_load, SG_TRIGGER_THRESH, 
+            stall_diff,
+            *joint->tmc.velocity_fb, 
+            velocity_diff, 
+            threshold_diff, 
+            *joint->home_sw_fb);
+        #endif
 
         joint->home_sw_debounce = 0;
-    }
-}
-
-void hotshot_handle_stall(joint_t * joint)
-{
-    // // TODO get velocity_reached from spi_status
-    tmc5041_pull_register_DRV_STATUS(&joint->tmc);
-    int32_t vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
-
-    // FIXME detect a stallguard stop, not just a stall!
-    // Maybe check if VACTUAL == 0?
-    if (*joint->tmc.motor_stall_fb == 1 && vactual == 0)
-    {
-        // Avoid joint following errors in LinuxCNC by immediately notifying
-        // it that we have stopped the motor.
-        // *joint->torch_breakaway_fb = TRUE;
-
-        // tmc5041_motor_position_hold(&joint->tmc);
-        tmc5041_motor_clear_stall(&joint->tmc);
-
-    //     // if (*joint->homing_cmd) {
-
-    //     //     #ifdef DEBUG
-    //     //     rtapi_print("hotshot_handle_move(%d, %d): Is homing\n",
-    //     //         joint->tmc.chip, joint->tmc.motor);
-    //     //     rtapi_print("hotshot_handle_move(%d, %d): Setting home position\n",
-    //     //         joint->tmc.chip, joint->tmc.motor);
-    //     //     #endif
-
-    //     //     // We are homing and we have hit a Stallguard stop event, 
-    //     //     // so trigger home switch
-    //     //     joint->home_sw = tmc5041_motor_set_home(&joint->tmc);
-
-    //     // } else {
-    //     //     // We've hit a Stallguard stop, but we're not homing.
-
-    //     //     #ifdef DEBUG
-    //     //     rtapi_print("hotshot_handle_move(%d, %d): Is NOT homing\n",
-    //     //         joint->tmc.chip, joint->tmc.motor);
-    //     //     rtapi_print("hotshot_handle_move(%d, %d): Triggering torch breakaway\n",
-    //     //         joint->tmc.chip, joint->tmc.motor);
-    //     //     #endif
-
-    //     //     // Set torch breakaway pin and let LinuxCNC handle the rest
-    //     //     *joint->torch_breakaway_fb = TRUE;
-    //     // }             
-
-    //     tmc5041_motor_clear_stall(&joint->tmc);
-
-    }
-    else
-    {
-        // Note: don't clear breakaway here or the signal will bounce
-        // since not all motors will stall at the same time.
-        // *joint->torch_breakaway_fb = FALSE;
     }
 }
 
@@ -306,6 +276,10 @@ void hotshot_handle_joints(joint_t * joints, uint8_t motor_count) {
 
         // Handle joints
         hotshot_handle_move(&joints[i]);
+        // if (i == 2)
+        //     rtapi_print("hotshot(%d,%d): calling homing\n", *joints[i].tmc.chip,  *joints[i].tmc.motor);
+        // if (*joints[i].tmc.chip == 1 && *joints[i].tmc.motor == 0)
+        //     rtapi_print("hotshot(%d,%d): also calling homing\n", *joints[i].tmc.chip,  *joints[i].tmc.motor);
         hotshot_handle_homing(&joints[i]);
 
         // Always keep these registers up to date

@@ -21,7 +21,8 @@ addf    encoder.update-counters     base-thread
 addf    encoder.capture-position    servo-thread
 addf    hotshot.0                   servo-thread
 addf    hotshot.0.sensors           servo-thread
-# addf    hotshot.0.arc               base-thread
+# FIXME should be base-thread, but EMC crashes
+addf    hotshot.0.arc               servo-thread
 
 net     in-position         <= motion.in-position
 net     machine-is-enabled  <= motion.motion-enabled
@@ -124,14 +125,14 @@ setp                pid.x.FF2                                       [JOINT_0]FF2
 setp                pid.x.deadband                                  [JOINT_0]DEADBAND
 setp                pid.x.maxoutput                                 [JOINT_0]MAX_OUTPUT
 setp                pid.x.error-previous-target                     true
-net  x-homing       joint.0.homing                                  => hotshot.0.axis-x-is-homing
-net  x-home-sw      hotshot.0.axis-x-home-sw                        => joint.0.home-sw-in
 net  x-enable       joint.0.amp-enable-out                          => hotshot.0.axis-x-enable          pid.x.enable
 net  x-pos-cmd      joint.0.motor-pos-cmd                           => hotshot.0.axis-x-position-cmd    pid.x.command
 net  x-pos-fb       hotshot.0.axis-x-position-fb                    => joint.0.motor-pos-fb             pid.x.feedback           
 net  x-vel-cmd      joint.0.vel-cmd                                 =>                                  pid.x.command-deriv
 net  x-vel-fb       hotshot.0.axis-x-velocity-fb                    =>                                  pid.x.feedback-deriv
 net  x-output       pid.x.output                                    => hotshot.0.axis-x-velocity-cmd
+net  x-homing       joint.0.homing                                  => hotshot.0.axis-x-is-homing
+net  x-home-sw      hotshot.0.axis-x-home-sw                        => joint.0.home-sw-in
 
 ### Axis Y(L) / Joint 1
 setp                hotshot.0.axis-yl-max-acceleration-cmd          [JOINT_1]MAX_ACCELERATION
@@ -145,7 +146,7 @@ setp                hotshot.0.axis-yl-tmc-run-current-cmd           30
 setp                hotshot.0.axis-yl-tmc-hold-current-cmd          6
 setp                hotshot.0.axis-yl-tmc-sg-thresh-cmd             8
 setp                hotshot.0.axis-yl-tmc-sg-stop-cmd               0
-setp                hotshot.0.axis-yl-tmc-cs-thresh-cmd             50000
+setp                hotshot.0.axis-yl-tmc-cs-thresh-cmd             30000
 setp                hotshot.0.axis-yl-tmc-current-hold-delay-cmd    1
 setp                hotshot.0.axis-yl-tmc-ramp-mode-cmd             0
 setp                hotshot.0.axis-yl-tmc-ramp-vstart-cmd           0
@@ -168,8 +169,6 @@ setp                hotshot.0.axis-yl-tmc-chop-hstrt-cmd            5
 setp                hotshot.0.axis-yl-tmc-chop-toff-cmd             5
 setp                hotshot.0.axis-yl-tmc-chop-vsense-cmd           0
 setp                hotshot.0.axis-yl-tmc-sw-en-softstop            0
-net  yl-homing      joint.1.homing                                  => hotshot.0.axis-yl-is-homing
-net  yl-home-sw     hotshot.0.axis-yl-home-sw                       => joint.1.home-sw-in
 setp                pid.yl.Pgain                                     [JOINT_1]P
 setp                pid.yl.Igain                                     [JOINT_1]I
 setp                pid.yl.Dgain                                     [JOINT_1]D
@@ -186,7 +185,8 @@ net  yl-pos-fb      hotshot.0.axis-yl-position-fb                    => joint.1.
 net  yl-vel-cmd     joint.1.vel-cmd                                  =>                                 pid.yl.command-deriv
 net  yl-vel-fb      hotshot.0.axis-yl-velocity-fb                    =>                                 pid.yl.feedback-deriv
 net  yl-output      pid.yl.output                                    => hotshot.0.axis-yl-velocity-cmd
-
+net  yl-homing      joint.1.homing                                  => hotshot.0.axis-yl-is-homing
+net  yl-home-sw     hotshot.0.axis-yl-home-sw                       => joint.1.home-sw-in
 
 ### Axis Y(R) / Joint 2
 setp                hotshot.0.axis-yr-max-acceleration-cmd          [JOINT_2]MAX_ACCELERATION
@@ -200,11 +200,11 @@ setp                hotshot.0.axis-yr-tmc-run-current-cmd           30
 setp                hotshot.0.axis-yr-tmc-hold-current-cmd          6
 setp                hotshot.0.axis-yr-tmc-sg-thresh-cmd             8
 setp                hotshot.0.axis-yr-tmc-sg-stop-cmd               0
-setp                hotshot.0.axis-yr-tmc-cs-thresh-cmd             50000
+setp                hotshot.0.axis-yr-tmc-cs-thresh-cmd             30000
 setp                hotshot.0.axis-yr-tmc-current-hold-delay-cmd    1
 setp                hotshot.0.axis-yr-tmc-ramp-mode-cmd             0
 setp                hotshot.0.axis-yr-tmc-ramp-vstart-cmd           0
-setp                hotshot.0.axis-yr-tmc-ramp-vstop-cmd            10
+setp                hotshot.0.axis-yr-tmc-ramp-vstop-cmd            0
 setp                hotshot.0.axis-yr-tmc-ramp-v1-cmd               0
 setp                hotshot.0.axis-yr-tmc-ramp-tzerowait-cmd        0
 setp                hotshot.0.axis-yr-tmc-coolstep-sfilt-cmd        0
@@ -223,8 +223,6 @@ setp                hotshot.0.axis-yr-tmc-chop-hstrt-cmd            5
 setp                hotshot.0.axis-yr-tmc-chop-toff-cmd             5
 setp                hotshot.0.axis-yr-tmc-chop-vsense-cmd           0
 setp                hotshot.0.axis-yr-tmc-sw-en-softstop            0
-net  yr-homing      joint.2.homing                                  => hotshot.0.axis-yr-is-homing
-net  yr-home-sw     hotshot.0.axis-yr-home-sw                       => joint.2.home-sw-in
 setp                pid.yr.Pgain                                     [JOINT_2]P
 setp                pid.yr.Igain                                     [JOINT_2]I
 setp                pid.yr.Dgain                                     [JOINT_2]D
@@ -241,7 +239,8 @@ net  yr-pos-fb      hotshot.0.axis-yr-position-fb                    => joint.2.
 net  yr-vel-cmd     joint.2.vel-cmd                                  =>                                 pid.yr.command-deriv
 net  yr-vel-fb      hotshot.0.axis-yr-velocity-fb                    =>                                 pid.yr.feedback-deriv
 net  yr-output      pid.yr.output                                    => hotshot.0.axis-yr-velocity-cmd
-
+net  yr-homing      joint.2.homing                                   => hotshot.0.axis-yr-is-homing
+net  yr-home-sw     hotshot.0.axis-yr-home-sw                        => joint.2.home-sw-in
 
 ### Axis Z / Joint 3
 setp                hotshot.0.axis-z-max-acceleration-cmd           [JOINT_3]MAX_ACCELERATION
@@ -278,9 +277,6 @@ setp                hotshot.0.axis-z-tmc-chop-hstrt-cmd             5
 setp                hotshot.0.axis-z-tmc-chop-toff-cmd              5
 setp                hotshot.0.axis-z-tmc-chop-vsense-cmd            0
 setp                hotshot.0.axis-z-tmc-sw-en-softstop             0
-net  z-homing       joint.3.homing                                  => hotshot.0.axis-z-is-homing
-net  z-home-sw      hotshot.0.axis-z-home-sw                        => joint.3.home-sw-in
-net  z-neg-lim-sw   hotshot.0.axis-z-neg-limit-sw                   => joint.3.neg-lim-sw-in
 setp                pid.z.Pgain                                     [JOINT_3]P
 setp                pid.z.Igain                                     [JOINT_3]I
 setp                pid.z.Dgain                                     [JOINT_3]D
@@ -297,3 +293,6 @@ net  z-pos-fb       hotshot.0.axis-z-position-fb                    => joint.3.m
 net  z-vel-cmd      joint.3.vel-cmd                                 =>                                  pid.z.command-deriv
 net  z-vel-fb       hotshot.0.axis-z-velocity-fb                    =>                                  pid.z.feedback-deriv
 net  z-output       pid.z.output                                    => hotshot.0.axis-z-velocity-cmd
+net  z-homing       joint.3.homing                                  => hotshot.0.axis-z-is-homing
+net  z-home-sw      hotshot.0.axis-z-home-sw                        => joint.3.home-sw-in
+net  z-neg-lim-sw   hotshot.0.axis-z-neg-limit-sw                   => joint.3.neg-lim-sw-in
