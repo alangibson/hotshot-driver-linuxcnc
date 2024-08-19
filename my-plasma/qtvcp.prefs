@@ -23,12 +23,12 @@ style_QSS_Path = DEFAULT
 overlay_play_sound = False
 overlay_sound_type = RING
 catch_errors = True
-desktop_notify = True
+desktop_notify = False
 notify_max_msgs = 10
 shutdown_check = False
 sound_player_on = False
 mainwindow_geometry = 267 97 1386 905
-MainWindow-geometry = 531 300 1348 702
+MainWindow-geometry = 0 51 1920 1149
 
 [MCH_MSG_OPTIONS]
 mchnMsg_play_sound = True
