@@ -12,13 +12,14 @@ function arc;
 // option extra_setup;
 // option extra_cleanup;
 
-pin out bit arc_ok;          // wire to plasmac.arc-ok-in
+pin out bit arc_ok;             // wire to plasmac.arc-ok-in
 // pin out float arc_voltage;   // wire to plasmac.arc-voltage-in
 pin out bit arc_freq_state;
-pin out bit torch_breakaway; // wire to plasmac.breakaway
-pin in bit torch_on;         // wire to plasmac.torch-on
-pin in bit ohmic_enable;     // wire to plasmac.ohmic-enable
-pin out bit ohmic_probe;     // wire to plasmac.ohmic-probe
+pin out bit torch_breakaway;    // wire to plasmac.breakaway
+pin out bit torch_float;        // wire to plasmac:float-switch
+pin in bit torch_on;            // wire to plasmac.torch-on
+pin in bit ohmic_enable;        // wire to plasmac.ohmic-enable
+pin out bit ohmic_probe;        // wire to plasmac.ohmic-probe
 
 pin in bit axis_x_enable;
 pin in bit axis_yl_enable;
@@ -988,6 +989,18 @@ FUNCTION(sensors)
     else
     {
         arc_ok = FALSE;
+    }
+
+    // Read torch float signal
+    // Signal is active low.
+    uint8_t torch_float_level = bcm2835_gpio_lev(PIN_TORCH_FLOAT);
+    if (torch_float_level == HIGH)
+    {
+        torch_float = FALSE;
+    }
+    else
+    {
+        torch_float = TRUE;
     }
 
     // Read in ohmic_enable pin and enable/disable ohmic sensor relay

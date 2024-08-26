@@ -34,21 +34,23 @@ addf    db_breakaway servo-thread
 addf    db_arc-ok    servo-thread
 # ---JOINT ASSOCIATED WITH THE Z AXIS---
 net     plasmac:axis-z-position     joint.3.pos-fb     => plasmac.axis-z-position
-# ---PLASMA INPUTS---
-# ---all modes---
+# Plasma inputs
+#
+# all modes
 net     plasmac:float-switch   => db_float.in
 net     plasmac:breakaway      => db_breakaway.in
 net     plasmac:ohmic-probe    => db_ohmic.in
 net     plasmac:ohmic-sense-in => plasmac.ohmic-sense-in
-# ---modes 0 & 1
+# modes 0 & 1
 net     plasmac:arc-voltage-in => plasmac.arc-voltage-in
-# ---modes 1 & 2
+# modes 1 & 2
 net     plasmac:arc-ok-in      => db_arc-ok.in
-# ---mode 2
+# mode 2
 net     plasmac:move-up        => plasmac.move-up
 net     plasmac:move-down      => plasmac.move-down
-# ---PLASMA OUTPUTS---
-# ---all modes---
+# Plasma outputs
+#
+# all modes
 net     plasmac:ohmic-enable   <= plasmac.ohmic-enable
 net     plasmac:scribe-arm     <= plasmac.scribe-arm
 net     plasmac:scribe-on      <= plasmac.scribe-on
@@ -59,28 +61,35 @@ net     plasmac:arc-ok-in           <= hotshot.0.arc-ok
 net     plasmac:breakaway           <= hotshot.0.torch-breakaway
 net     plasmac:ohmic-probe         <= plasmac.ohmic-sense-out
 net     plasmac:ohmic-sense-in      <= hotshot.0.ohmic-probe
+# Float switch
+# setp plasmac.probe-final-speed N
+net     plasmac:float-switch      <= hotshot.0.torch-float
 
 # Estop
+#
 net  estop-ext     hotshot.0.machine-estop-fb                       => iocontrol.0.emc-enable-in
 net  estop-out     iocontrol.0.user-enable-out                      => hotshot.0.machine-estop-cmd
 net  estop-out     => hotshot.0.machine-estop-cmd
 
+# Tool
+#
 net  tool-number             <= iocontrol.0.tool-prep-number
 net  tool-change-loopback    iocontrol.0.tool-change                => iocontrol.0.tool-changed
 net  tool-prepare-loopback   iocontrol.0.tool-prepare               => iocontrol.0.tool-prepared
 
 # Arc voltage
-setp    plasmac.lowpass-frequency   10
-# net plasmac:arc-voltage-in      <= hotshot.0.arc-voltage
+#
 # Scale factor, in counts per length unit. For example, if position-scale 
 # is 500, then 1000 counts of the encoder will be reported as a position of 2.0 units.
 # Circuit produces 1 kHz per 1 volt. However, we use a 50:1 voltage div. So scale is 1000/50=20
 setp    encoder.0.counter-mode      1
 setp    encoder.0.position-scale    0.5
+setp    plasmac.lowpass-frequency   10
 net     arc-freq	                hotshot.0.arc-freq-state	    => encoder.0.phase-A
 net     plasmac:arc-voltage-in	    <= encoder.0.velocity
 
-### Axis X / Joint 0
+# Axis X / Joint 0
+#
 setp                hotshot.0.axis-x-max-acceleration-cmd           [JOINT_0]MAX_ACCELERATION
 setp                hotshot.0.axis-x-chip                           0
 setp                hotshot.0.axis-x-motor                          0
@@ -134,7 +143,8 @@ net  x-output       pid.x.output                                    => hotshot.0
 net  x-homing       joint.0.homing                                  => hotshot.0.axis-x-is-homing
 net  x-home-sw      hotshot.0.axis-x-home-sw                        => joint.0.home-sw-in
 
-### Axis Y(L) / Joint 1
+# Axis Y(L) / Joint 1
+#
 setp                hotshot.0.axis-yl-max-acceleration-cmd          [JOINT_1]MAX_ACCELERATION
 setp                hotshot.0.axis-yl-chip                          0
 setp                hotshot.0.axis-yl-motor                         1
@@ -188,7 +198,8 @@ net  yl-output      pid.yl.output                                    => hotshot.
 net  yl-homing      joint.1.homing                                  => hotshot.0.axis-yl-is-homing
 net  yl-home-sw     hotshot.0.axis-yl-home-sw                       => joint.1.home-sw-in
 
-### Axis Y(R) / Joint 2
+# Axis Y(R) / Joint 2
+#
 setp                hotshot.0.axis-yr-max-acceleration-cmd          [JOINT_2]MAX_ACCELERATION
 setp                hotshot.0.axis-yr-chip                          1
 setp                hotshot.0.axis-yr-motor                         0
@@ -242,7 +253,8 @@ net  yr-output      pid.yr.output                                    => hotshot.
 net  yr-homing      joint.2.homing                                   => hotshot.0.axis-yr-is-homing
 net  yr-home-sw     hotshot.0.axis-yr-home-sw                        => joint.2.home-sw-in
 
-### Axis Z / Joint 3
+# Axis Z / Joint 3
+#
 setp                hotshot.0.axis-z-max-acceleration-cmd           [JOINT_3]MAX_ACCELERATION
 setp                hotshot.0.axis-z-chip                           1
 setp                hotshot.0.axis-z-motor                          1

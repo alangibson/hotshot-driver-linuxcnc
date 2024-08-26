@@ -113,7 +113,7 @@ THC enable = False
 Corner lock enable = False
 Void lock enable = False
 Use auto volts = False
-Ohmic probe enable = True
+Ohmic probe enable = False
 THC auto = False
 
 [CAMERA_OFFSET]
