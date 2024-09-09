@@ -85,15 +85,14 @@ void hotshot_handle_homing(joint_t * joint)
     // Calculate everything we need to know in order to determine where
     // we are in the homing sequence.
     //
-    // TODO get this via pin
-    int32_t SG_TRIGGER_THRESH = 100;
+    int32_t sg_trigger_thresh = *joint->tmc.sg_trigger_thresh_cmd;
     int32_t sg_load = *joint->tmc.motor_load_fb;
     int32_t vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
     int32_t velocity_cmd = *joint->tmc.velocity_cmd;
     // TODO Maybe when velocity_cmd and velocity_fb are within some percent of each other?
     int32_t velocity_diff = velocity_cmd - *joint->tmc.velocity_fb;
     int32_t threshold_diff = abs(vactual) - *joint->tmc.cs_thresh_cmd;
-    int32_t stall_diff = sg_load - SG_TRIGGER_THRESH;
+    int32_t stall_diff = sg_load - sg_trigger_thresh;
     // TODO compare current velocity against HOME_SEARCH_VEL and HOME_LATCH_VEL ?
 
     // Enter SEARCHING state?
@@ -213,7 +212,7 @@ void hotshot_handle_homing(joint_t * joint)
         #ifdef DEBUG_HOMING
         rtapi_print("hotshot(%d,%d): %d < %d. stall_diff=%d, velocity_fb=%d, velocity_diff=%d, threshold_diff=%d. switch=%d\n", 
             *joint->tmc.chip, *joint->tmc.motor, 
-            sg_load, SG_TRIGGER_THRESH, 
+            sg_load, sg_trigger_thresh, 
             stall_diff,
             *joint->tmc.velocity_fb, 
             velocity_diff, 

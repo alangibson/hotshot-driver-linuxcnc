@@ -108,6 +108,7 @@ typedef struct {
     volatile uint32_t               *   chop_vsense_cmd;
     volatile uint32_t               *   sw_en_softstop;
     volatile sg_thresh_t        	*   sg_thresh_cmd;
+    volatile uint32_t               *   sg_trigger_thresh_cmd;
     volatile tmc_position_t     	*   position_fb;
     volatile tmc_velocity_t     	*   velocity_fb;
     volatile int32_t             	*   acceleration_fb;
@@ -121,9 +122,6 @@ typedef struct {
     volatile uint32_t               *   microstep_resolution_fb;
     volatile bool                   *   velocity_reached_fb;
     volatile bool                   *   status_sg_fb;
-    // volatile bool                   *   second_move_fb;
-    // volatile bool                   *   t_zerowait_active_fb;
-    // volatile bool                   *   vzero_fb;
     volatile bool                   *   position_reached_fb;
     volatile bool                   *   event_pos_reached_fb;
     volatile bool                   *   event_stop_sg_fb;

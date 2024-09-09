@@ -133,6 +133,13 @@ pin in s32 axis_yl_tmc_sg_thresh_cmd;
 pin in s32 axis_yr_tmc_sg_thresh_cmd;
 pin in s32 axis_z_tmc_sg_thresh_cmd;
 
+// Not actually a TMC value
+// Used in homing routine.
+pin in u32 axis_x_tmc_sg_trigger_thresh_cmd;
+pin in u32 axis_yl_tmc_sg_trigger_thresh_cmd;
+pin in u32 axis_yr_tmc_sg_trigger_thresh_cmd;
+pin in u32 axis_z_tmc_sg_trigger_thresh_cmd;
+
 pin in bit axis_x_tmc_sg_stop_cmd;
 pin in bit axis_yl_tmc_sg_stop_cmd;
 pin in bit axis_yr_tmc_sg_stop_cmd;
@@ -406,7 +413,6 @@ variable joint_t joints[4];
 #include <rtapi.h>
 #include "bcm2835.h"
 #include "rpi.h"
-// #include "hotshot.hal.h"
 
 // X
 #undef axis_x_enable
@@ -419,9 +425,9 @@ variable joint_t joints[4];
 #undef axis_x_acceleration_cmd
 #undef axis_x_microsteps_cmd
 #undef axis_x_max_acceleration_cmd
-// #undef axis_x_max_velocity_cmd
 #undef axis_x_tmc_sg_stop_cmd
 #undef axis_x_tmc_sg_thresh_cmd
+#undef axis_x_tmc_sg_trigger_thresh_cmd
 #undef axis_x_tmc_run_current_cmd
 #undef axis_x_tmc_hold_current_cmd
 #undef axis_x_tmc_cs_thresh_cmd
@@ -461,9 +467,9 @@ variable joint_t joints[4];
 #undef axis_yl_acceleration_cmd
 #undef axis_yl_microsteps_cmd
 #undef axis_yl_max_acceleration_cmd
-// #undef axis_yl_max_velocity_cmd
 #undef axis_yl_tmc_sg_stop_cmd
 #undef axis_yl_tmc_sg_thresh_cmd
+#undef axis_yl_tmc_sg_trigger_thresh_cmd
 #undef axis_yl_tmc_run_current_cmd
 #undef axis_yl_tmc_hold_current_cmd
 #undef axis_yl_tmc_cs_thresh_cmd
@@ -503,9 +509,9 @@ variable joint_t joints[4];
 #undef axis_yr_acceleration_cmd
 #undef axis_yr_microsteps_cmd
 #undef axis_yr_max_acceleration_cmd
-// #undef axis_yr_max_velocity_cmd
 #undef axis_yr_tmc_sg_stop_cmd
 #undef axis_yr_tmc_sg_thresh_cmd
+#undef axis_yr_tmc_sg_trigger_thresh_cmd
 #undef axis_yr_tmc_run_current_cmd
 #undef axis_yr_tmc_hold_current_cmd
 #undef axis_yr_tmc_cs_thresh_cmd
@@ -546,9 +552,9 @@ variable joint_t joints[4];
 #undef axis_z_acceleration_cmd
 #undef axis_z_microsteps_cmd
 #undef axis_z_max_acceleration_cmd
-// #undef axis_z_max_velocity_cmd
 #undef axis_z_tmc_sg_stop_cmd
 #undef axis_z_tmc_sg_thresh_cmd
+#undef axis_z_tmc_sg_trigger_thresh_cmd
 #undef axis_z_tmc_run_current_cmd
 #undef axis_z_tmc_hold_current_cmd
 #undef axis_z_tmc_cs_thresh_cmd
@@ -633,6 +639,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
             .cs_thresh_cmd              = __comp_inst->axis_x_tmc_cs_thresh_cmd,
             .sg_stop_cmd                = __comp_inst->axis_x_tmc_sg_stop_cmd,
             .sg_thresh_cmd              = __comp_inst->axis_x_tmc_sg_thresh_cmd,
+            .sg_trigger_thresh_cmd      = __comp_inst->axis_x_tmc_sg_trigger_thresh_cmd,
             .current_hold_delay_cmd     = __comp_inst->axis_x_tmc_current_hold_delay_cmd,
             .ramp_mode_cmd              = __comp_inst->axis_x_tmc_ramp_mode_cmd,
             .ramp_vstart_cmd            = __comp_inst->axis_x_tmc_ramp_vstart_cmd,
@@ -708,6 +715,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
             .cs_thresh_cmd              = __comp_inst->axis_yl_tmc_cs_thresh_cmd,
             .sg_stop_cmd                = __comp_inst->axis_yl_tmc_sg_stop_cmd,
             .sg_thresh_cmd              = __comp_inst->axis_yl_tmc_sg_thresh_cmd,
+            .sg_trigger_thresh_cmd      = __comp_inst->axis_yl_tmc_sg_trigger_thresh_cmd,
             .current_hold_delay_cmd     = __comp_inst->axis_yl_tmc_current_hold_delay_cmd,
             .ramp_mode_cmd              = __comp_inst->axis_yl_tmc_ramp_mode_cmd,
             .ramp_vstart_cmd            = __comp_inst->axis_yl_tmc_ramp_vstart_cmd,
@@ -783,6 +791,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
             .cs_thresh_cmd              = __comp_inst->axis_yr_tmc_cs_thresh_cmd,
             .sg_stop_cmd                = __comp_inst->axis_yr_tmc_sg_stop_cmd,
             .sg_thresh_cmd              = __comp_inst->axis_yr_tmc_sg_thresh_cmd,
+            .sg_trigger_thresh_cmd      = __comp_inst->axis_yr_tmc_sg_trigger_thresh_cmd,
             .current_hold_delay_cmd     = __comp_inst->axis_yr_tmc_current_hold_delay_cmd,
             .ramp_mode_cmd              = __comp_inst->axis_yr_tmc_ramp_mode_cmd,
             .ramp_vstart_cmd            = __comp_inst->axis_yr_tmc_ramp_vstart_cmd,
@@ -858,6 +867,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
             .cs_thresh_cmd              = __comp_inst->axis_z_tmc_cs_thresh_cmd,
             .sg_stop_cmd                = __comp_inst->axis_z_tmc_sg_stop_cmd,
             .sg_thresh_cmd              = __comp_inst->axis_z_tmc_sg_thresh_cmd,
+            .sg_trigger_thresh_cmd      = __comp_inst->axis_z_tmc_sg_trigger_thresh_cmd,
             .current_hold_delay_cmd     = __comp_inst->axis_z_tmc_current_hold_delay_cmd,
             .ramp_mode_cmd              = __comp_inst->axis_z_tmc_ramp_mode_cmd,
             .ramp_vstart_cmd            = __comp_inst->axis_z_tmc_ramp_vstart_cmd,

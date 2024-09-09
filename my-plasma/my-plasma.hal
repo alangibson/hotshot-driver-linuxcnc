@@ -64,9 +64,12 @@ net     plasmac:ohmic-sense-in      <= hotshot.0.ohmic-probe
 # Float switch
 # setp plasmac.probe-final-speed N
 net     plasmac:float-switch      <= hotshot.0.torch-float
+# setp plasmac.float-switch 1
+
 
 # Estop
 #
+# setp iocontrol.0.emc-enable-in 1
 net  estop-ext     hotshot.0.machine-estop-fb                       => iocontrol.0.emc-enable-in
 net  estop-out     iocontrol.0.user-enable-out                      => hotshot.0.machine-estop-cmd
 net  estop-out     => hotshot.0.machine-estop-cmd
@@ -99,7 +102,8 @@ setp                hotshot.0.axis-x-microsteps-cmd                 256
 setp                hotshot.0.axis-x-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-x-tmc-run-current-cmd            30
 setp                hotshot.0.axis-x-tmc-hold-current-cmd           6
-setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              10
+setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              8
+setp                hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd      200
 setp                hotshot.0.axis-x-tmc-sg-stop-cmd                0
 setp                hotshot.0.axis-x-tmc-cs-thresh-cmd              30000
 setp                hotshot.0.axis-x-tmc-current-hold-delay-cmd     1
@@ -155,6 +159,7 @@ setp                hotshot.0.axis-yl-motor-fullsteps-per-rev-cmd   200
 setp                hotshot.0.axis-yl-tmc-run-current-cmd           30
 setp                hotshot.0.axis-yl-tmc-hold-current-cmd          6
 setp                hotshot.0.axis-yl-tmc-sg-thresh-cmd             8
+setp                hotshot.0.axis-yl-tmc-sg-trigger-thresh-cmd     200
 setp                hotshot.0.axis-yl-tmc-sg-stop-cmd               0
 setp                hotshot.0.axis-yl-tmc-cs-thresh-cmd             30000
 setp                hotshot.0.axis-yl-tmc-current-hold-delay-cmd    1
@@ -210,6 +215,7 @@ setp                hotshot.0.axis-yr-motor-fullsteps-per-rev-cmd   200
 setp                hotshot.0.axis-yr-tmc-run-current-cmd           30
 setp                hotshot.0.axis-yr-tmc-hold-current-cmd          6
 setp                hotshot.0.axis-yr-tmc-sg-thresh-cmd             8
+setp                hotshot.0.axis-yr-tmc-sg-trigger-thresh-cmd     200
 setp                hotshot.0.axis-yr-tmc-sg-stop-cmd               0
 setp                hotshot.0.axis-yr-tmc-cs-thresh-cmd             30000
 setp                hotshot.0.axis-yr-tmc-current-hold-delay-cmd    1
@@ -265,6 +271,7 @@ setp                hotshot.0.axis-z-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-z-tmc-run-current-cmd            23
 setp                hotshot.0.axis-z-tmc-hold-current-cmd           3
 setp                hotshot.0.axis-z-tmc-sg-thresh-cmd              8
+setp                hotshot.0.axis-z-tmc-sg-trigger-thresh-cmd      300
 setp                hotshot.0.axis-z-tmc-sg-stop-cmd                0
 setp                hotshot.0.axis-z-tmc-cs-thresh-cmd              20000
 setp                hotshot.0.axis-z-tmc-current-hold-delay-cmd     1

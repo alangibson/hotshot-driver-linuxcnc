@@ -1,38 +1,13 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 938x1016+17+81
+wm geometry . 938x1016+-326+27
 placeFrames 0.3806998939554613
 set ::ratio 0.3806998939554613
 set ::old_w_leftf 398
 set ::watchlist {
-    pin+hotshot.0.axis-x-home-sw
-    pin+hotshot.0.axis-yl-home-sw
-    pin+hotshot.0.axis-yr-home-sw
-    pin+hotshot.0.axis-z-home-sw
-    pin+hotshot.0.axis-x-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-yl-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-yr-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-z-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-x-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-yl-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-yr-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-z-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-x-tmc-motor-stall-fb
-    pin+hotshot.0.axis-yl-tmc-motor-stall-fb
-    pin+hotshot.0.axis-yr-tmc-motor-stall-fb
-    pin+hotshot.0.axis-z-tmc-motor-stall-fb
-    pin+hotshot.0.axis-x-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-yl-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-yr-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-z-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-x-tmc-motor-load-fb
-    pin+hotshot.0.axis-yl-tmc-motor-load-fb
-    pin+hotshot.0.axis-yr-tmc-motor-load-fb
-    pin+hotshot.0.axis-z-tmc-motor-load-fb
-    pin+hotshot.0.axis-x-tmc-sw-en-softstop
-    pin+hotshot.0.axis-yl-tmc-sw-en-softstop
-    pin+hotshot.0.axis-yr-tmc-sw-en-softstop
-    pin+hotshot.0.axis-z-tmc-sw-en-softstop
+    pin+hotshot.0.torch-on
+    pin+plasmac.torch-on
+    sig+plasmac:torch-on
 }
 set ::workmode watchhal
 set ::watchInterval 100
