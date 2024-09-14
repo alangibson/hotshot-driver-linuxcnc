@@ -48,7 +48,7 @@ Exit warning text =
 Preview cone size = 0.5
 Preview grid size = 0.0
 T view zoom scale = 1.0
-Override jog inhibit via Z+ = False
+Override jog inhibit via Z+ = True
 Default material = 0
 Custom style = None
 
@@ -122,14 +122,14 @@ X axis = 0.0
 Y axis = 0.0
 
 [STATISTICS]
-Cut time = 0.0
+Cut time = 10.19
 Paused time = 0.0
-Probe time = 0.0
-Program run time = 0.0
-Torch on time = 0.0
-Rapid time = 0.0
-Cut length = 0.0
-Pierce count = 0
+Probe time = 4.8
+Program run time = 25.0
+Torch on time = 11.59
+Rapid time = 7.46
+Cut length = 411.99
+Pierce count = 2
 
 [LASER_OFFSET]
 X axis = 0.0
