@@ -113,10 +113,10 @@ pin out u32 axis_yl_tmc_max_acceleration_fb;
 pin out u32 axis_yr_tmc_max_acceleration_fb;
 pin out u32 axis_z_tmc_max_acceleration_fb;
 
-pin in bit axis_x_is_homing;
-pin in bit axis_yl_is_homing;
-pin in bit axis_yr_is_homing;
-pin in bit axis_z_is_homing;
+pin in bit axis_x_homing_cmd;
+pin in bit axis_yl_homing_cmd;
+pin in bit axis_yr_homing_cmd;
+pin in bit axis_z_homing_cmd;
 
 pin out bit axis_x_home_sw;
 pin out bit axis_yl_home_sw;
@@ -350,6 +350,11 @@ pin in u32 axis_yl_tmc_sw_en_softstop;
 pin in u32 axis_yr_tmc_sw_en_softstop;
 pin in u32 axis_z_tmc_sw_en_softstop;
 
+pin in float axis_x_tmc_vmax_factor_cmd;
+pin in float axis_yl_tmc_vmax_factor_cmd;
+pin in float axis_yr_tmc_vmax_factor_cmd;
+pin in float axis_z_tmc_vmax_factor_cmd;
+
 pin out bit axis_x_tmc_status_sg_fb;
 pin out bit axis_yl_tmc_status_sg_fb;
 pin out bit axis_yr_tmc_status_sg_fb;
@@ -416,7 +421,7 @@ variable joint_t joints[4];
 
 // X
 #undef axis_x_enable
-#undef axis_x_is_homing
+#undef axis_x_homing_cmd
 #undef axis_x_pitch
 #undef axis_x_teeth
 #undef axis_x_motor_fullsteps_per_rev_cmd
@@ -456,9 +461,10 @@ variable joint_t joints[4];
 #undef axis_x_tmc_chop_toff_cmd
 #undef axis_x_tmc_chop_vsense_cmd
 #undef axis_x_tmc_sw_en_softstop
+#undef axis_x_tmc_vmax_factor_cmd
 // YL
 #undef axis_yl_enable
-#undef axis_yl_is_homing
+#undef axis_yl_homing_cmd
 #undef axis_yl_pitch
 #undef axis_yl_teeth
 #undef axis_yl_motor_fullsteps_per_rev_cmd
@@ -498,9 +504,10 @@ variable joint_t joints[4];
 #undef axis_yl_tmc_chop_toff_cmd
 #undef axis_yl_tmc_chop_vsense_cmd
 #undef axis_yl_tmc_sw_en_softstop
+#undef axis_yl_tmc_vmax_factor_cmd
 // YR
 #undef axis_yr_enable
-#undef axis_yr_is_homing
+#undef axis_yr_homing_cmd
 #undef axis_yr_pitch
 #undef axis_yr_teeth
 #undef axis_yr_motor_fullsteps_per_rev_cmd
@@ -540,10 +547,10 @@ variable joint_t joints[4];
 #undef axis_yr_tmc_chop_toff_cmd
 #undef axis_yr_tmc_chop_vsense_cmd
 #undef axis_yr_tmc_sw_en_softstop
-
+#undef axis_yr_tmc_vmax_factor_cmd
 // Z
 #undef axis_z_enable
-#undef axis_z_is_homing
+#undef axis_z_homing_cmd
 #undef axis_z_pitch
 #undef axis_z_teeth
 #undef axis_z_motor_fullsteps_per_rev_cmd
@@ -583,6 +590,7 @@ variable joint_t joints[4];
 #undef axis_z_tmc_chop_toff_cmd
 #undef axis_z_tmc_chop_vsense_cmd
 #undef axis_z_tmc_sw_en_softstop
+#undef axis_z_tmc_vmax_factor_cmd
 
 #undef axis_x_motor
 #undef axis_yl_motor
@@ -620,7 +628,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_x_motor_fullsteps_per_rev_cmd,
         .microsteps_cmd                 = __comp_inst->axis_x_microsteps_cmd,
         .enable_cmd                     = __comp_inst->axis_x_enable,
-        .homing_cmd                     = __comp_inst->axis_x_is_homing,
+        .homing_cmd                     = __comp_inst->axis_x_homing_cmd,
         .position_cmd                   = __comp_inst->axis_x_position_cmd,
         .velocity_cmd                   = __comp_inst->axis_x_velocity_cmd,
         .acceleration_cmd               = __comp_inst->axis_x_acceleration_cmd,
@@ -632,6 +640,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
+            .velocity_time_ref          = velocity_time_ref(TMC5041_CLOCK_HZ),
+            .acceleration_time_ref      = acceleration_time_ref(TMC5041_CLOCK_HZ),
             .chip                       = __comp_inst->axis_x_chip,
             .motor                      = __comp_inst->axis_x_motor,
             .run_current_cmd            = __comp_inst->axis_x_tmc_run_current_cmd,
@@ -665,6 +675,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
             .chop_toff_cmd              = __comp_inst->axis_x_tmc_chop_toff_cmd,
             .chop_vsense_cmd            = __comp_inst->axis_x_tmc_chop_vsense_cmd,
             .sw_en_softstop             = __comp_inst->axis_x_tmc_sw_en_softstop,
+            .vmax_factor_cmd            = __comp_inst->axis_x_tmc_vmax_factor_cmd,
             .position_fb                = &axis_x_tmc_position_fb,
             .position_cmd               = &axis_x_tmc_position_cmd,
             .velocity_fb                = &axis_x_tmc_velocity_fb,
@@ -697,7 +708,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_yl_motor_fullsteps_per_rev_cmd,
         .microsteps_cmd                 = __comp_inst->axis_yl_microsteps_cmd,
         .enable_cmd                     = __comp_inst->axis_yl_enable,
-        .homing_cmd                     = __comp_inst->axis_yl_is_homing,
+        .homing_cmd                     = __comp_inst->axis_yl_homing_cmd,
         .position_cmd                   = __comp_inst->axis_yl_position_cmd,
         .velocity_cmd                   = __comp_inst->axis_yl_velocity_cmd,
         .acceleration_cmd               = __comp_inst->axis_yl_acceleration_cmd,
@@ -708,6 +719,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
+            .velocity_time_ref          = velocity_time_ref(TMC5041_CLOCK_HZ),
+            .acceleration_time_ref      = acceleration_time_ref(TMC5041_CLOCK_HZ),
             .chip                       = __comp_inst->axis_yl_chip,
             .motor                      = __comp_inst->axis_yl_motor,
             .run_current_cmd            = __comp_inst->axis_yl_tmc_run_current_cmd,
@@ -741,6 +754,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
             .chop_toff_cmd              = __comp_inst->axis_yl_tmc_chop_toff_cmd,
             .chop_vsense_cmd            = __comp_inst->axis_yl_tmc_chop_vsense_cmd,
             .sw_en_softstop             = __comp_inst->axis_yl_tmc_sw_en_softstop,
+            .vmax_factor_cmd            = __comp_inst->axis_yl_tmc_vmax_factor_cmd,
             .position_fb                = &axis_yl_tmc_position_fb,
             .position_cmd               = &axis_yl_tmc_position_cmd,
             .velocity_fb                = &axis_yl_tmc_velocity_fb,
@@ -773,7 +787,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_yr_motor_fullsteps_per_rev_cmd,
         .microsteps_cmd                 = __comp_inst->axis_yr_microsteps_cmd,
         .enable_cmd                     = __comp_inst->axis_yr_enable,
-        .homing_cmd                     = __comp_inst->axis_yr_is_homing,
+        .homing_cmd                     = __comp_inst->axis_yr_homing_cmd,
         .position_cmd                   = __comp_inst->axis_yr_position_cmd,
         .velocity_cmd                   = __comp_inst->axis_yr_velocity_cmd,
         .acceleration_cmd               = __comp_inst->axis_yr_acceleration_cmd,
@@ -784,6 +798,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
+            .velocity_time_ref          = velocity_time_ref(TMC5041_CLOCK_HZ),
+            .acceleration_time_ref      = acceleration_time_ref(TMC5041_CLOCK_HZ),
             .chip                       = __comp_inst->axis_yr_chip,
             .motor                      = __comp_inst->axis_yr_motor,
             .run_current_cmd            = __comp_inst->axis_yr_tmc_run_current_cmd,
@@ -817,6 +833,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
             .chop_toff_cmd              = __comp_inst->axis_yr_tmc_chop_toff_cmd,
             .chop_vsense_cmd            = __comp_inst->axis_yr_tmc_chop_vsense_cmd,
             .sw_en_softstop             = __comp_inst->axis_yr_tmc_sw_en_softstop,
+            .vmax_factor_cmd            = __comp_inst->axis_yr_tmc_vmax_factor_cmd,
             .position_fb                = &axis_yr_tmc_position_fb,
             .position_cmd               = &axis_yr_tmc_position_cmd,
             .velocity_fb                = &axis_yr_tmc_velocity_fb,
@@ -849,7 +866,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .motor_fullsteps_per_rev_cmd    = __comp_inst->axis_z_motor_fullsteps_per_rev_cmd,
         .microsteps_cmd                 = __comp_inst->axis_z_microsteps_cmd,
         .enable_cmd                     = __comp_inst->axis_z_enable,
-        .homing_cmd                     = __comp_inst->axis_z_is_homing,
+        .homing_cmd                     = __comp_inst->axis_z_homing_cmd,
         .position_cmd                   = __comp_inst->axis_z_position_cmd,
         .velocity_cmd                   = __comp_inst->axis_z_velocity_cmd,
         .acceleration_cmd               = __comp_inst->axis_z_acceleration_cmd,
@@ -860,6 +877,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
+            .velocity_time_ref          = velocity_time_ref(TMC5041_CLOCK_HZ),
+            .acceleration_time_ref      = acceleration_time_ref(TMC5041_CLOCK_HZ),
             .chip                       = __comp_inst->axis_z_chip,
             .motor                      = __comp_inst->axis_z_motor,
             .run_current_cmd            = __comp_inst->axis_z_tmc_run_current_cmd,
@@ -893,6 +912,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
             .chop_toff_cmd              = __comp_inst->axis_z_tmc_chop_toff_cmd,
             .chop_vsense_cmd            = __comp_inst->axis_z_tmc_chop_vsense_cmd,
             .sw_en_softstop             = __comp_inst->axis_z_tmc_sw_en_softstop,
+            .vmax_factor_cmd            = __comp_inst->axis_z_tmc_vmax_factor_cmd,
             .position_fb                = &axis_z_tmc_position_fb,
             .position_cmd               = &axis_z_tmc_position_cmd,
             .velocity_fb                = &axis_z_tmc_velocity_fb,

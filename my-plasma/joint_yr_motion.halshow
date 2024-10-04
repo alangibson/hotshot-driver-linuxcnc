@@ -1,0 +1,21 @@
+# halshow watchlist created Wed Oct 02 19:29:46 CEST 2024
+
+pin+pid.yr.command
+pin+pid.yr.command-deriv
+pin+pid.yr.feedback
+pin+pid.yr.feedback-deriv
+pin+pid.yr.enable
+pin+hotshot.0.axis-yr-enable
+pin+hotshot.0.axis-yr-position-cmd
+pin+hotshot.0.axis-yr-position-fb
+pin+hotshot.0.axis-yr-velocity-cmd
+pin+hotshot.0.axis-yr-velocity-fb
+pin+pid.yr.error
+pin+pid.yr.error-previous-target
+pin+pid.yr.Pgain
+pin+pid.yr.Igain
+pin+pid.yr.Dgain
+pin+pid.yr.FF0
+pin+pid.yr.FF1
+pin+pid.yr.FF2
+pin+hotshot.0.axis-yr-tmc-vmax-factor-cmd

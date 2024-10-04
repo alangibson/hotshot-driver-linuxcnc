@@ -43,18 +43,18 @@ void hotshot_init(joint_t * joints, uint8_t motor_count)
  */
 bool hotshot_joint_init(joint_t * joint)
 {
-    // Calculate machine unit <-> step pulse conversion factor
-    uint32_t units_per_rev  = (*joint->pitch_cmd) * (*joint->teeth_cmd);
-    uint32_t pulses_per_rev = (*joint->motor_fullsteps_per_rev_cmd) * (*joint->microsteps_cmd);
-
     // Set microstepping
-    joint->tmc.mres = microsteps_to_tmc_mres(*joint->microsteps_cmd);
+    joint->tmc.mres = tmc5041_microsteps_to_mres(*joint->microsteps_cmd);
 
-    float64_t unit_pulse_factor = (float64_t)units_per_rev / (float64_t)pulses_per_rev;
-    joint->unit_pulse_factor = unit_pulse_factor;
+    // TODO we need to tmc5041_motor_init here because that's where we set 
+    // the frequency scaling factor
 
-    uint32_t tmc_max_acceleration_cmd = units_to_pulses(*joint->max_acceleration_cmd, unit_pulse_factor);
-    joint->tmc.max_acceleration_cmd = tmc_max_acceleration_cmd;
+    // TODO to convert from 
+    joint->unit_pulse_factor = units_per_pulse(
+        (float64_t)units_per_rev((*joint->pitch_cmd), (*joint->teeth_cmd)), 
+        (float64_t)pulses_per_rev((*joint->motor_fullsteps_per_rev_cmd), (*joint->microsteps_cmd))
+    );
+    joint->tmc.max_acceleration_cmd = units_to_pulses(*joint->max_acceleration_cmd, joint->unit_pulse_factor);
 
     tmc5041_motor_init(&joint->tmc);
 
@@ -87,13 +87,15 @@ void hotshot_handle_homing(joint_t * joint)
     //
     int32_t sg_trigger_thresh = *joint->tmc.sg_trigger_thresh_cmd;
     int32_t sg_load = *joint->tmc.motor_load_fb;
-    int32_t vactual = tmc5041_get_register_VACTUAL(&joint->tmc);
-    int32_t velocity_cmd = *joint->tmc.velocity_cmd;
-    // TODO Maybe when velocity_cmd and velocity_fb are within some percent of each other?
-    int32_t velocity_diff = velocity_cmd - *joint->tmc.velocity_fb;
+    int32_t vactual = tmc5041_get_velocity(&joint->tmc);
     int32_t threshold_diff = abs(vactual) - *joint->tmc.cs_thresh_cmd;
     int32_t stall_diff = sg_load - sg_trigger_thresh;
     // TODO compare current velocity against HOME_SEARCH_VEL and HOME_LATCH_VEL ?
+    // HACK force velocity_diff to 0 since, when using pid, it is always some small value
+    // TODO Maybe when velocity_cmd and velocity_fb are within some percent of each other?
+    // int32_t velocity_cmd = *joint->tmc.velocity_cmd;
+    // int32_t velocity_diff = velocity_cmd - *joint->tmc.velocity_fb;
+    int32_t velocity_diff = 0;
 
     // Enter SEARCHING state?
     if (joint->home_state < HOME_SEARCHING)
@@ -257,10 +259,31 @@ void hotshot_handle_move(joint_t * joint)
     } 
     else 
     {
-        // LinuxCNC power button is off, so power motor on
+        // #ifdef DEBUG
+        // rtapi_print("Power is off\n");
+        // #endif
+
+        // LinuxCNC power button is off, so power motor off
         tmc5041_motor_position_hold(&joint->tmc);
         tmc5041_motor_power_off(&joint->tmc);
     }
+}
+
+void hotshot_update_joint(joint_t * joint)
+{
+    // Always keep these registers up to date
+    //
+    // Driver status
+    tmc5041_pull_register_DRV_STATUS(&joint->tmc);
+    // Position
+    *joint->tmc.position_fb = tmc5041_get_position(&joint->tmc);
+    float64_t position_fb   = pulses_to_units(*joint->tmc.position_fb, joint->unit_pulse_factor);
+    *joint->position_fb     = position_fb;
+    // Velocity
+    *joint->tmc.velocity_fb  = tmc5041_get_velocity(&joint->tmc);
+    *joint->velocity_fb      = pulses_to_units(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
+    // Stallguard threshold
+    tmc5041_push_register_COOLCONF(&joint->tmc);
 }
 
 void hotshot_handle_joints(joint_t * joints, uint8_t motor_count) {
@@ -269,29 +292,13 @@ void hotshot_handle_joints(joint_t * joints, uint8_t motor_count) {
     {
         rpi_spi_select(*joints[i].tmc.chip); 
 
-        // Always keep these registers up to date
-        //
-        tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
+        hotshot_update_joint(&joints[i]);
 
-        // Handle joints
+        // Move joints
         hotshot_handle_move(&joints[i]);
-        // if (i == 2)
-        //     rtapi_print("hotshot(%d,%d): calling homing\n", *joints[i].tmc.chip,  *joints[i].tmc.motor);
-        // if (*joints[i].tmc.chip == 1 && *joints[i].tmc.motor == 0)
-        //     rtapi_print("hotshot(%d,%d): also calling homing\n", *joints[i].tmc.chip,  *joints[i].tmc.motor);
         hotshot_handle_homing(&joints[i]);
 
-        // Always keep these registers up to date
-        //
-        // Position
-        *joints[i].tmc.position_fb  = tmc5041_get_register_XACTUAL(&joints[i].tmc);
-        // FIXME TMC5041's internal position is up to 50% different than LinxuCNC's
-        // float64_t xactual_mm        = pulses_to_units(*joints[i].tmc.position_fb, joints[i].unit_pulse_factor);
-        // FIXME Lying about position for testing
-        *joints[i].position_fb      = *joints[i].position_cmd;
-        // Velocity
-        *joints[i].tmc.velocity_fb  = tmc5041_get_register_VACTUAL(&joints[i].tmc);
-        *joints[i].velocity_fb      = pulses_to_units(*joints[i].tmc.velocity_fb, joints[i].unit_pulse_factor);
+        hotshot_update_joint(&joints[i]);
 
         rpi_spi_unselect();
     }

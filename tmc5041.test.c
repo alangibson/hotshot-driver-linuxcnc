@@ -186,7 +186,7 @@ int main() {
                 int32_t xactual = tmc5041_get_register_XACTUAL(&tmc5041_motors[i]);
                 printf("XACTUAL motor=%d xactual=%d\n", tmc5041_motors[i].motor, xactual);
 
-                int32_t vactual = tmc5041_get_register_VACTUAL(&tmc5041_motors[i]);
+                int32_t vactual = tmc5041_get_velocity(&tmc5041_motors[i]);
                 printf("VACTUAL motor=%d vactual=%d\n", tmc5041_motors[i].motor, vactual);
                 drv_status_register_t drv_status = tmc5041_get_register_DRV_STATUS(&tmc5041_motors[i]);
                 printf("DRV_STATUS motor=%d\n", tmc5041_motors[i].motor);

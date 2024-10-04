@@ -1,4 +1,4 @@
-# halshow watchlist created Thu Dec 07 13:25:56 CET 2023
+# halshow watchlist created Wed Oct 02 19:31:08 CEST 2024
 
 pin+pid.yl.command
 pin+pid.yl.command-deriv
@@ -15,3 +15,7 @@ pin+pid.yl.error-previous-target
 pin+pid.yl.Pgain
 pin+pid.yl.Igain
 pin+pid.yl.Dgain
+pin+pid.yl.FF0
+pin+pid.yl.FF1
+pin+pid.yl.FF2
+pin+hotshot.0.axis-yl-tmc-vmax-factor-cmd

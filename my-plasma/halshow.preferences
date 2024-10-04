@@ -1,13 +1,36 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 938x1016+-326+27
-placeFrames 0.3806998939554613
-set ::ratio 0.3806998939554613
+wm geometry . 938x1016+-266+27
+placeFrames 0.3758099352051836
+set ::ratio 0.3758099352051836
 set ::old_w_leftf 398
 set ::watchlist {
-    pin+hotshot.0.torch-on
-    pin+plasmac.torch-on
-    sig+plasmac:torch-on
+    pin+pid.x.enable
+    pin+pid.x.command
+    pin+pid.x.command-deriv
+    pin+pid.x.feedback
+    pin+pid.x.feedback-deriv
+    pin+pid.x.output
+    pin+joint.0.pos-cmd
+    pin+hotshot.0.axis-x-enable
+    pin+hotshot.0.axis-x-position-cmd
+    pin+hotshot.0.axis-x-position-fb
+    pin+hotshot.0.axis-x-velocity-cmd
+    pin+hotshot.0.axis-x-velocity-fb
+    pin+pid.x.error
+    pin+pid.x.error-previous-target
+    pin+pid.x.Pgain
+    pin+pid.x.Igain
+    pin+pid.x.Dgain
+    pin+pid.x.FF0
+    pin+pid.x.FF1
+    pin+pid.x.FF2
+    pin+hotshot.0.axis-x-tmc-vmax-factor-cmd
+    pin+pid.x.tune-cycles
+    pin+pid.x.tune-effort
+    pin+pid.x.tune-start
+    pin+pid.x.tune-type
+    pin+pid.x.tune-mode
 }
 set ::workmode watchhal
 set ::watchInterval 100

@@ -3,8 +3,8 @@ Arc Voltage Offset = 0.0
 Arc Voltage Scale = 1.0
 Setup Feed Rate = 1200.0
 Arc Fail Timeout = 3.0
-Arc OK High = 250.0
-Arc OK Low = 60.0
+Arc OK High = 180.0
+Arc OK Low = 20.0
 Arc Maximum Starts = 3
 Velocity Anti Dive Threshold = 90.0
 Float Switch Travel = 1.5
@@ -30,7 +30,7 @@ THC Sample Threshold = 1.0
 THC Threshold = 1.0
 
 [GUI_OPTIONS]
-Mode = 1
+Mode = 0
 Estop type = 2
 DRO position = bottom
 Flash error = 0
@@ -54,7 +54,7 @@ Custom style = None
 
 [BUTTONS]
 1 Name = OHMIC\TEST
-1 Code = ohmic-test
+1 Code = ohmic-test10
 2 Name = PROBE\TEST
 2 Code = probe-test 10
 3 Name = SINGLE\CUT
@@ -122,14 +122,14 @@ X axis = 0.0
 Y axis = 0.0
 
 [STATISTICS]
-Cut time = 10.19
-Paused time = 0.0
-Probe time = 4.8
-Program run time = 25.0
-Torch on time = 11.59
-Rapid time = 7.46
-Cut length = 411.99
-Pierce count = 2
+Cut time = 56.25
+Paused time = 237.08
+Probe time = 115.48
+Program run time = 619.24
+Torch on time = 181.11
+Rapid time = 32.15
+Cut length = 2366.32
+Pierce count = 60
 
 [LASER_OFFSET]
 X axis = 0.0

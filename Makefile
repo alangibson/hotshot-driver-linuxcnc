@@ -13,6 +13,7 @@
 
 obj-m += hotshot.o
 complex-objs := bcm2835.o rpi.o tmc5041.o hotshot.lib.o hotshot.hal.o 
+LIBS += -lm
 # include /usr/share/linuxcnc/Makefile.modinc
 include Makefile.modinc
 
@@ -28,7 +29,7 @@ rpi.o: bcm2835.o
 tmc5041.o: rpi.o
 	$(Q)gcc -Werror -I . -I /usr/include/linuxcnc -DRTAPI tmc5041.c -o tmc5041.o -c
 
-hotshot.lib.o: tmc5041.o
+hotshot.lib.o: bcm2835.o tmc5041.o
 	$(Q)gcc -Wall -I . hotshot.lib.c -o hotshot.lib.o -c
 
 hotshot.hal.o: hotshot.lib.o
@@ -38,9 +39,13 @@ hotshot.o: hotshot.hal.o
 	$(Q)halcompile --preprocess hotshot.comp
 	$(Q)gcc -DRTAPI -Wall -I . -I /usr/include/linuxcnc hotshot.c -o hotshot.o -c
 
-hotshot.test: hotshot.hal.o
+hotshot.test: hotshot.lib.o 
 	$(Q)gcc -DRTAPI -Wall -I . hotshot.test.c -o hotshot.test.o -c
-	$(Q)gcc -Wall -o hotshot.test $(complex-objs) hotshot.test.o
+	$(Q)gcc -Wall -o hotshot.test hotshot.lib.o rpi.o bcm2835.o tmc5041.o hotshot.test.o $(LIBS)
+
+hotshot.it: hotshot.hal.o
+	$(Q)gcc -DRTAPI -Wall -I . hotshot.it.c -o hotshot.it.o -c
+	$(Q)gcc -Wall -o hotshot.it $(complex-objs) hotshot.it.o
 
 test: hotshot.test
 	echo "Make sure you sudo or you will get a segmentation fault!"

@@ -32,18 +32,8 @@ sudo adduser $USER kmem
 echo 'SUBSYSTEM=="mem", KERNEL=="mem", GROUP="kmem", MODE="0660"' | sudo tee /etc/udev/rules.d/98-mem.rules
 
 
-# Build with debugging symbols
-gcc -g -O0 -v -da -Q -o plasma -I TMC-API TMC-API/tmc/ic/TMC5041/TMC5041.c tmcapi.c
-OR
-gcc -g -O0 -da -Q -o plasma bcm.c -lbcm2835 -I $HOME/dev/plasma/TMC-API && sudo ./plasma
-# Start debugger
-gdb plasma
-# Debug
-(gdb) run
-
-
 # Install HAL realtime component
-./install.sh
+./hotshot.install.sh
 
 
 # Run hotshot driver with HAL file

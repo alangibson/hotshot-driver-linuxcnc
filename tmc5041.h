@@ -69,15 +69,17 @@ typedef int32_t     tmc_velocity_t;
 typedef float64_t   velocity_t;
 
 typedef struct {
-    volatile uint32_t               *   chip;
-	volatile uint32_t               *   motor;
     uint8_t     					    mres;
-    volatile tmc_position_t     	*   position_cmd;
     tmc_position_t     	                last_position_cmd;
-    volatile tmc_velocity_t         *   velocity_cmd;
     uint32_t                            acceleration_cmd;
     uint32_t                            max_acceleration_cmd;
     bool                                is_motor_on;
+    float64_t                           velocity_time_ref;
+    float64_t                           acceleration_time_ref;
+    volatile uint32_t               *   chip;
+	volatile uint32_t               *   motor;
+    volatile tmc_position_t     	*   position_cmd;
+    volatile tmc_velocity_t         *   velocity_cmd;
     volatile uint32_t               *   cs_thresh_cmd;      // coolStep threshold in ppt for TMC register
     volatile bool                   *   sg_stop_cmd;
     volatile uint32_t               *   run_current_cmd;
@@ -111,6 +113,7 @@ typedef struct {
     volatile uint32_t               *   sg_trigger_thresh_cmd;
     volatile tmc_position_t     	*   position_fb;
     volatile tmc_velocity_t     	*   velocity_fb;
+    volatile float64_t              *   vmax_factor_cmd;
     volatile int32_t             	*   acceleration_fb;
     volatile bool                   *   motor_standstill_fb;
     volatile bool                   *   motor_full_stepping_fb;
@@ -145,7 +148,9 @@ void tmc5041_motor_init(tmc5041_motor_t * motor);
 void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor);
 void tmc5041_init(tmc5041_motor_t * motors, size_t motor_count);
 void tmc5041_end(tmc5041_motor_t * motors, size_t motor_count);
-uint8_t microsteps_to_tmc_mres(uint16_t usteps);
+uint8_t tmc5041_microsteps_to_mres(uint16_t usteps);
+float64_t velocity_time_ref(uint32_t fclk);
+float64_t acceleration_time_ref(uint32_t fclk);
 
 //
 // Register access
@@ -172,9 +177,12 @@ void tmc5041_push_register_COOLCONF(tmc5041_motor_t * motor);
 // Higher order and/or complex functions
 //
 void tmc5041_set_velocity(tmc5041_motor_t * motor, int32_t vmax);
+int32_t tmc5041_get_velocity(tmc5041_motor_t * motor);
+int32_t tmc5041_get_position(tmc5041_motor_t * motor);
 bool tmc5041_motor_clear_stall(tmc5041_motor_t * motor);
 bool tmc5041_motor_set_home(tmc5041_motor_t * motor);
 void tmc5041_motor_end(tmc5041_motor_t * motor);
 void tmc5041_motor_power_on(tmc5041_motor_t * motor);
 void tmc5041_motor_power_off(tmc5041_motor_t * motor);
 void tmc5041_motor_position_hold(tmc5041_motor_t * motor);
+void tmc5041_motor_reset(tmc5041_motor_t * motor);

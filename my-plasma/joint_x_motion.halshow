@@ -1,10 +1,12 @@
-# halshow watchlist created Mon Jan 29 14:23:59 CET 2024
+# halshow watchlist created Fri Oct 04 12:53:15 CEST 2024
 
+pin+pid.x.enable
 pin+pid.x.command
 pin+pid.x.command-deriv
 pin+pid.x.feedback
 pin+pid.x.feedback-deriv
-pin+pid.x.enable
+pin+pid.x.output
+pin+joint.0.pos-cmd
 pin+hotshot.0.axis-x-enable
 pin+hotshot.0.axis-x-position-cmd
 pin+hotshot.0.axis-x-position-fb
@@ -18,8 +20,9 @@ pin+pid.x.Dgain
 pin+pid.x.FF0
 pin+pid.x.FF1
 pin+pid.x.FF2
+pin+hotshot.0.axis-x-tmc-vmax-factor-cmd
 pin+pid.x.tune-cycles
 pin+pid.x.tune-effort
-pin+pid.x.tune-mode
-pin+pid.x.tune-type
 pin+pid.x.tune-start
+pin+pid.x.tune-type
+pin+pid.x.tune-mode
