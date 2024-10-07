@@ -7,6 +7,48 @@
 #include "tmc5041.h"
 
 /**
+ * Position
+ * --------
+ * 
+ * Position in LinuxCNC is represented as machine units per second (mm or in, i.e. {mm,in}).
+ * Values must be converted back and forth using a units-to-usteps conversion factor.
+ * 
+ * For belt driven systems
+ *      steps per unit [{mm,in}] = (motor fullsteps per revolution * microsteps) / pulley circumference [{mm,in}]
+ * For leadscrew driven systems
+ *      steps per unit [{mm,in}] = (motor fullsteps per revolution * microsteps) / leadscrew pitch [{mm,in}]
+ * 
+ * Given the following parameters:
+ * - Gear pitch ({mm,in}) is tooth spacing. A GT2 belt is
+ *      pitch = 2
+ * - Number of teeth on the gear
+ *      teeth = 20
+ * - Full steps per motor revolution. A 1.8 degree stepper is
+ *      fs_per_rev = 360 / 1.8 = 200
+ * - Chosen microsteps between each step. TMC5041 is by default
+ *      microsteps = 256 
+ * 
+ * Calculate how many linear machine units ({mm,in}) are traveled in one motor revolution
+ *      units_per_rev = pitch * teeth = 2 * 20 = 40 [mm]
+ * Calculate how many microsteps are needed to turn 1 revolution
+ *      usteps_per_rev = fs_per_rev * microsteps = 200 * 256 = 51200 [ustep]
+ * 
+ * Then calculate how many linear machine units ({mm,in}) are traveled per ustep
+ *      units_to_usteps = usteps_per_rev / units_per_rev = 51200 / 40 = 1280
+ * and calculate the inverse as well
+ *      usteps_to_units = units_per_rev / usteps_per_rev = 40 / 51200 = 0.00078125
+ * 
+ * To convert from µsteps to machine units ({mm,in}) 
+ *      units = usteps * usteps_to_units = 500 * 0.00078125 = 0.390625 [{mm,in}]
+ * To convert from machine units ({mm,in}) to µsteps
+ *      µsteps = units * units_to_usteps = 0.390625 * 1280 = 500 [usteps]
+ * 
+ * When configuring microstepping, µsteps must be converted to MRES with 
+ * tmc5041_microsteps_to_mres() before writing to a TMC5041 register.
+ * 
+ * Velocity
+ * --------
+ * 
  * TMC5041 velocity is defined as
  *      µsteps / t
  * where µsteps is microsteps one of
@@ -14,24 +56,33 @@
  * and t is 
  *      t = 2^24 / fCLK
  * 
- * Velocity in {mm,in}/sec must be converted to µsteps/t 
+ * Machine units ({mm, in}) are converted to usteps as detailed in the Position section.
+ * 
+ * fCLK is the clock frequency of the TMC5041 in Hz. All time, velocity and 
+ * acceleration settings are referenced to fCLK. fCLK can come from the internal clock, 
+ * or from an external clock depending on if the CLK16 pin is grounded or not.
+ * 
+ * When using the internal clock, a conversion factor (f) must be empirically found
+ * using tmc5041_frequency_scaling() that we can use to convert between seconds and t.
+ * Conceptually a 'second' for the TMC5041 using the internal clock is about 1.3 
+ * real seconds long. Thus the need for converting between seconds and t.
+ * 
+ * Velocity in µsteps/sec must be converted to µsteps/t before writing to TMC5041 registers
  * using a conversion factor (f)
  *      f = ( velocity [µsteps/t] * change in time [sec] ) / change in position [µsteps]
+ * which is
  *      f = (vmax * dt) / (xactual(t2) - xactual(t1))
  * where
  *      expected change in position [µsteps] = (velocity [µsteps/t] * change in time [sec])
  *      actual change in position [µsteps] = (xactual(t2) - xactual(t1))
  * 
- * µsteps must be converted to MRES with tmc5041_microsteps_to_mres()
- * before writing to a TMC5041 register.
+ * To convert from µsteps/sec to µsteps/t, divide by f
+ *      usteps_per_t = usteps_per_sec / f
+ * To convert from µsteps/t to µsteps/sec, multiply by f
+ *      usteps_per_sec = usteps_per_t * f
  * 
- * fCLK is the clock frequency of the TMC5041 in Hz.
- * All time, velocity and acceleration settings are referenced to fCLK.
- * fCLK can come from the internal clock, or from an external clock
- * depending on if the CLK16 pin is grounded or not.
- * 
- * When using the internal clock, a scaling factor (f) must be empirically found
- * using tmc5041_frequency_scaling().
+ * Acceleration
+ * ------------
  * 
  * Acceleration is 
  *      ta² = 2^41 / (fCLK)²
@@ -585,7 +636,7 @@ float64_t tmc5041_frequency_scaling(tmc5041_motor_t * motor)
     return f;
 }
 
-float64_t velocity_time_ref(uint32_t fclk)
+float64_t tmc5041_velocity_time_ref(uint32_t fclk)
 {
     // Time reference t for velocities: t = 2^24 / fCLK
     // 2^24 / TMC5041_CLOCK_HZ = 16777216 / 13200000 = 1.271001212
@@ -593,7 +644,7 @@ float64_t velocity_time_ref(uint32_t fclk)
     return (2<<(24-1)) / (float64_t)fclk;
 }
 
-float64_t acceleration_time_ref(uint32_t fclk)
+float64_t tmc5041_acceleration_time_ref(uint32_t fclk)
 {
     // Time reference ta² for accelerations: ta² = 2^41 / (fCLK)²
     return pow(2, 41) / (float64_t)pow(fclk, 2);
@@ -604,34 +655,20 @@ float64_t acceleration_time_ref(uint32_t fclk)
  */
 void tmc5041_set_velocity(tmc5041_motor_t * motor, int32_t vmax)
 {
-    // When VCOOLTHRS == VMAX, then coolstep/stallguard is disabled 
-    // for acceleration and deceleration.
-    // if (*motor->cs_thresh_cmd > vmax)
-    // {
-    //     tmc5041_set_register_VCOOLTHRS(motor, *motor->cs_thresh_cmd);
-    // }
-    // else
-    // {
-    //     tmc5041_set_register_VCOOLTHRS(motor, vmax);
-    // }
-    
-    // Results in low error, but underrun in actual position
-    // vmax = (vmax / motor->velocity_time_ref) * 0.98;
+    vmax = (vmax / motor->velocity_time_ref);
     tmc5041_set_register_VMAX(motor, vmax);
 }
 
 int32_t tmc5041_get_velocity(tmc5041_motor_t * motor)
 {
     int32_t vactual = tmc5041_get_register_VACTUAL(motor);
-    // vactual = vactual * motor->velocity_time_ref;
+    vactual = (vactual * motor->velocity_time_ref);
     return vactual;
 }
 
 int32_t tmc5041_get_position(tmc5041_motor_t * motor)
 {
-    int32_t xactual = tmc5041_get_register_XACTUAL(motor);
-    xactual = (xactual / motor->velocity_time_ref) * (*motor->vmax_factor_cmd);
-    return xactual;
+    return tmc5041_get_register_XACTUAL(motor);
 }
 
 /**

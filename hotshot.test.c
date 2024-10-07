@@ -35,11 +35,11 @@ void unitTests() {
     assert(pulses_to_units_2 == -length);
 
     uint32_t fclk = 13200000;
-    float64_t velocity_time_ref_1 = velocity_time_ref(fclk);
+    float64_t velocity_time_ref_1 = tmc5041_velocity_time_ref(fclk);
     printf("velocity_time_ref_1: %f\n", velocity_time_ref_1);
     // FIXME assert(velocity_time_ref_1 == 1.271001);
 
-    float64_t acceleration_time_ref_1 = acceleration_time_ref(fclk);
+    float64_t acceleration_time_ref_1 = tmc5041_acceleration_time_ref(fclk);
     printf("acceleration_time_ref_1: %f\n", acceleration_time_ref_1);
     // FIXME assert(acceleration_time_ref_1 == 0.012621);
 }

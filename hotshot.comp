@@ -640,8 +640,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
-            .velocity_time_ref          = velocity_time_ref(TMC5041_CLOCK_HZ),
-            .acceleration_time_ref      = acceleration_time_ref(TMC5041_CLOCK_HZ),
+            .velocity_time_ref          = tmc5041_velocity_time_ref(TMC5041_CLOCK_HZ),
+            .acceleration_time_ref      = tmc5041_acceleration_time_ref(TMC5041_CLOCK_HZ),
             .chip                       = __comp_inst->axis_x_chip,
             .motor                      = __comp_inst->axis_x_motor,
             .run_current_cmd            = __comp_inst->axis_x_tmc_run_current_cmd,
@@ -719,8 +719,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
-            .velocity_time_ref          = velocity_time_ref(TMC5041_CLOCK_HZ),
-            .acceleration_time_ref      = acceleration_time_ref(TMC5041_CLOCK_HZ),
+            .velocity_time_ref          = tmc5041_velocity_time_ref(TMC5041_CLOCK_HZ),
+            .acceleration_time_ref      = tmc5041_acceleration_time_ref(TMC5041_CLOCK_HZ),
             .chip                       = __comp_inst->axis_yl_chip,
             .motor                      = __comp_inst->axis_yl_motor,
             .run_current_cmd            = __comp_inst->axis_yl_tmc_run_current_cmd,
@@ -798,8 +798,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
-            .velocity_time_ref          = velocity_time_ref(TMC5041_CLOCK_HZ),
-            .acceleration_time_ref      = acceleration_time_ref(TMC5041_CLOCK_HZ),
+            .velocity_time_ref          = tmc5041_velocity_time_ref(TMC5041_CLOCK_HZ),
+            .acceleration_time_ref      = tmc5041_acceleration_time_ref(TMC5041_CLOCK_HZ),
             .chip                       = __comp_inst->axis_yr_chip,
             .motor                      = __comp_inst->axis_yr_motor,
             .run_current_cmd            = __comp_inst->axis_yr_tmc_run_current_cmd,
@@ -877,8 +877,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
-            .velocity_time_ref          = velocity_time_ref(TMC5041_CLOCK_HZ),
-            .acceleration_time_ref      = acceleration_time_ref(TMC5041_CLOCK_HZ),
+            .velocity_time_ref          = tmc5041_velocity_time_ref(TMC5041_CLOCK_HZ),
+            .acceleration_time_ref      = tmc5041_acceleration_time_ref(TMC5041_CLOCK_HZ),
             .chip                       = __comp_inst->axis_z_chip,
             .motor                      = __comp_inst->axis_z_motor,
             .run_current_cmd            = __comp_inst->axis_z_tmc_run_current_cmd,

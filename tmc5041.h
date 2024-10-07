@@ -149,8 +149,8 @@ void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor);
 void tmc5041_init(tmc5041_motor_t * motors, size_t motor_count);
 void tmc5041_end(tmc5041_motor_t * motors, size_t motor_count);
 uint8_t tmc5041_microsteps_to_mres(uint16_t usteps);
-float64_t velocity_time_ref(uint32_t fclk);
-float64_t acceleration_time_ref(uint32_t fclk);
+float64_t tmc5041_velocity_time_ref(uint32_t fclk);
+float64_t tmc5041_acceleration_time_ref(uint32_t fclk);
 
 //
 // Register access
