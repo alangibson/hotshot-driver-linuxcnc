@@ -3,9 +3,12 @@
 #
 
 # Debugging only!
+#
 # loadrt  tpmod
 # loadrt  homemod
 
+# Components
+#
 loadrt  [KINS]KINEMATICS
 loadrt  [EMCMOT]EMCMOT   base_period_nsec=[EMCMOT]BASE_PERIOD servo_period_nsec=[EMCMOT]SERVO_PERIOD num_joints=[KINS]JOINTS num_spindles=[TRAJ]SPINDLES base_thread_fp=1
 loadrt  pid              names=pid.x,pid.yl,pid.yr,pid.z
@@ -14,6 +17,8 @@ loadrt  hotshot
 loadrt  dbounce          names=db_breakaway,db_float,db_ohmic,db_arc-ok
 loadrt  encoder          num_chan=1
 
+# Functions
+#
 addf    motion-command-handler      servo-thread
 addf    motion-controller           servo-thread
 addf    plasmac                     servo-thread
@@ -23,23 +28,23 @@ addf    pid.yr.do-pid-calcs         servo-thread
 addf    pid.z.do-pid-calcs          servo-thread
 addf    encoder.update-counters     base-thread
 addf    encoder.capture-position    servo-thread
+addf    db_float                    servo-thread
+addf    db_ohmic                    servo-thread
+addf    db_breakaway                servo-thread
+addf    db_arc-ok                   servo-thread
 addf    hotshot.0                   servo-thread
 addf    hotshot.0.sensors           servo-thread
 # FIXME should be base-thread, but EMC crashes
 addf    hotshot.0.arc               servo-thread
 
+# Machine enable
+#
 net     in-position         <= motion.in-position
 net     machine-is-enabled  <= motion.motion-enabled
 
-# ---PLASMA INPUT DEBOUNCE---
-addf    db_float     servo-thread
-addf    db_ohmic     servo-thread
-addf    db_breakaway servo-thread
-addf    db_arc-ok    servo-thread
-# ---JOINT ASSOCIATED WITH THE Z AXIS---
-net     plasmac:axis-z-position     joint.3.pos-fb     => plasmac.axis-z-position
-# Plasma inputs
+# PlasmaC inputs
 #
+net     plasmac:axis-z-position     joint.3.pos-fb     => plasmac.axis-z-position
 # all modes
 net     plasmac:float-switch   => db_float.in
 net     plasmac:breakaway      => db_breakaway.in
@@ -54,20 +59,21 @@ net     plasmac:arc-ok-in      => db_arc-ok.in
 # mode 2
 net     plasmac:move-up        => plasmac.move-up
 net     plasmac:move-down      => plasmac.move-down
-# Plasma outputs
+
+# PlasmaC outputs
 #
-# all modes
 net     plasmac:ohmic-enable   <= plasmac.ohmic-enable
 net     plasmac:scribe-arm     <= plasmac.scribe-arm
 net     plasmac:scribe-on      <= plasmac.scribe-on
-
 net     plasmac:torch-on            => hotshot.0.torch-on
 net     plasmac:ohmic-enable        => hotshot.0.ohmic-enable
 net     plasmac:arc-ok-in           <= hotshot.0.arc-ok
 net     plasmac:breakaway           <= hotshot.0.torch-breakaway
 net     plasmac:ohmic-probe         <= plasmac.ohmic-sense-out
 net     plasmac:ohmic-sense-in      <= hotshot.0.ohmic-probe
+
 # Float switch
+#
 # setp plasmac.probe-final-speed N
 net     plasmac:float-switch      <= hotshot.0.torch-float
 # setp plasmac.float-switch 1
@@ -97,16 +103,16 @@ net     plasmac:arc-voltage-in	    <= encoder.0.velocity
 
 # Axis X / Joint 0
 #
-setp                hotshot.0.axis-x-max-acceleration-cmd           750
+setp                hotshot.0.axis-x-max-acceleration-cmd           [JOINT_0]MAX_ACCELERATION
 setp                hotshot.0.axis-x-chip                           0
 setp                hotshot.0.axis-x-motor                          0
 setp                hotshot.0.axis-x-pitch                          2
-setp                hotshot.0.axis-x-teeth                          20
+setp                hotshot.0.axis-x-teeth                          16
 setp                hotshot.0.axis-x-microsteps-cmd                 256
 setp                hotshot.0.axis-x-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-x-tmc-run-current-cmd            30
 setp                hotshot.0.axis-x-tmc-hold-current-cmd           6
-setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              6
+setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              7
 setp                hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd      200
 setp                hotshot.0.axis-x-tmc-sg-stop-cmd                0
 setp                hotshot.0.axis-x-tmc-cs-thresh-cmd              30000
@@ -132,7 +138,7 @@ setp                hotshot.0.axis-x-tmc-chop-hstrt-cmd             5
 setp                hotshot.0.axis-x-tmc-chop-toff-cmd              5
 setp                hotshot.0.axis-x-tmc-chop-vsense-cmd            0
 setp                hotshot.0.axis-x-tmc-sw-en-softstop             0
-setp                hotshot.0.axis-x-tmc-vmax-factor-cmd            1.02
+setp                hotshot.0.axis-x-tmc-vmax-factor-cmd            1
 setp                pid.x.Pgain                                     [JOINT_0]P
 setp                pid.x.Igain                                     [JOINT_0]I
 setp                pid.x.Dgain                                     [JOINT_0]D
@@ -143,24 +149,23 @@ setp                pid.x.FF2                                       [JOINT_0]FF2
 setp                pid.x.deadband                                  [JOINT_0]DEADBAND
 setp                pid.x.maxoutput                                 [JOINT_0]MAX_OUTPUT
 setp                pid.x.error-previous-target                     true
-#net  x-enable       joint.0.amp-enable-out                          => hotshot.0.axis-x-enable          
 net  x-enable       joint.0.amp-enable-out                          => hotshot.0.axis-x-enable          pid.x.enable
 net  x-pos-cmd      joint.0.motor-pos-cmd                           => hotshot.0.axis-x-position-cmd    pid.x.command
 net  x-pos-fb       hotshot.0.axis-x-position-fb                    => joint.0.motor-pos-fb             pid.x.feedback           
 # net  x-vel-cmd      joint.0.vel-cmd                                 =>                                  pid.x.command-deriv
 # net  x-vel-fb       hotshot.0.axis-x-velocity-fb                    =>                                  pid.x.feedback-deriv
+# net  x-output       pid.x.output                                    => hotshot.0.axis-x-velocity-cmd
 net  x-output       joint.0.vel-cmd                                    => hotshot.0.axis-x-velocity-cmd
-#net  x-output       pid.x.output                                    => hotshot.0.axis-x-velocity-cmd
 net  x-homing       joint.0.homing                                  => hotshot.0.axis-x-homing-cmd
 net  x-home-sw      hotshot.0.axis-x-home-sw                        => joint.0.home-sw-in
 
 # Axis Y(L) / Joint 1
 #
-setp                hotshot.0.axis-yl-max-acceleration-cmd          750
+setp                hotshot.0.axis-yl-max-acceleration-cmd          [JOINT_1]MAX_ACCELERATION
 setp                hotshot.0.axis-yl-chip                          0
 setp                hotshot.0.axis-yl-motor                         1
 setp                hotshot.0.axis-yl-pitch                         2
-setp                hotshot.0.axis-yl-teeth                         20
+setp                hotshot.0.axis-yl-teeth                         16
 setp                hotshot.0.axis-yl-microsteps-cmd                256
 setp                hotshot.0.axis-yl-motor-fullsteps-per-rev-cmd   200
 setp                hotshot.0.axis-yl-tmc-run-current-cmd           30
@@ -213,11 +218,11 @@ net  yl-home-sw     hotshot.0.axis-yl-home-sw                       => joint.1.h
 
 # Axis Y(R) / Joint 2
 #
-setp                hotshot.0.axis-yr-max-acceleration-cmd          750
+setp                hotshot.0.axis-yr-max-acceleration-cmd          [JOINT_2]MAX_ACCELERATION
 setp                hotshot.0.axis-yr-chip                          1
 setp                hotshot.0.axis-yr-motor                         0
 setp                hotshot.0.axis-yr-pitch                         2
-setp                hotshot.0.axis-yr-teeth                         20
+setp                hotshot.0.axis-yr-teeth                         16
 setp                hotshot.0.axis-yr-microsteps-cmd                256
 setp                hotshot.0.axis-yr-motor-fullsteps-per-rev-cmd   200
 setp                hotshot.0.axis-yr-tmc-run-current-cmd           30
@@ -270,7 +275,7 @@ net  yr-home-sw     hotshot.0.axis-yr-home-sw                       => joint.2.h
 
 # Axis Z / Joint 3
 #
-setp                hotshot.0.axis-z-max-acceleration-cmd           750
+setp                hotshot.0.axis-z-max-acceleration-cmd           [JOINT_3]MAX_ACCELERATION
 setp                hotshot.0.axis-z-chip                           1
 setp                hotshot.0.axis-z-motor                          1
 setp                hotshot.0.axis-z-pitch                          8

@@ -238,11 +238,11 @@ void hotshot_handle_move(joint_t * joint)
 
         // Move joint and update pins
         // VMAX is set on the fly by PID
-        int32_t vmax = units_to_pulses(*joint->velocity_cmd, joint->unit_pulse_factor);
+        int32_t vmax = UNITS_TO_PULSES(*joint->velocity_cmd, joint->unit_pulse_factor);
         *joint->tmc.velocity_cmd = vmax;
 
         // Debugging use only since we don't use positioning mode
-        *joint->tmc.position_cmd = units_to_pulses(*joint->position_cmd, joint->unit_pulse_factor);
+        *joint->tmc.position_cmd = UNITS_TO_PULSES(*joint->position_cmd, joint->unit_pulse_factor);
 
         // RAMPMODE:
         //  1: Velocity mode to positive VMAX (using AMAX acceleration)
@@ -254,15 +254,10 @@ void hotshot_handle_move(joint_t * joint)
         // else vmax == 0. do nothing while decelaration ramp finishes
         
         // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
-        vmax = abs(vmax);
-        tmc5041_set_velocity(&joint->tmc, vmax);
+        tmc5041_set_velocity(&joint->tmc, abs(vmax));
     } 
     else 
     {
-        // #ifdef DEBUG
-        // rtapi_print("Power is off\n");
-        // #endif
-
         // LinuxCNC power button is off, so power motor off
         tmc5041_motor_position_hold(&joint->tmc);
         tmc5041_motor_power_off(&joint->tmc);
@@ -277,11 +272,10 @@ void hotshot_update_joint(joint_t * joint)
     tmc5041_pull_register_DRV_STATUS(&joint->tmc);
     // Position
     *joint->tmc.position_fb = tmc5041_get_position(&joint->tmc);
-    float64_t position_fb   = pulses_to_units(*joint->tmc.position_fb, joint->unit_pulse_factor);
-    *joint->position_fb     = position_fb;
+    *joint->position_fb     = PULSES_TO_UNITS(*joint->tmc.position_fb, joint->unit_pulse_factor);
     // Velocity
     *joint->tmc.velocity_fb  = tmc5041_get_velocity(&joint->tmc);
-    *joint->velocity_fb      = pulses_to_units(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
+    *joint->velocity_fb      = PULSES_TO_UNITS(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
     // Stallguard threshold
     tmc5041_push_register_COOLCONF(&joint->tmc);
 }
