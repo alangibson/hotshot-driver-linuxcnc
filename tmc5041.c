@@ -655,14 +655,16 @@ float64_t tmc5041_acceleration_time_ref(uint32_t fclk)
  */
 void tmc5041_set_velocity(tmc5041_motor_t * motor, int32_t vmax)
 {
-    vmax = (vmax / motor->velocity_time_ref);
-    tmc5041_set_register_VMAX(motor, vmax);
+    vmax = vmax * motor->velocity_time_ref;
+    // vmax = vmax * (*motor->vmax_factor_cmd);
+    tmc5041_set_register_VMAX(motor, abs(vmax));
 }
 
 int32_t tmc5041_get_velocity(tmc5041_motor_t * motor)
 {
     int32_t vactual = tmc5041_get_register_VACTUAL(motor);
-    vactual = (vactual * motor->velocity_time_ref);
+    vactual = (vactual / motor->velocity_time_ref);
+    // vactual = vactual / (*motor->vmax_factor_cmd);
     return vactual;
 }
 
@@ -825,8 +827,6 @@ void tmc5041_motor_reset(tmc5041_motor_t * motor)
 // Put motor in "hold position" mode
 void tmc5041_motor_position_hold(tmc5041_motor_t * motor)
 {
-    // *motor->ramp_mode_cmd = TMC5041_MODE_HOLD;
-    // tmc5041_set_register_RAMPMODE(motor, *motor->ramp_mode_cmd);
     tmc5041_set_register_VMAX(motor, 0);
 }
 

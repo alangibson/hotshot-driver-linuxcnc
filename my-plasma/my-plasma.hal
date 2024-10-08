@@ -32,9 +32,13 @@ addf    db_float                    servo-thread
 addf    db_ohmic                    servo-thread
 addf    db_breakaway                servo-thread
 addf    db_arc-ok                   servo-thread
-addf    hotshot.0                   servo-thread
+addf    hotshot.0.spi               servo-thread
+addf    hotshot.0.x                 servo-thread
+addf    hotshot.0.yl                servo-thread
+addf    hotshot.0.yr                servo-thread
+addf    hotshot.0.z                 servo-thread
+# addf    hotshot.0                   servo-thread
 addf    hotshot.0.sensors           servo-thread
-# FIXME should be base-thread, but EMC crashes
 addf    hotshot.0.arc               servo-thread
 
 # Machine enable
@@ -138,7 +142,7 @@ setp                hotshot.0.axis-x-tmc-chop-hstrt-cmd             5
 setp                hotshot.0.axis-x-tmc-chop-toff-cmd              5
 setp                hotshot.0.axis-x-tmc-chop-vsense-cmd            0
 setp                hotshot.0.axis-x-tmc-sw-en-softstop             0
-setp                hotshot.0.axis-x-tmc-vmax-factor-cmd            1
+setp                hotshot.0.axis-x-tmc-vmax-factor-cmd            1.32
 setp                pid.x.Pgain                                     [JOINT_0]P
 setp                pid.x.Igain                                     [JOINT_0]I
 setp                pid.x.Dgain                                     [JOINT_0]D

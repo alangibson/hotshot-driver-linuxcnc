@@ -87,7 +87,8 @@ void hotshot_handle_homing(joint_t * joint)
     //
     int32_t sg_trigger_thresh = *joint->tmc.sg_trigger_thresh_cmd;
     int32_t sg_load = *joint->tmc.motor_load_fb;
-    int32_t vactual = tmc5041_get_velocity(&joint->tmc);
+    // int32_t vactual = tmc5041_get_velocity(&joint->tmc);
+    int32_t vactual = *joint->tmc.velocity_fb;
     int32_t threshold_diff = abs(vactual) - *joint->tmc.cs_thresh_cmd;
     int32_t stall_diff = sg_load - sg_trigger_thresh;
     // TODO compare current velocity against HOME_SEARCH_VEL and HOME_LATCH_VEL ?
@@ -233,7 +234,8 @@ void hotshot_handle_move(joint_t * joint)
         // LinuxCNC power button is off, so power motor off
         if (joint->tmc.is_motor_on == FALSE)
         {
-            tmc5041_motor_power_on(&joint->tmc);
+            // tmc5041_motor_power_on(&joint->tmc);
+            joint->tmc.is_motor_on = TRUE;
         }
 
         // Move joint and update pins
@@ -244,17 +246,17 @@ void hotshot_handle_move(joint_t * joint)
         // Debugging use only since we don't use positioning mode
         *joint->tmc.position_cmd = UNITS_TO_PULSES(*joint->position_cmd, joint->unit_pulse_factor);
 
-        // RAMPMODE:
-        //  1: Velocity mode to positive VMAX (using AMAX acceleration)
-        //  2: Velocity mode to negative VMAX (using AMAX acceleration)
-        if (vmax > 0)
-            tmc5041_set_register_RAMPMODE(&joint->tmc, 1);
-        else if (vmax < 0)
-            tmc5041_set_register_RAMPMODE(&joint->tmc, 2);
-        // else vmax == 0. do nothing while decelaration ramp finishes
+        // // // RAMPMODE:
+        // //  1: Velocity mode to positive VMAX (using AMAX acceleration)
+        // //  2: Velocity mode to negative VMAX (using AMAX acceleration)
+        // if (vmax > 0)
+        //     tmc5041_set_register_RAMPMODE(&joint->tmc, 1);
+        // else if (vmax < 0)
+        //     tmc5041_set_register_RAMPMODE(&joint->tmc, 2);
+        // // else vmax == 0. do nothing while decelaration ramp finishes
         
         // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
-        tmc5041_set_velocity(&joint->tmc, abs(vmax));
+        // tmc5041_set_velocity(&joint->tmc, abs(vmax));
     } 
     else 
     {
@@ -286,13 +288,61 @@ void hotshot_handle_joints(joint_t * joints, uint8_t motor_count) {
     {
         rpi_spi_select(*joints[i].tmc.chip); 
 
-        hotshot_update_joint(&joints[i]);
+        // hotshot_update_joint(&joints[i]);
 
         // Move joints
         hotshot_handle_move(&joints[i]);
         hotshot_handle_homing(&joints[i]);
 
-        hotshot_update_joint(&joints[i]);
+        // hotshot_update_joint(&joints[i]);
+
+        rpi_spi_unselect();
+    }
+}
+
+void hotshot_spi(joint_t * joints, uint8_t motor_count)
+{
+    for (uint8_t i = 0; i < motor_count; i++)
+    {
+        rpi_spi_select(*joints[i].tmc.chip); 
+        
+        //
+        // Writes
+        //
+        // Turn motor on or off
+        if (joints[i].tmc.is_motor_on == TRUE)
+        {
+            tmc5041_motor_power_on(&joints[i].tmc);
+        }
+        else
+        {
+            tmc5041_motor_power_off(&joints[i].tmc);
+        }
+        // Set turn direction
+        //  1: Velocity mode to positive VMAX (using AMAX acceleration)
+        //  2: Velocity mode to negative VMAX (using AMAX acceleration)
+        if (*joints[i].tmc.velocity_cmd > 0)
+            tmc5041_set_register_RAMPMODE(&joints[i].tmc, 1);
+        else if (*joints[i].tmc.velocity_cmd < 0)
+            tmc5041_set_register_RAMPMODE(&joints[i].tmc, 2);
+        // else vmax == 0. do nothing while decelaration ramp finishes
+        // Set velocity
+        // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
+        tmc5041_set_velocity(&joints[i].tmc, *joints[i].tmc.velocity_cmd);
+
+        //
+        // Reads
+        //
+        // Driver status
+        tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
+        // Position
+        *joints[i].tmc.position_fb = tmc5041_get_position(&joints[i].tmc);
+        *joints[i].position_fb     = PULSES_TO_UNITS(*joints[i].tmc.position_fb, joints[i].unit_pulse_factor);
+        // Velocity
+        *joints[i].tmc.velocity_fb  = tmc5041_get_velocity(&joints[i].tmc);
+        *joints[i].velocity_fb      = PULSES_TO_UNITS(*joints[i].tmc.velocity_fb, joints[i].unit_pulse_factor);
+        // Stallguard threshold
+        tmc5041_push_register_COOLCONF(&joints[i].tmc);
 
         rpi_spi_unselect();
     }

@@ -6,6 +6,11 @@ include "hotshot.hal.h";
 
 // plasmac requires floating-point
 function _ fp;
+function x fp;
+function yl fp;
+function yr fp;
+function z fp;
+function spi fp;
 function sensors;
 function arc;
 
@@ -944,15 +949,47 @@ void ensure_initialized(struct __comp_state * __comp_inst)
     IS_INITIALIZED = TRUE;
 }
 
-FUNCTION(_)
+// Must be loaded first in hal config since it initializes joints array.
+FUNCTION(spi)
 {
     ensure_initialized(__comp_inst);
+    hotshot_spi(__comp_inst->joints, MOTOR_COUNT);
+}
+
+FUNCTION(_)
+{
+    // ensure_initialized(__comp_inst);
     hotshot_handle_joints(__comp_inst->joints, MOTOR_COUNT);
 }
 
+FUNCTION(x)
+{
+    hotshot_handle_move(&__comp_inst->joints[0]);
+    hotshot_handle_homing(&__comp_inst->joints[0]);
+}
+
+FUNCTION(yl)
+{
+    hotshot_handle_move(&__comp_inst->joints[1]);
+    hotshot_handle_homing(&__comp_inst->joints[1]);
+}
+
+FUNCTION(yr)
+{
+    hotshot_handle_move(&__comp_inst->joints[2]);
+    hotshot_handle_homing(&__comp_inst->joints[2]);
+}
+
+FUNCTION(z)
+{
+    hotshot_handle_move(&__comp_inst->joints[3]);
+    hotshot_handle_homing(&__comp_inst->joints[3]);
+}
+
+
 FUNCTION(arc) 
 {
-    ensure_initialized(__comp_inst);
+    // ensure_initialized(__comp_inst);
 
     uint8_t arc_freq_level = bcm2835_gpio_lev(PIN_ARC_FREQ);
     if (arc_freq_level == HIGH)
@@ -967,7 +1004,7 @@ FUNCTION(arc)
 
 FUNCTION(sensors)
 {
-    ensure_initialized(__comp_inst);
+    // ensure_initialized(__comp_inst);
 
     // Removed in favor of Stallguard based breakaway
     //
