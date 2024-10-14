@@ -1,0 +1,6 @@
+# halshow watchlist created Wed Oct 09 23:11:38 CEST 2024
+
+pin+lowpass.arc.load
+pin+lowpass.arc.in
+pin+lowpass.arc.out
+param+lowpass.arc.gain
