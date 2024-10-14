@@ -13,6 +13,7 @@ function z fp;
 function spi fp;
 function sensors;
 function arc;
+function rms;
 
 // option extra_setup;
 // option extra_cleanup;
@@ -414,6 +415,14 @@ pin out bit machine_estop_fb;
 pin in bit machine_estop_cmd;
 
 variable joint_t joints[4];
+
+// For RMS function
+pin in float voltage_in;
+pin out float rms_out;
+param rw unsigned num_samples = 100;
+variable float sample_buffer[100];
+variable unsigned current_index = 0;
+variable float sum_of_squares = 0.0;
 
 ;;
 
@@ -986,11 +995,8 @@ FUNCTION(z)
     hotshot_handle_homing(&__comp_inst->joints[3]);
 }
 
-
 FUNCTION(arc) 
 {
-    // ensure_initialized(__comp_inst);
-
     uint8_t arc_freq_level = bcm2835_gpio_lev(PIN_ARC_FREQ);
     if (arc_freq_level == HIGH)
     {
@@ -1093,6 +1099,24 @@ FUNCTION(sensors)
     {
         bcm2835_gpio_clr(PIN_TORCH_ON);
     }
+}
+
+FUNCTION(rms)
+{
+    // Subtract the square of the old sample at the current index from the sum of squares
+    sum_of_squares -= sample_buffer[current_index] * sample_buffer[current_index];
+
+    // Update the buffer with the new sample
+    sample_buffer[current_index] = voltage_in;
+
+    // Add the square of the new sample to the sum of squares
+    sum_of_squares += voltage_in * voltage_in;
+
+    // Move the current index in a circular fashion
+    current_index = (current_index + 1) % num_samples;
+
+    // Calculate the RMS using the updated sum of squares
+    rms_out = sqrt(sum_of_squares / num_samples);
 }
 
 // TODO is this still needed?

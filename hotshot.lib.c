@@ -86,4 +86,3 @@ float thc_voltage(uint8_t chip, float V_ref)
     // Assumes 50:1 voltage divider
     return voltage * 50;
 }
-
