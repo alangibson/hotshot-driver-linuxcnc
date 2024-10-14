@@ -1,6 +1,7 @@
 [DIALOG_GEOMETRY]
 AboutDialog-geometry = half
-LncMessage-geometry = default
+LncMessage-geometry = 910 539 500 266
+FileDialog-geometry = 563 225 703 631
 
 [DIALOG_OPTIONS]
 EntryDialog_play_sound = True
@@ -15,9 +16,11 @@ MachineLogDialog_play_sound = True
 MachineLogDialog_sound_type = READY
 
 [BOOK_KEEPING]
-last_loaded_directory = /home/alangibson/linuxcnc/nc_files/examples/plasmac
-RecentPath_0 = /home/alangibson/linuxcnc/nc_files/examples/plasmac/metric_line.ngc
+last_loaded_directory = /media/alangibson/358E-2CEB
+RecentPath_0 = /media/alangibson/358E-2CEB/Hydro - Left 2.tap
 style_QSS_Path = DEFAULT
+last_saved_directory = /home/alangibson
+RecentSavedPath_0 = /home/alangibson/move.ngc
 
 [SCREEN_OPTIONS]
 overlay_play_sound = False
@@ -28,7 +31,7 @@ notify_max_msgs = 10
 shutdown_check = False
 sound_player_on = False
 mainwindow_geometry = 267 97 1386 905
-MainWindow-geometry = 494 126 1348 702
+MainWindow-geometry = 0 51 1920 1029
 
 [MCH_MSG_OPTIONS]
 mchnMsg_play_sound = True

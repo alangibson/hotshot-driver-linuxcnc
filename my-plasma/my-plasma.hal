@@ -16,6 +16,7 @@ loadrt  plasmac
 loadrt  hotshot
 loadrt  dbounce          names=db_breakaway,db_float,db_ohmic,db_arc-ok
 loadrt  encoder          num_chan=1
+loadrt  lowpass          names=lowpass.arc
 
 # Functions
 #
@@ -28,6 +29,7 @@ addf    pid.yr.do-pid-calcs         servo-thread
 addf    pid.z.do-pid-calcs          servo-thread
 addf    encoder.update-counters     base-thread
 addf    encoder.capture-position    servo-thread
+addf    lowpass.arc                 servo-thread
 addf    db_float                    servo-thread
 addf    db_ohmic                    servo-thread
 addf    db_breakaway                servo-thread
@@ -37,38 +39,38 @@ addf    hotshot.0.x                 servo-thread
 addf    hotshot.0.yl                servo-thread
 addf    hotshot.0.yr                servo-thread
 addf    hotshot.0.z                 servo-thread
-# addf    hotshot.0                   servo-thread
 addf    hotshot.0.sensors           servo-thread
 addf    hotshot.0.arc               servo-thread
+addf    hotshot.0.rms               servo-thread
 
 # Machine enable
 #
-net     in-position         <= motion.in-position
-net     machine-is-enabled  <= motion.motion-enabled
+net     in-position                 <= motion.in-position
+net     machine-is-enabled          <= motion.motion-enabled
 
 # PlasmaC inputs
 #
-net     plasmac:axis-z-position     joint.3.pos-fb     => plasmac.axis-z-position
+net     plasmac:axis-z-position     <= joint.3.pos-fb     => plasmac.axis-z-position
 # all modes
-net     plasmac:float-switch   => db_float.in
-net     plasmac:breakaway      => db_breakaway.in
-net     plasmac:ohmic-probe    => db_ohmic.in
-net     plasmac:ohmic-sense-in => plasmac.ohmic-sense-in
+net     plasmac:float-switch        => db_float.in
+net     plasmac:breakaway           => db_breakaway.in
+net     plasmac:ohmic-probe         => db_ohmic.in
+net     plasmac:ohmic-sense-in      => plasmac.ohmic-sense-in
 # modes 0 & 1
-net     plasmac:arc-voltage-in => plasmac.arc-voltage-in
-# setp    plasmac.arc-ok-counts       10
-# setp    plasmac.arc-ok-threshold    20
+net     plasmac:arc-voltage-in      => plasmac.arc-voltage-in
+# setp    plasmac.arc-ok-counts     10
+# setp    plasmac.arc-ok-threshold  20
 # modes 1 & 2
-net     plasmac:arc-ok-in      => db_arc-ok.in
+net     plasmac:arc-ok-in           => db_arc-ok.in
 # mode 2
-net     plasmac:move-up        => plasmac.move-up
-net     plasmac:move-down      => plasmac.move-down
+net     plasmac:move-up             => plasmac.move-up
+net     plasmac:move-down           => plasmac.move-down
 
 # PlasmaC outputs
 #
-net     plasmac:ohmic-enable   <= plasmac.ohmic-enable
-net     plasmac:scribe-arm     <= plasmac.scribe-arm
-net     plasmac:scribe-on      <= plasmac.scribe-on
+net     plasmac:ohmic-enable        <= plasmac.ohmic-enable
+net     plasmac:scribe-arm          <= plasmac.scribe-arm
+net     plasmac:scribe-on           <= plasmac.scribe-on
 net     plasmac:torch-on            => hotshot.0.torch-on
 net     plasmac:ohmic-enable        => hotshot.0.ohmic-enable
 net     plasmac:arc-ok-in           <= hotshot.0.arc-ok
@@ -87,13 +89,13 @@ net     plasmac:float-switch      <= hotshot.0.torch-float
 # setp iocontrol.0.emc-enable-in 1
 net  estop-ext     hotshot.0.machine-estop-fb                       => iocontrol.0.emc-enable-in
 net  estop-out     iocontrol.0.user-enable-out                      => hotshot.0.machine-estop-cmd
-net  estop-out     => hotshot.0.machine-estop-cmd
+net  estop-out                                                      => hotshot.0.machine-estop-cmd
 
 # Tool
 #
-net  tool-number             <= iocontrol.0.tool-prep-number
-net  tool-change-loopback    iocontrol.0.tool-change                => iocontrol.0.tool-changed
-net  tool-prepare-loopback   iocontrol.0.tool-prepare               => iocontrol.0.tool-prepared
+net tool-number             <= iocontrol.0.tool-prep-number
+net tool-change-loopback    <= iocontrol.0.tool-change              => iocontrol.0.tool-changed
+net tool-prepare-loopback   <= iocontrol.0.tool-prepare             => iocontrol.0.tool-prepared
 
 # Arc voltage
 #
@@ -102,8 +104,19 @@ net  tool-prepare-loopback   iocontrol.0.tool-prepare               => iocontrol
 setp    encoder.0.counter-mode      1
 setp    encoder.0.position-scale    1.5
 setp    plasmac.lowpass-frequency   10
-net     arc-freq	                hotshot.0.arc-freq-state	    => encoder.0.phase-A
-net     plasmac:arc-voltage-in	    <= encoder.0.velocity
+net     arc-freq	                <= hotshot.0.arc-freq-state	    => encoder.0.phase-A
+
+# T = 0.001 seconds (typical servo thread period)
+# a = (2*pi*100) (100Hz bandwidth single pole)
+# gain = 1 - eˆ(-a * T) = 0.466
+# setp    lowpass.arc.gain            0.012
+# net     avg-vel     lowpass.arc.in    <= encoder.0.velocity
+# net     arc-freq	                <= hotshot.0.arc-freq-state	    => encoder.0.phase-A
+# net     plasmac:arc-voltage-in	    <= encoder.0.velocity
+# net     plasmac:arc-voltage-in	    <= lowpass.arc.out
+
+net     arc-voltage-raw             encoder.0.velocity          => hotshot.0.voltage-in
+net     plasmac:arc-voltage-in	    <= hotshot.0.rms-out
 
 # Axis X / Joint 0
 #
@@ -142,7 +155,7 @@ setp                hotshot.0.axis-x-tmc-chop-hstrt-cmd             5
 setp                hotshot.0.axis-x-tmc-chop-toff-cmd              5
 setp                hotshot.0.axis-x-tmc-chop-vsense-cmd            0
 setp                hotshot.0.axis-x-tmc-sw-en-softstop             0
-setp                hotshot.0.axis-x-tmc-vmax-factor-cmd            1.32
+setp                hotshot.0.axis-x-tmc-vmax-factor-cmd            1
 setp                pid.x.Pgain                                     [JOINT_0]P
 setp                pid.x.Igain                                     [JOINT_0]I
 setp                pid.x.Dgain                                     [JOINT_0]D
@@ -175,7 +188,7 @@ setp                hotshot.0.axis-yl-motor-fullsteps-per-rev-cmd   200
 setp                hotshot.0.axis-yl-tmc-run-current-cmd           30
 setp                hotshot.0.axis-yl-tmc-hold-current-cmd          6
 setp                hotshot.0.axis-yl-tmc-sg-thresh-cmd             6
-setp                hotshot.0.axis-yl-tmc-sg-trigger-thresh-cmd     200
+setp                hotshot.0.axis-yl-tmc-sg-trigger-thresh-cmd     50
 setp                hotshot.0.axis-yl-tmc-sg-stop-cmd               0
 setp                hotshot.0.axis-yl-tmc-cs-thresh-cmd             30000
 setp                hotshot.0.axis-yl-tmc-current-hold-delay-cmd    1
@@ -214,8 +227,9 @@ setp                pid.yl.error-previous-target                    true
 net  yl-enable      joint.1.amp-enable-out                          => hotshot.0.axis-yl-enable         pid.yl.enable
 net  yl-pos-cmd     joint.1.motor-pos-cmd                           => hotshot.0.axis-yl-position-cmd   pid.yl.command
 net  yl-pos-fb      hotshot.0.axis-yl-position-fb                   => joint.1.motor-pos-fb             pid.yl.feedback           
-net  yl-vel-cmd     joint.1.vel-cmd                                 =>                                  pid.yl.command-deriv
-net  yl-vel-fb      hotshot.0.axis-yl-velocity-fb                   =>                                  pid.yl.feedback-deriv
+# net  yl-vel-cmd     joint.1.vel-cmd                                 =>                                  pid.yl.command-deriv
+# net  yl-vel-fb      hotshot.0.axis-yl-velocity-fb                   =>                                  pid.yl.feedback-deriv
+# net  yl-output      joint.1.vel-cmd                                   => hotshot.0.axis-yl-velocity-cmd
 net  yl-output      pid.yl.output                                   => hotshot.0.axis-yl-velocity-cmd
 net  yl-homing      joint.1.homing                                  => hotshot.0.axis-yl-homing-cmd
 net  yl-home-sw     hotshot.0.axis-yl-home-sw                       => joint.1.home-sw-in
@@ -232,7 +246,7 @@ setp                hotshot.0.axis-yr-motor-fullsteps-per-rev-cmd   200
 setp                hotshot.0.axis-yr-tmc-run-current-cmd           30
 setp                hotshot.0.axis-yr-tmc-hold-current-cmd          6
 setp                hotshot.0.axis-yr-tmc-sg-thresh-cmd             6
-setp                hotshot.0.axis-yr-tmc-sg-trigger-thresh-cmd     200
+setp                hotshot.0.axis-yr-tmc-sg-trigger-thresh-cmd     100
 setp                hotshot.0.axis-yr-tmc-sg-stop-cmd               0
 setp                hotshot.0.axis-yr-tmc-cs-thresh-cmd             30000
 setp                hotshot.0.axis-yr-tmc-current-hold-delay-cmd    1
@@ -271,9 +285,10 @@ setp                pid.yr.error-previous-target                    true
 net  yr-enable      joint.2.amp-enable-out                          => hotshot.0.axis-yr-enable         pid.yr.enable
 net  yr-pos-cmd     joint.2.motor-pos-cmd                           => hotshot.0.axis-yr-position-cmd   pid.yr.command
 net  yr-pos-fb      hotshot.0.axis-yr-position-fb                   => joint.2.motor-pos-fb             pid.yr.feedback           
-net  yr-vel-cmd     joint.2.vel-cmd                                 =>                                  pid.yr.command-deriv
-net  yr-vel-fb      hotshot.0.axis-yr-velocity-fb                   =>                                  pid.yr.feedback-deriv
-net  yr-output      pid.yr.output                                   => hotshot.0.axis-yr-velocity-cmd
+# net  yr-vel-cmd     joint.2.vel-cmd                                 =>                                  pid.yr.command-deriv
+# net  yr-vel-fb      hotshot.0.axis-yr-velocity-fb                   =>                                  pid.yr.feedback-deriv
+# net  yr-output      pid.yr.output                                   => hotshot.0.axis-yr-velocity-cmd
+net  yr-output      joint.2.vel-cmd                                   => hotshot.0.axis-yr-velocity-cmd
 net  yr-homing      joint.2.homing                                  => hotshot.0.axis-yr-homing-cmd
 net  yr-home-sw     hotshot.0.axis-yr-home-sw                       => joint.2.home-sw-in
 
@@ -328,9 +343,10 @@ setp                pid.z.error-previous-target                     true
 net  z-enable       joint.3.amp-enable-out                          => hotshot.0.axis-z-enable          pid.z.enable
 net  z-pos-cmd      joint.3.motor-pos-cmd                           => hotshot.0.axis-z-position-cmd    pid.z.command
 net  z-pos-fb       hotshot.0.axis-z-position-fb                    => joint.3.motor-pos-fb             pid.z.feedback           
-net  z-vel-cmd      joint.3.vel-cmd                                 =>                                  pid.z.command-deriv
-net  z-vel-fb       hotshot.0.axis-z-velocity-fb                    =>                                  pid.z.feedback-deriv
-net  z-output       pid.z.output                                    => hotshot.0.axis-z-velocity-cmd
+# net  z-vel-cmd      joint.3.vel-cmd                                 =>                                  pid.z.command-deriv
+# net  z-vel-fb       hotshot.0.axis-z-velocity-fb                    =>                                  pid.z.feedback-deriv
+# net  z-output       pid.z.output                                    => hotshot.0.axis-z-velocity-cmd
+net  z-output       joint.3.vel-cmd                                    => hotshot.0.axis-z-velocity-cmd
 net  z-homing       joint.3.homing                                  => hotshot.0.axis-z-homing-cmd
 net  z-home-sw      hotshot.0.axis-z-home-sw                        => joint.3.home-sw-in
 net  z-neg-lim-sw   hotshot.0.axis-z-neg-limit-sw                   => joint.3.neg-lim-sw-in

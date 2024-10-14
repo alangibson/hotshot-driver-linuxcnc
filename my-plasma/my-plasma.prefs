@@ -122,14 +122,14 @@ X axis = 0.0
 Y axis = 0.0
 
 [STATISTICS]
-Cut time = 56.25
-Paused time = 237.08
-Probe time = 115.48
-Program run time = 619.24
-Torch on time = 181.11
-Rapid time = 32.15
-Cut length = 2366.32
-Pierce count = 60
+Cut time = 204.12
+Paused time = 2181.24
+Probe time = 259.2
+Program run time = 3033.57
+Torch on time = 398.29
+Rapid time = 77.87
+Cut length = 7254.58
+Pierce count = 126
 
 [LASER_OFFSET]
 X axis = 0.0
