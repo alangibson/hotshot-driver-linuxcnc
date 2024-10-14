@@ -48,6 +48,7 @@
         "variant": "c",
         "compare": "c",
         "cstring": "c",
-        "mman.h": "c"
+        "mman.h": "c",
+        "stdio.h": "c"
     }
 }
