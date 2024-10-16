@@ -46,10 +46,6 @@ bool hotshot_joint_init(joint_t * joint)
     // Set microstepping
     joint->tmc.mres = tmc5041_microsteps_to_mres(*joint->microsteps_cmd);
 
-    // TODO we need to tmc5041_motor_init here because that's where we set 
-    // the frequency scaling factor
-
-    // TODO to convert from 
     joint->unit_pulse_factor = units_per_pulse(
         (float64_t)units_per_rev((*joint->pitch_cmd), (*joint->teeth_cmd)), 
         (float64_t)pulses_per_rev((*joint->motor_fullsteps_per_rev_cmd), (*joint->microsteps_cmd))
@@ -229,41 +225,16 @@ void hotshot_handle_homing(joint_t * joint)
 
 void hotshot_handle_move(joint_t * joint)
 {
-    if (*joint->enable_cmd == 1) // Power is on in LinuxCNC
-    {
-        // LinuxCNC power button is off, so power motor off
-        if (joint->tmc.is_motor_on == FALSE)
-        {
-            // tmc5041_motor_power_on(&joint->tmc);
-            joint->tmc.is_motor_on = TRUE;
-        }
+    joint->tmc.is_motor_on = *joint->enable_cmd;
 
-        // Move joint and update pins
-        // VMAX is set on the fly by PID
-        int32_t vmax = UNITS_TO_PULSES(*joint->velocity_cmd, joint->unit_pulse_factor);
-        *joint->tmc.velocity_cmd = vmax;
+    // Move joint and update pins
+    // VMAX is set on the fly by PID
+    *joint->tmc.velocity_cmd = UNITS_TO_PULSES(*joint->velocity_cmd, joint->unit_pulse_factor);
+    // Debugging use only since we don't use positioning mode
+    *joint->tmc.position_cmd = UNITS_TO_PULSES(*joint->position_cmd, joint->unit_pulse_factor);
 
-        // Debugging use only since we don't use positioning mode
-        *joint->tmc.position_cmd = UNITS_TO_PULSES(*joint->position_cmd, joint->unit_pulse_factor);
-
-        // // // RAMPMODE:
-        // //  1: Velocity mode to positive VMAX (using AMAX acceleration)
-        // //  2: Velocity mode to negative VMAX (using AMAX acceleration)
-        // if (vmax > 0)
-        //     tmc5041_set_register_RAMPMODE(&joint->tmc, 1);
-        // else if (vmax < 0)
-        //     tmc5041_set_register_RAMPMODE(&joint->tmc, 2);
-        // // else vmax == 0. do nothing while decelaration ramp finishes
-        
-        // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
-        // tmc5041_set_velocity(&joint->tmc, abs(vmax));
-    } 
-    else 
-    {
-        // LinuxCNC power button is off, so power motor off
-        tmc5041_motor_position_hold(&joint->tmc);
-        tmc5041_motor_power_off(&joint->tmc);
-    }
+    *joint->position_fb = PULSES_TO_UNITS(*joint->tmc.position_fb, joint->unit_pulse_factor);
+    *joint->velocity_fb = PULSES_TO_UNITS(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
 }
 
 void hotshot_update_joint(joint_t * joint)
@@ -300,6 +271,9 @@ void hotshot_handle_joints(joint_t * joints, uint8_t motor_count) {
     }
 }
 
+/** Read/write to/from TMC5041 over SPI bus.
+ * No math should happen in this function, or in any functions it calls.
+ */
 void hotshot_spi(joint_t * joints, uint8_t motor_count)
 {
     for (uint8_t i = 0; i < motor_count; i++)
@@ -316,6 +290,9 @@ void hotshot_spi(joint_t * joints, uint8_t motor_count)
         }
         else
         {
+            // LinuxCNC power button is off, so power motor off
+            // FIXME it's possible for driver to keep counting steps even after tmc5041_motor_power_off
+            tmc5041_motor_position_hold(&joints[i].tmc);            
             tmc5041_motor_power_off(&joints[i].tmc);
         }
         // Set turn direction
@@ -330,6 +307,7 @@ void hotshot_spi(joint_t * joints, uint8_t motor_count)
         // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
         tmc5041_set_velocity(&joints[i].tmc, *joints[i].tmc.velocity_cmd);
 
+        // TODO move all math to hotshot_handle_move
         //
         // Reads
         //
@@ -337,10 +315,8 @@ void hotshot_spi(joint_t * joints, uint8_t motor_count)
         tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
         // Position
         *joints[i].tmc.position_fb = tmc5041_get_position(&joints[i].tmc);
-        *joints[i].position_fb     = PULSES_TO_UNITS(*joints[i].tmc.position_fb, joints[i].unit_pulse_factor);
         // Velocity
         *joints[i].tmc.velocity_fb  = tmc5041_get_velocity(&joints[i].tmc);
-        *joints[i].velocity_fb      = PULSES_TO_UNITS(*joints[i].tmc.velocity_fb, joints[i].unit_pulse_factor);
         // Stallguard threshold
         tmc5041_push_register_COOLCONF(&joints[i].tmc);
 
