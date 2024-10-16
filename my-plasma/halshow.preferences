@@ -1,14 +1,58 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 938x1016+-332+27
+wm geometry . 938x1016+-348+27
 placeFrames 0.3758099352051836
 set ::ratio 0.3758099352051836
 set ::old_w_leftf 398
 set ::watchlist {
-    pin+lowpass.arc.load
-    pin+lowpass.arc.in
-    pin+lowpass.arc.out
-    param+lowpass.arc.gain
+    pin+hotshot.0.axis-x-home-sw
+    pin+hotshot.0.axis-yl-home-sw
+    pin+hotshot.0.axis-yr-home-sw
+    pin+hotshot.0.axis-z-home-sw
+    pin+hotshot.0.axis-x-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-yl-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-yr-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-z-tmc-sg-stop-cmd
+    pin+hotshot.0.axis-x-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-yl-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-yr-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-z-tmc-sg-thresh-cmd
+    pin+hotshot.0.axis-x-tmc-motor-stall-fb
+    pin+hotshot.0.axis-yl-tmc-motor-stall-fb
+    pin+hotshot.0.axis-yr-tmc-motor-stall-fb
+    pin+hotshot.0.axis-z-tmc-motor-stall-fb
+    pin+hotshot.0.axis-x-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-yl-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-yr-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-z-tmc-motor-standstill-fb
+    pin+hotshot.0.axis-x-tmc-motor-load-fb
+    pin+hotshot.0.axis-yl-tmc-motor-load-fb
+    pin+hotshot.0.axis-yr-tmc-motor-load-fb
+    pin+hotshot.0.axis-z-tmc-motor-load-fb
+    pin+hotshot.0.axis-x-tmc-sw-en-softstop
+    pin+hotshot.0.axis-yl-tmc-sw-en-softstop
+    pin+hotshot.0.axis-yr-tmc-sw-en-softstop
+    pin+hotshot.0.axis-z-tmc-sw-en-softstop
+    pin+hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd
+    pin+hotshot.0.axis-yl-tmc-sg-trigger-thresh-cmd
+    pin+hotshot.0.axis-yr-tmc-sg-trigger-thresh-cmd
+    pin+hotshot.0.axis-z-tmc-sg-trigger-thresh-cmd
+    pin+hotshot.0.axis-x-homing-state-fb
+    pin+hotshot.0.axis-yl-homing-state-fb
+    pin+hotshot.0.axis-yr-homing-state-fb
+    pin+hotshot.0.axis-z-homing-state-fb
+    pin+joint.0.home-state
+    pin+joint.1.home-state
+    pin+joint.2.home-state
+    pin+joint.3.home-state
+    pin+joint.0.homed
+    pin+joint.1.homed
+    pin+joint.2.homed
+    pin+joint.3.homed
+    pin+joint.0.homing
+    pin+joint.1.homing
+    pin+joint.2.homing
+    pin+joint.3.homing
 }
 set ::workmode watchhal
 set ::watchInterval 100

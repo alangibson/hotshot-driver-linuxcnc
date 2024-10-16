@@ -32,6 +32,10 @@ pin+hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd
 pin+hotshot.0.axis-yl-tmc-sg-trigger-thresh-cmd
 pin+hotshot.0.axis-yr-tmc-sg-trigger-thresh-cmd
 pin+hotshot.0.axis-z-tmc-sg-trigger-thresh-cmd
+pin+hotshot.0.axis-x-homing-state-fb
+pin+hotshot.0.axis-yl-homing-state-fb
+pin+hotshot.0.axis-yr-homing-state-fb
+pin+hotshot.0.axis-z-homing-state-fb
 pin+joint.0.home-state
 pin+joint.1.home-state
 pin+joint.2.home-state

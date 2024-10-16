@@ -115,7 +115,7 @@ net     arc-freq	                <= hotshot.0.arc-freq-state	    => encoder.0.ph
 # net     plasmac:arc-voltage-in	    <= encoder.0.velocity
 # net     plasmac:arc-voltage-in	    <= lowpass.arc.out
 
-net     arc-voltage-raw             encoder.0.velocity          => hotshot.0.voltage-in
+net     arc-voltage-raw             encoder.0.velocity              => hotshot.0.voltage-in
 net     plasmac:arc-voltage-in	    <= hotshot.0.rms-out
 
 # Axis X / Joint 0

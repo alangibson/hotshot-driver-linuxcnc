@@ -122,14 +122,14 @@ X axis = 0.0
 Y axis = 0.0
 
 [STATISTICS]
-Cut time = 204.12
-Paused time = 2181.24
-Probe time = 259.2
-Program run time = 3033.57
-Torch on time = 398.29
-Rapid time = 77.87
-Cut length = 7254.58
-Pierce count = 126
+Cut time = 212.13
+Paused time = 2186.52
+Probe time = 265.54
+Program run time = 3059.55
+Torch on time = 409.38
+Rapid time = 79.24
+Cut length = 7504.24
+Pierce count = 129
 
 [LASER_OFFSET]
 X axis = 0.0
@@ -149,4 +149,8 @@ Leadout = 0
 Hole diameter = 32
 Hole speed = 60
 Grid Size = 0
+
+[SINGLE CUT]
+X length = 0.0
+Y length = 0.0
 
