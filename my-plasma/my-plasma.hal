@@ -178,7 +178,7 @@ net  x-home-sw      hotshot.0.axis-x-home-sw                        => joint.0.h
 # Axis Y(L) / Joint 1
 #
 setp                hotshot.0.axis-yl-max-acceleration-cmd          [JOINT_1]MAX_ACCELERATION
-setp                hotshot.0.axis-yl-chip                          0
+setp                hotshot.0.axis-yl-chip                          1
 setp                hotshot.0.axis-yl-motor                         1
 setp                hotshot.0.axis-yl-pitch                         2
 setp                hotshot.0.axis-yl-teeth                         16
@@ -292,7 +292,7 @@ net  yr-home-sw     hotshot.0.axis-yr-home-sw                       => joint.2.h
 # Axis Z / Joint 3
 #
 setp                hotshot.0.axis-z-max-acceleration-cmd           [JOINT_3]MAX_ACCELERATION
-setp                hotshot.0.axis-z-chip                           1
+setp                hotshot.0.axis-z-chip                           0
 setp                hotshot.0.axis-z-motor                          1
 setp                hotshot.0.axis-z-pitch                          8
 setp                hotshot.0.axis-z-teeth                          1
