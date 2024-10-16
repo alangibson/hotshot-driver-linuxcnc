@@ -39,6 +39,7 @@ typedef struct {
     bool                                velocity_reached;
     volatile pin_torch_breakaway_t  *   torch_breakaway_fb;
     volatile pin_home_sw_t          *   home_sw_fb;
+    volatile uint32_t               *   homing_state_fb;
     uint32_t                            home_sw_debounce;
     volatile bool                   *   estop_fb;
     int32_t                             last_xtarget;
@@ -48,5 +49,4 @@ typedef struct {
     long long                           last_tick;
     int32_t                             last_velocity_xactual;
     volatile float64_t              *   velocity_factor;
-    uint8_t                             home_state;
 } joint_t;

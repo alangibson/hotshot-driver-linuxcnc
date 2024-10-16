@@ -124,6 +124,11 @@ pin in bit axis_yl_homing_cmd;
 pin in bit axis_yr_homing_cmd;
 pin in bit axis_z_homing_cmd;
 
+pin out u32 axis_x_homing_state_fb;
+pin out u32 axis_yl_homing_state_fb;
+pin out u32 axis_yr_homing_state_fb;
+pin out u32 axis_z_homing_state_fb;
+
 pin out bit axis_x_home_sw;
 pin out bit axis_yl_home_sw;
 pin out bit axis_yr_home_sw;
@@ -651,6 +656,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .velocity_factor                = &axis_x_velocity_factor_fb,
         .acceleration_fb                = &axis_x_acceleration_fb,
         .home_sw_fb                     = &axis_x_home_sw,
+        .homing_state_fb                = &axis_x_homing_state_fb,
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
@@ -730,6 +736,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .velocity_fb                    = &axis_yl_velocity_fb,
         .acceleration_fb                = &axis_yl_acceleration_fb,
         .home_sw_fb                     = &axis_yl_home_sw,
+        .homing_state_fb                = &axis_yl_homing_state_fb,
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
@@ -809,6 +816,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .velocity_fb                    = &axis_yr_velocity_fb,
         .acceleration_fb                = &axis_yr_acceleration_fb,
         .home_sw_fb                     = &axis_yr_home_sw,
+        .homing_state_fb                = &axis_yr_homing_state_fb,
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {
@@ -888,6 +896,7 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         .velocity_fb                    = &axis_z_velocity_fb,
         .acceleration_fb                = &axis_z_acceleration_fb,
         .home_sw_fb                     = &axis_z_home_sw,
+        .homing_state_fb                = &axis_z_homing_state_fb,
         .estop_fb                       = &machine_estop_fb,
         .torch_breakaway_fb             = &torch_breakaway,
         .tmc = (tmc5041_motor_t) {

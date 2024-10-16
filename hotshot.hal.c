@@ -62,7 +62,7 @@ void hotshot_handle_homing(joint_t * joint)
     // if (*joint->tmc.chip == 1 && *joint->tmc.motor == 0)
     //     rtapi_print("hotshot(%d,%d): homing_cmd=%d, home_state=%d\n", 
     //         *joint->tmc.chip,  *joint->tmc.motor, 
-    //         *joint->homing_cmd, joint->home_state);
+    //         *joint->homing_cmd, *joint->homing_state_fb);
 
     // Reset and return immediately if we are not homing.
     if (*joint->homing_cmd != 1) {
@@ -70,13 +70,13 @@ void hotshot_handle_homing(joint_t * joint)
         *joint->home_sw_fb = 0;
         joint->home_sw_debounce = 0;
         // Reset state so we can home again
-        joint->home_state = HOME_UNKNOWN;
+        *joint->homing_state_fb = HOME_UNKNOWN;
         return;
     }
 
     // if (*joint->tmc.chip == 1 && *joint->tmc.motor == 0)
     //     rtapi_print("hotshot(%d,%d): home_state=%d\n", 
-    //         *joint->tmc.chip,  *joint->tmc.motor, joint->home_state);
+    //         *joint->tmc.chip,  *joint->tmc.motor, *joint->homing_state_fb);
 
     // Calculate everything we need to know in order to determine where
     // we are in the homing sequence.
@@ -95,20 +95,20 @@ void hotshot_handle_homing(joint_t * joint)
     int32_t velocity_diff = 0;
 
     // Enter SEARCHING state?
-    if (joint->home_state < HOME_SEARCHING)
+    if (*joint->homing_state_fb < HOME_SEARCHING)
     {
         // homing_cmd is true, so we are searching at a minimum.
         #ifdef DEBUG_HOMING
         rtapi_print("hotshot(%d,%d): State->HOME_SEARCHING. %d -> %d\n", 
-            *joint->tmc.chip, *joint->tmc.motor, joint->home_state, HOME_SEARCHING);
+            *joint->tmc.chip, *joint->tmc.motor, *joint->homing_state_fb, HOME_SEARCHING);
         #endif
 
-        joint->home_state = HOME_SEARCHING;
+        *joint->homing_state_fb = HOME_SEARCHING;
     }
 
     if  // Enter BACKING state?
     (
-        joint->home_state == HOME_SEARCHING
+        *joint->homing_state_fb == HOME_SEARCHING
         && *joint->home_sw_fb == 0
         && stall_diff <= 0
         && velocity_diff == 0 
@@ -119,11 +119,11 @@ void hotshot_handle_homing(joint_t * joint)
         // Switch has been triggered while in searching phase
 
         // Indicate switch on
-        if (joint->home_sw_debounce > 5)
+        if (joint->home_sw_debounce > HOME_SEARCHING_DEBOUNCE)
         {
             #ifdef DEBUG_HOMING
             rtapi_print("hotshot(%d,%d): State->HOME_BACKING. %d -> %d\n", 
-                *joint->tmc.chip, *joint->tmc.motor, joint->home_state, HOME_BACKING);
+                *joint->tmc.chip, *joint->tmc.motor, *joint->homing_state_fb, HOME_BACKING);
             #endif
 
             // Debounce threshold crossed. Switch on.
@@ -131,7 +131,7 @@ void hotshot_handle_homing(joint_t * joint)
             joint->home_sw_debounce = 0;
 
             // Searching phase is complete. Go to next state.
-            joint->home_state = HOME_BACKING;
+            *joint->homing_state_fb = HOME_BACKING;
            
         }
         else
@@ -142,7 +142,7 @@ void hotshot_handle_homing(joint_t * joint)
     }
     else if // Enter LATCHING state?
     (
-        joint->home_state == HOME_BACKING
+        *joint->homing_state_fb == HOME_BACKING
         && velocity_diff == 0 
         && *joint->tmc.velocity_fb != 0
     )
@@ -151,11 +151,11 @@ void hotshot_handle_homing(joint_t * joint)
 
         // Indicate switch off after a period of distance
         // TODO we need to move far enough back that we can reach VMAX
-        if (joint->home_sw_debounce > 1000)
+        if (joint->home_sw_debounce > HOME_BACKING_DEBOUNCE)
         {
             #ifdef DEBUG_HOMING
             rtapi_print("hotshot(%d,%d): State->HOME_LATCHING. %d -> %d\n", 
-                *joint->tmc.chip, *joint->tmc.motor, joint->home_state, HOME_LATCHING);
+                *joint->tmc.chip, *joint->tmc.motor, *joint->homing_state_fb, HOME_LATCHING);
             #endif
 
             // Debounce threshold crossed. Switch on.
@@ -163,7 +163,7 @@ void hotshot_handle_homing(joint_t * joint)
             joint->home_sw_debounce = 0;
 
             // Backing phase is complete. Go to next state.
-            joint->home_state = HOME_LATCHING;
+            *joint->homing_state_fb = HOME_LATCHING;
         }
         else
         {
@@ -173,7 +173,7 @@ void hotshot_handle_homing(joint_t * joint)
     }
     else if // Enter HOMED state?
     (
-        joint->home_state == HOME_LATCHING
+        *joint->homing_state_fb == HOME_LATCHING
         && *joint->home_sw_fb == 0
         && stall_diff <= 0
         && velocity_diff == 0 
@@ -184,11 +184,11 @@ void hotshot_handle_homing(joint_t * joint)
         // Switch has been triggered while in latching phase
 
         // Indicate switch on
-        if (joint->home_sw_debounce > 5)
+        if (joint->home_sw_debounce > HOME_LATCHING_DEBOUNCE)
         {
             #ifdef DEBUG_HOMING
             rtapi_print("hotshot(%d,%d): State->HOME_HOMED. %d -> %d\n", 
-                *joint->tmc.chip, *joint->tmc.motor, joint->home_state, HOME_HOMED);
+                *joint->tmc.chip, *joint->tmc.motor, *joint->homing_state_fb, HOME_HOMED);
             #endif
 
             // Debounce threshold crossed. Switch on.
@@ -196,7 +196,7 @@ void hotshot_handle_homing(joint_t * joint)
             joint->home_sw_debounce = 0;
 
             // Backing phase is complete. Go to next state.
-            joint->home_state = HOME_HOMED;
+            *joint->homing_state_fb = HOME_HOMED;
         }
         else
         {
