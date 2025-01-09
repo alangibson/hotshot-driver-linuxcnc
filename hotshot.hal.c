@@ -26,7 +26,9 @@
 void hotshot_init(joint_t * joints, uint8_t motor_count)
 {
     // Init the Raspberry Pi
+    printf("hotshot: Initializing Raspberry Pi driver\n");
     rpi_init();
+    printf("hotshot: Initializing Raspberry Pi driver complete\n");
 
     // Init each TMC5041 motor
     for (uint8_t i = 0; i < motor_count; i++)

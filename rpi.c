@@ -88,23 +88,30 @@ void rpi_spi_unselect()
 
 void rpi_gpio_init()
 {
+    printf("hotshot: Initializing Raspberry Pi ARC_FREQ pin\n");
     bcm2835_gpio_fsel(PIN_ARC_FREQ, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_set_pud(PIN_ARC_FREQ, BCM2835_GPIO_PUD_DOWN);
 
+    printf("hotshot: Initializing Raspberry Pi ARC_OK pin\n");
     bcm2835_gpio_fsel(PIN_ARC_OK, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_set_pud(PIN_ARC_OK, BCM2835_GPIO_PUD_DOWN);
 
+    printf("hotshot: Initializing Raspberry Pi TORCH_BREAKAWAY pin\n");
     bcm2835_gpio_fsel(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_set_pud(PIN_TORCH_BREAKAWAY, BCM2835_GPIO_PUD_DOWN);
 
+    printf("hotshot: Initializing Raspberry Pi OHMIC_PROBE pin\n");
     bcm2835_gpio_fsel(PIN_OHMIC_PROBE, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_set_pud(PIN_OHMIC_PROBE, BCM2835_GPIO_PUD_DOWN);
 
+    printf("hotshot: Initializing Raspberry Pi ESTOP pin\n");
     bcm2835_gpio_fsel(PIN_ESTOP, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_set_pud(PIN_ESTOP, BCM2835_GPIO_PUD_DOWN);
 
+    printf("hotshot: Initializing Raspberry Pi TORCH_ON pin\n");
     bcm2835_gpio_fsel(PIN_TORCH_ON, BCM2835_GPIO_FSEL_OUTP);
 
+    printf("hotshot: Initializing Raspberry Pi OHMIC_ENABLE pin\n");
     bcm2835_gpio_fsel(PIN_OHMIC_ENABLE, BCM2835_GPIO_FSEL_OUTP);
 }
 
@@ -144,11 +151,26 @@ void rpi_clock_init()
  */
 // bool NEEDS_RPI_INIT = TRUE;
 void rpi_init() {
+
+    printf("hotshot: Initializing Raspberry Pi bcm2835 driver\n");
     bcm2835_init();
+    printf("hotshot: Initializing Raspberry Pi bcm2835 driver complete\n");
+
+    printf("hotshot: Initializing Raspberry Pi GPIO\n");
     rpi_gpio_init();
+    printf("hotshot: Initializing Raspberry Pi GPIO complete\n");
+
+    printf("hotshot: Initializing Raspberry Pi clock\n");
     rpi_clock_init();
+    printf("hotshot: Initializing Raspberry Pi clock complete\n");
+
+    printf("hotshot: Initializing Raspberry Pi SPI 0\n");
     rpi_spi0_init();
+    printf("hotshot: Initializing Raspberry Pi SPI 0 complete\n");
+
+    printf("hotshot: Initializing Raspberry Pi SPI 1\n");
     rpi_spi1_init();  
+    printf("hotshot: Initializing Raspberry Pi SPI 1 complete\n");
 }
 
 void rpi_end() {

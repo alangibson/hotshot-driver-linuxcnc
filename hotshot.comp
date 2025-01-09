@@ -640,6 +640,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
         return;
     }
 
+    printf("hotshot: Initializing driver\n");
+
     __comp_inst->joints[0] = (joint_t) {
         .max_acceleration_cmd           = __comp_inst->axis_x_max_acceleration_cmd,
         .pitch_cmd                      = __comp_inst->axis_x_pitch,
@@ -965,6 +967,8 @@ void ensure_initialized(struct __comp_state * __comp_inst)
     hotshot_init(__comp_inst->joints, MOTOR_COUNT);
 
     IS_INITIALIZED = TRUE;
+
+    printf("hotshot: Initializing driver complete\n");
 }
 
 // Must be loaded first in hal config since it initializes joints array.
