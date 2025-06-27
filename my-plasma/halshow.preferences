@@ -1,58 +1,43 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 938x1016+-348+27
+wm geometry . 938x1016+-286+48
 placeFrames 0.3758099352051836
 set ::ratio 0.3758099352051836
 set ::old_w_leftf 398
 set ::watchlist {
-    pin+hotshot.0.axis-x-home-sw
-    pin+hotshot.0.axis-yl-home-sw
-    pin+hotshot.0.axis-yr-home-sw
-    pin+hotshot.0.axis-z-home-sw
+    pin+pid.x.enable
+    pin+pid.x.command
+    pin+pid.x.command-deriv
+    pin+pid.x.feedback
+    pin+pid.x.feedback-deriv
+    pin+pid.x.output
+    pin+joint.0.pos-cmd
+    pin+hotshot.0.axis-x-enable
+    pin+hotshot.0.axis-x-position-cmd
+    pin+hotshot.0.axis-x-position-fb
+    pin+hotshot.0.axis-x-velocity-cmd
+    pin+hotshot.0.axis-x-velocity-fb
+    pin+pid.x.error
+    pin+pid.x.error-previous-target
+    pin+pid.x.Pgain
+    pin+pid.x.Igain
+    pin+pid.x.Dgain
+    pin+pid.x.FF0
+    pin+pid.x.FF1
+    pin+pid.x.FF2
+    pin+hotshot.0.axis-x-tmc-vmax-factor-cmd
+    pin+pid.x.tune-cycles
+    pin+pid.x.tune-effort
+    pin+pid.x.tune-start
+    pin+pid.x.tune-type
+    pin+pid.x.tune-mode
     pin+hotshot.0.axis-x-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-yl-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-yr-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-z-tmc-sg-stop-cmd
     pin+hotshot.0.axis-x-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-yl-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-yr-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-z-tmc-sg-thresh-cmd
     pin+hotshot.0.axis-x-tmc-motor-stall-fb
-    pin+hotshot.0.axis-yl-tmc-motor-stall-fb
-    pin+hotshot.0.axis-yr-tmc-motor-stall-fb
-    pin+hotshot.0.axis-z-tmc-motor-stall-fb
     pin+hotshot.0.axis-x-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-yl-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-yr-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-z-tmc-motor-standstill-fb
     pin+hotshot.0.axis-x-tmc-motor-load-fb
-    pin+hotshot.0.axis-yl-tmc-motor-load-fb
-    pin+hotshot.0.axis-yr-tmc-motor-load-fb
-    pin+hotshot.0.axis-z-tmc-motor-load-fb
     pin+hotshot.0.axis-x-tmc-sw-en-softstop
-    pin+hotshot.0.axis-yl-tmc-sw-en-softstop
-    pin+hotshot.0.axis-yr-tmc-sw-en-softstop
-    pin+hotshot.0.axis-z-tmc-sw-en-softstop
     pin+hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd
-    pin+hotshot.0.axis-yl-tmc-sg-trigger-thresh-cmd
-    pin+hotshot.0.axis-yr-tmc-sg-trigger-thresh-cmd
-    pin+hotshot.0.axis-z-tmc-sg-trigger-thresh-cmd
-    pin+hotshot.0.axis-x-homing-state-fb
-    pin+hotshot.0.axis-yl-homing-state-fb
-    pin+hotshot.0.axis-yr-homing-state-fb
-    pin+hotshot.0.axis-z-homing-state-fb
-    pin+joint.0.home-state
-    pin+joint.1.home-state
-    pin+joint.2.home-state
-    pin+joint.3.home-state
-    pin+joint.0.homed
-    pin+joint.1.homed
-    pin+joint.2.homed
-    pin+joint.3.homed
-    pin+joint.0.homing
-    pin+joint.1.homing
-    pin+joint.2.homing
-    pin+joint.3.homing
 }
 set ::workmode watchhal
 set ::watchInterval 100
