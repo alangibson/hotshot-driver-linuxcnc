@@ -1,14 +1,14 @@
+import sys
 import spidev
 
-BUS = 0
-DEVICE = 3
+SPI_BUS = int(sys.argv[1])       # Usually 0
+SPI_DEVICE = int(sys.argv[2])    # Usually 2 for CE2, 3 for CE3
 
 spi = spidev.SpiDev()
-spi.open(BUS, DEVICE)
-spi.max_speed_hz = 30000
+spi.open(SPI_BUS, SPI_DEVICE)
+spi.max_speed_hz = 1000000  # 1 MHz is typical
 spi.mode = 0b00
 
-# FIXME +5V_REF is actually 4.16V
 REF_VOLTAGE = 5
 VOLTAGE_DIVISOR = 50
 
@@ -48,7 +48,7 @@ def arc_volt():
     # 15V : is=0.7429130009775171,  want=0.3
     # 20V : is=0.9970674486803519,  want=0.4
 
-    # TODO why is measurement wrong by this ammount?
+    # TODO why is measurement wrong by this amount?
     CORRECTION_HACK = 2.5
 
     voltage = ( adc_volts / CORRECTION_HACK) * VOLTAGE_DIVISOR
@@ -59,16 +59,13 @@ def air_pressure():
 
     # min volts 0.5 V = 0 Psi
     # max volts 4.5 V = 200 Psi
-    min_volt, min_psi = 0.5, 0
-    max_volt, max_psi = 4.5, 200
 
-    # Calculate PSI
-    pressure_psi = (adc_volts - min_volt) * (max_psi / (max_volt - min_volt))
+    pressure_psi = (adc_volts - 0.5) * (200 / (4.5 - 0.5))
     pressure_bar = pressure_psi / 14.5038
 
     print('air_pressure_psi', pressure_psi)
     print('air_pressure_bar', pressure_bar)
 
-
 arc_volt()
 air_pressure()
+

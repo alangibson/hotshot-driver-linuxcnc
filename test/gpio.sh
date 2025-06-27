@@ -47,3 +47,4 @@ raspi-gpio get 16
 echo "TORCH_FLOAT"
 raspi-gpio set 12 ip pd
 raspi-gpio get 12 
+

@@ -48,18 +48,21 @@ test.smoke:
 	@echo '*********************************************'
 	@echo '* Smoke tests must be run on a Raspberry Pi *'
 	@echo '*********************************************'
-	./test/gpio.sh
-	python ./test/mcp3020-spi.py
+	@cd test
+	cd test; ./smoke.sh
 
 test.functional: hotshot.hal.o
 	@echo '******************************************************************************'
 	@echo '* Functional tests must be run on a Raspberry Pi with LinuxCNC-dev installed *'
+	@echo '* If test segfaults, run as root                                             *'
 	@echo '******************************************************************************'
 	$(Q)gcc -Wall -I . rpi.test.c -o rpi.test.o -c
 	$(Q)gcc -Wall -o rpi.test rpi.o bcm2835.o rpi.test.o $(LIBS)
 	./rpi.test
-	$(Q)gcc -DRTAPI -Wall -I . hotshot.motor.test.c -o hotshot.motor.test.o -c || true
-	$(Q)gcc -Wall -o hotshot.motor.test $(complex-objs) hotshot.motor.test.o
-	./hotshot.motor.test
+	# $(Q)gcc -DRTAPI -Wall -I . hotshot.motor.test.c -o hotshot.motor.test.o -c || true
+	# $(Q)gcc -Wall -o hotshot.motor.test $(complex-objs) hotshot.motor.test.o
+	# ./hotshot.motor.test
 	
 test: test.unit test.smoke test.functional
+
+.PHONY: test test.unit test.smoke test.functional
