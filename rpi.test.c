@@ -7,7 +7,6 @@
 int main() {
 
     printf("Initializing Raspberry Pi\n\n");
-    // rpi_init();
     printf("bcm2835_init\n");
     bcm2835_init();
     printf("rpi_gpio_init\n");

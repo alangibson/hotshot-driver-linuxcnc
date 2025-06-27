@@ -16,7 +16,7 @@ function arc;
 function rms;
 
 // option extra_setup;
-// option extra_cleanup;
+option extra_cleanup;
 
 pin out bit arc_ok;             // wire to plasmac.arc-ok-in
 // pin out float arc_voltage;   // wire to plasmac.arc-voltage-in
@@ -622,10 +622,10 @@ variable float sum_of_squares = 0.0;
 
 #undef joints
 
+// Save reference so we can shut down in EXTRA_CLEANUP
+static struct __comp_state * state = NULL;
+
 bool IS_INITIALIZED = FALSE;
-// bool NEEDS_RPI_INIT = TRUE;
-// bool NEEDS_MOTOR_INIT = TRUE;
-// bool NEEDS_BOARD_INIT = TRUE;
 // 0 = X, 1 = YL, 2 = YR, 3 = Z
 // joint_t MOTORS[MOTOR_COUNT];
 
@@ -639,6 +639,9 @@ void ensure_initialized(struct __comp_state * __comp_inst)
     {
         return;
     }
+
+    // Save reference to __comp_inst for EXTRA_CLEANUP
+    state = __comp_inst;
 
     printf("hotshot: Initializing driver\n");
 
@@ -1132,12 +1135,13 @@ FUNCTION(rms)
     rms_out = sqrt(sum_of_squares / num_samples);
 }
 
-// TODO is this still needed?
 EXTRA_CLEANUP()
 {
     printf("hotshot: Stopping driver\n");
 
-    hotshot_end(&__comp_inst->joints, MOTOR_COUNT);
+    if (state) {
+        hotshot_end(state->joints, MOTOR_COUNT);
+    }
 
     IS_INITIALIZED = FALSE;
 

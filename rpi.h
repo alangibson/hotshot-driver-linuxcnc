@@ -6,4 +6,5 @@ void rpi_spi_select(uint32_t chip);
 void rpi_spi_unselect();
 void rpi_gpio_init();
 void rpi_init();
+void rpi_clock_init();
 void rpi_end();
