@@ -39,14 +39,27 @@ hotshot.o: hotshot.hal.o
 	$(Q)halcompile --preprocess hotshot.comp
 	$(Q)gcc -DRTAPI -Wall -I . -I /usr/include/linuxcnc hotshot.c -o hotshot.o -c
 
-hotshot.test: hotshot.lib.o 
+test.unit: hotshot.lib.o 
 	$(Q)gcc -DRTAPI -Wall -I . hotshot.test.c -o hotshot.test.o -c
 	$(Q)gcc -Wall -o hotshot.test hotshot.lib.o rpi.o bcm2835.o tmc5041.o hotshot.test.o $(LIBS)
-
-hotshot.it: hotshot.hal.o
-	$(Q)gcc -DRTAPI -Wall -I . hotshot.it.c -o hotshot.it.o -c
-	$(Q)gcc -Wall -o hotshot.it $(complex-objs) hotshot.it.o
-
-test: hotshot.test
-	echo "Make sure you sudo or you will get a segmentation fault!"
 	./hotshot.test
+
+test.smoke:
+	@echo '*********************************************'
+	@echo '* Smoke tests must be run on a Raspberry Pi *'
+	@echo '*********************************************'
+	./test/gpio.sh
+	python ./test/mcp3020-spi.py
+
+test.functional: hotshot.hal.o
+	@echo '******************************************************************************'
+	@echo '* Functional tests must be run on a Raspberry Pi with LinuxCNC-dev installed *'
+	@echo '******************************************************************************'
+	$(Q)gcc -Wall -I . rpi.test.c -o rpi.test.o -c
+	$(Q)gcc -Wall -o rpi.test rpi.o bcm2835.o rpi.test.o $(LIBS)
+	./rpi.test
+	$(Q)gcc -DRTAPI -Wall -I . hotshot.motor.test.c -o hotshot.motor.test.o -c || true
+	$(Q)gcc -Wall -o hotshot.motor.test $(complex-objs) hotshot.motor.test.o
+	./hotshot.motor.test
+	
+test: test.unit test.smoke test.functional

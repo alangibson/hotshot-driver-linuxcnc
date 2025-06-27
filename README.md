@@ -1,3 +1,30 @@
+
+# Testing
+
+To directly test the board, without involving the driver, from a Raspberry Pi
+
+```bash
+cd test
+./gpio.sh
+python mcp3002-spi.py
+```
+
+To run driver functional tests on the board:
+
+```bash
+
+```
+
+
+
+
+
+
+
+
+
+
+
 # Set up LinuxCNC dev tools in Docker image
 docker build -t linuxcnc .
 # and run halcompile

@@ -602,7 +602,7 @@ float64_t tmc5041_frequency_scaling(tmc5041_motor_t * motor)
     #ifdef DEBUG_SCALING
     int32_t actual_steps = xactual_t2 - xactual_t1;
     printf("hotshot(%d,%d)[scaling]: Moved actual steps = %d. Waited sec: target=%f, actual=%f.\n", 
-                *motor->chip, *motor->motor, actual_steps, wait_2_ms/1000, dt);
+                *motor->chip, *motor->motor, actual_steps, (double)wait_2_ms/1000, dt);
     #endif
 
     // 4. Stop the motion ramp by setting VMAX=0.

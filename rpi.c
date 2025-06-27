@@ -24,8 +24,13 @@ void rpi_spi0_init()
 
     // Set SPI parameters
     bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);    // The default
+    // FIXME need to switch between BCM2835_SPI_MODE3 for TMC5041 
+    // and BCM2835_SPI_MODE0 for MCP3002
     bcm2835_spi_setDataMode(BCM2835_SPI_MODE3);                 // The default
-    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_256); // <= 4 MHz for internal clock
+    // RPi 4 has a 250 MHz core clock. 
+    // Divide by 256 to get 976 KHz.
+    // Max for TMC5041 is 1 MHz. Max for MCP3002 is 3.6 MHz @ 5V reference.
+    bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_256);
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);    // the default
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
@@ -39,7 +44,7 @@ void rpi_spi1_init()
     // Set SPI parameters
     bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);        // The default
     bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                     // Data comes in on falling edge
-    bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_256); // <= 4 MHz for internal clock
+    bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_256); 
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);        // the default
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
@@ -77,6 +82,28 @@ void rpi_spi_select(uint32_t chip)
 void rpi_spi_unselect()
 {
     // Unselect chip
+    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+}
+
+/**
+ * bus: SPI bus, 0 or 1
+ * mode: SPI mode, 0 to 3. Use BCM2835_SPI_MODE*
+ * chip: chip select line to use, 0 to N
+ * data: pointer to data array
+ * length: length of data
+ */
+void rpi_spi_talk(uint8_t bus, uint8_t mode, uint8_t chip, uint8_t *data, size_t length) {
+
+    // Set SPI mode
+    bcm2835_spi_setDataMode(mode);
+
+    bcm2835_spi_chipSelect(chip);
+
+    if (bus == 0)
+        bcm2835_spi_transfernb(data, data, length);
+    else
+        bcm2835_aux_spi_transfernb(data, data, length);
+
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
 
@@ -174,8 +201,17 @@ void rpi_init() {
 }
 
 void rpi_end() {
+    
+    printf("hotshot: Shut down Raspberry Pi SPI 0\n");
     rpi_spi0_end();
+    printf("hotshot: Shut down Raspberry Pi SPI 0 complete\n");
+
+    printf("hotshot: Shut down Raspberry Pi SPI 1\n");
     rpi_spi1_end();
+    printf("hotshot: Shut down Raspberry Pi SPI 1 complete\n");
+
     // Close the library, deallocating any allocated memory and closing /dev/mem
+    printf("hotshot: Shut down Raspberry Pi bcm2835 driver\n");
     bcm2835_close();
+    printf("hotshot: Shut down Raspberry Pi bcm2835 driver complete\n");
 }

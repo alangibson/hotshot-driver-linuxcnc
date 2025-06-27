@@ -1133,10 +1133,16 @@ FUNCTION(rms)
 }
 
 // TODO is this still needed?
-// EXTRA_CLEANUP()
-// {
-//     hotshot_end(&__comp_inst->joints[0], MOTOR_COUNT);
-// }
+EXTRA_CLEANUP()
+{
+    printf("hotshot: Stopping driver\n");
+
+    hotshot_end(&__comp_inst->joints, MOTOR_COUNT);
+
+    IS_INITIALIZED = FALSE;
+
+    printf("hotshot: Stopping driver complete\n");
+}
 
 // HAL Module
 // ============================================================================

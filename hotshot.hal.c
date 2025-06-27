@@ -330,11 +330,19 @@ void hotshot_spi(joint_t * joints, uint8_t motor_count)
  * Shut down Hotshot board and driver.
  * Should only be called once at shutdown.
  */
-void hotshot_end(joint_t * joint, uint8_t motor_count)
+void hotshot_end(joint_t * joints, uint8_t motor_count)
 {
-    // tmc5041_end(joint, MOTOR_COUNT);
+    printf("hotshot: Shut down motors\n");
+
     for (uint8_t i = 0; i < motor_count; i++) {
-        tmc5041_motor_end(&joint[i].tmc);
+        tmc5041_motor_end(&joints[i].tmc);
     }
+
+    printf("hotshot: Shut down motors complete\n");
+
+    printf("hotshot: Reset host computer\n");
+
     rpi_end();
+
+    printf("hotshot: Reset host computer complete\n");
 }

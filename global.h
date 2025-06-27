@@ -34,3 +34,6 @@
 #define HOME_SEARCHING_DEBOUNCE 0
 #define HOME_BACKING_DEBOUNCE 500
 #define HOME_LATCHING_DEBOUNCE 0
+
+// Actual reference voltages
+#define REF_5V 5

@@ -134,7 +134,9 @@ int main() {
         .sg_thresh_cmd          = &axis_z_tmc_sg_thresh_cmd
     };
 
+    printf("Initializing Raspberry Pi\n");
     rpi_init();
+    printf("Initializing motor driver\n");
     tmc5041_init(tmc5041_motors, MOTOR_COUNT);
 
     // This simulates the HAL loop
