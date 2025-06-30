@@ -1,43 +1,16 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 938x1016+-286+48
+wm geometry . 938x1016+226+94
 placeFrames 0.3758099352051836
 set ::ratio 0.3758099352051836
 set ::old_w_leftf 398
 set ::watchlist {
-    pin+pid.x.enable
-    pin+pid.x.command
-    pin+pid.x.command-deriv
-    pin+pid.x.feedback
-    pin+pid.x.feedback-deriv
-    pin+pid.x.output
-    pin+joint.0.pos-cmd
-    pin+hotshot.0.axis-x-enable
-    pin+hotshot.0.axis-x-position-cmd
-    pin+hotshot.0.axis-x-position-fb
-    pin+hotshot.0.axis-x-velocity-cmd
-    pin+hotshot.0.axis-x-velocity-fb
-    pin+pid.x.error
-    pin+pid.x.error-previous-target
-    pin+pid.x.Pgain
-    pin+pid.x.Igain
-    pin+pid.x.Dgain
-    pin+pid.x.FF0
-    pin+pid.x.FF1
-    pin+pid.x.FF2
-    pin+hotshot.0.axis-x-tmc-vmax-factor-cmd
-    pin+pid.x.tune-cycles
-    pin+pid.x.tune-effort
-    pin+pid.x.tune-start
-    pin+pid.x.tune-type
-    pin+pid.x.tune-mode
-    pin+hotshot.0.axis-x-tmc-sg-stop-cmd
-    pin+hotshot.0.axis-x-tmc-sg-thresh-cmd
-    pin+hotshot.0.axis-x-tmc-motor-stall-fb
-    pin+hotshot.0.axis-x-tmc-motor-standstill-fb
-    pin+hotshot.0.axis-x-tmc-motor-load-fb
-    pin+hotshot.0.axis-x-tmc-sw-en-softstop
-    pin+hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd
+    sig+plasmac:arc-voltage-in
+    sig+plasmac:arc_voltage_out
+    sig+plasmac:cut-volts
+    sig+plasmac:height-per-volt
+    sig+plasmac:thc-active
+    pin+hotshot.0.arc-voltage
 }
 set ::workmode watchhal
 set ::watchInterval 100

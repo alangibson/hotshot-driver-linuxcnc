@@ -1,6 +1,8 @@
-# halshow watchlist created Wed Oct 09 23:11:38 CEST 2024
+# halshow watchlist created Fri Jun 27 15:51:29 CEST 2025
 
-pin+lowpass.arc.load
-pin+lowpass.arc.in
-pin+lowpass.arc.out
-param+lowpass.arc.gain
+sig+plasmac:arc-voltage-in
+sig+plasmac:arc_voltage_out
+sig+plasmac:cut-volts
+sig+plasmac:height-per-volt
+sig+plasmac:thc-active
+pin+hotshot.0.arc-voltage

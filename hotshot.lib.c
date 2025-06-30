@@ -1,8 +1,8 @@
 #include "stdio.h"
 #include "stdint.h"
 #include "sys/time.h"
-#include "bcm2835.h"
-#include "hotshot.h"
+#include "tmc/helpers/Types.h"
+
 
 // Example:
 //

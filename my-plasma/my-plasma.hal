@@ -15,7 +15,6 @@ loadrt  pid              names=pid.x,pid.yl,pid.yr,pid.z
 loadrt  plasmac
 loadrt  hotshot
 loadrt  dbounce          names=db_breakaway,db_float,db_ohmic,db_arc-ok
-loadrt  encoder          num_chan=1
 loadrt  lowpass          names=lowpass.arc
 
 # Functions
@@ -27,20 +26,18 @@ addf    pid.x.do-pid-calcs          servo-thread
 addf    pid.yl.do-pid-calcs         servo-thread
 addf    pid.yr.do-pid-calcs         servo-thread
 addf    pid.z.do-pid-calcs          servo-thread
-addf    encoder.update-counters     base-thread
-addf    encoder.capture-position    servo-thread
 addf    lowpass.arc                 servo-thread
 addf    db_float                    servo-thread
 addf    db_ohmic                    servo-thread
 addf    db_breakaway                servo-thread
 addf    db_arc-ok                   servo-thread
-addf    hotshot.0.spi               servo-thread
+addf    hotshot.0.joint-spi         servo-thread
+addf    hotshot.0.adc-spi           servo-thread
 addf    hotshot.0.x                 servo-thread
 addf    hotshot.0.yl                servo-thread
 addf    hotshot.0.yr                servo-thread
 addf    hotshot.0.z                 servo-thread
 addf    hotshot.0.sensors           servo-thread
-addf    hotshot.0.arc               servo-thread
 addf    hotshot.0.rms               servo-thread
 
 # Machine enable
@@ -77,6 +74,7 @@ net     plasmac:arc-ok-in           <= hotshot.0.arc-ok
 net     plasmac:breakaway           <= hotshot.0.torch-breakaway
 net     plasmac:ohmic-probe         <= plasmac.ohmic-sense-out
 net     plasmac:ohmic-sense-in      <= hotshot.0.ohmic-probe
+net     plasmac:arc-voltage-in      <= hotshot.0.arc-voltage
 
 # Float switch
 #
@@ -96,27 +94,6 @@ net  estop-out                                                      => hotshot.0
 net tool-number             <= iocontrol.0.tool-prep-number
 net tool-change-loopback    <= iocontrol.0.tool-change              => iocontrol.0.tool-changed
 net tool-prepare-loopback   <= iocontrol.0.tool-prepare             => iocontrol.0.tool-prepared
-
-# Arc voltage
-#
-# Scale factor, in counts per length unit. For example, if position-scale 
-# is 500, then 1000 counts of the encoder will be reported as a position of 2.0 units.
-setp    encoder.0.counter-mode      1
-setp    encoder.0.position-scale    1.5
-setp    plasmac.lowpass-frequency   10
-net     arc-freq	                <= hotshot.0.arc-freq-state	    => encoder.0.phase-A
-
-# T = 0.001 seconds (typical servo thread period)
-# a = (2*pi*100) (100Hz bandwidth single pole)
-# gain = 1 - eˆ(-a * T) = 0.466
-# setp    lowpass.arc.gain            0.012
-# net     avg-vel     lowpass.arc.in    <= encoder.0.velocity
-# net     arc-freq	                <= hotshot.0.arc-freq-state	    => encoder.0.phase-A
-# net     plasmac:arc-voltage-in	    <= encoder.0.velocity
-# net     plasmac:arc-voltage-in	    <= lowpass.arc.out
-
-net     arc-voltage-raw             encoder.0.velocity              => hotshot.0.voltage-in
-net     plasmac:arc-voltage-in	    <= hotshot.0.rms-out
 
 # Axis X / Joint 0
 #

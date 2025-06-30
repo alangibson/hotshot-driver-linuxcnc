@@ -36,7 +36,7 @@
         "random": "c",
         "rpi.h": "c",
         "types.h": "c",
-        "hotshot.hal.h": "c",
+        "hotshot.joint.h": "c",
         "hotshot.lib.h": "c",
         "optional": "c",
         "istream": "c",
@@ -49,6 +49,9 @@
         "compare": "c",
         "cstring": "c",
         "mman.h": "c",
-        "stdio.h": "c"
-    }
+        "stdio.h": "c",
+        "stdint.h": "c",
+        "unistd.h": "c"
+    },
+    "cmake.ignoreCMakeListsMissing": true
 }
