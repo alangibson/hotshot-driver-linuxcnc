@@ -30,7 +30,7 @@ THC Sample Threshold = 1.0
 THC Threshold = 1.0
 
 [GUI_OPTIONS]
-Mode = 0
+Mode = 1
 Estop type = 2
 DRO position = bottom
 Flash error = 0
@@ -122,14 +122,14 @@ X axis = 0.0
 Y axis = 0.0
 
 [STATISTICS]
-Cut time = 1320.41
-Paused time = 4507.54
-Probe time = 1257.79
-Program run time = 8704.89
-Torch on time = 1893.28
-Rapid time = 687.2
-Cut length = 35485.47
-Pierce count = 480
+Cut time = 1324.75
+Paused time = 4518.91
+Probe time = 1269.27
+Program run time = 8747.11
+Torch on time = 1904.51
+Rapid time = 689.46
+Cut length = 35570.42
+Pierce count = 485
 
 [LASER_OFFSET]
 X axis = 0.0

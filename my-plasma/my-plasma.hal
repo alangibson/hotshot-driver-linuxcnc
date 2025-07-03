@@ -48,20 +48,16 @@ net     machine-is-enabled          <= motion.motion-enabled
 # PlasmaC inputs
 #
 net     plasmac:axis-z-position     <= joint.3.pos-fb     => plasmac.axis-z-position
-# all modes
 net     plasmac:float-switch        => db_float.in
 net     plasmac:breakaway           => db_breakaway.in
 net     plasmac:ohmic-probe         => db_ohmic.in
 net     plasmac:ohmic-sense-in      => plasmac.ohmic-sense-in
-# modes 0 & 1
 net     plasmac:arc-voltage-in      => plasmac.arc-voltage-in
-# setp    plasmac.arc-ok-counts     10
-# setp    plasmac.arc-ok-threshold  20
-# modes 1 & 2
-net     plasmac:arc-ok-in           => db_arc-ok.in
-# mode 2
 net     plasmac:move-up             => plasmac.move-up
 net     plasmac:move-down           => plasmac.move-down
+net     plasmac:arc-ok-in           => db_arc-ok.in
+# setp    plasmac.arc-ok-counts     10
+# setp    plasmac.arc-ok-threshold  20
 
 # PlasmaC outputs
 #
