@@ -20,14 +20,14 @@ include Makefile.modinc
 clean:
 	$(Q)rm -f *.o *.so *.ver *.tmp *.sym hotshot.test 2>/dev/null || true
 
-# bcm2835.o:
-# 	$(Q)gcc -Werror bcm2835.c -o bcm2835.o -c
-
 rpi.bcm2835.o: 
 	$(Q)gcc -Werror -I/usr/local/include rpi.bcm2835.c -o rpi.bcm2835.o -c
 
 rpi.linux.o:
 	$(Q)gcc -Werror -I/usr/include/gpiod rpi.linux.c -o rpi.linux.o -c
+
+motor.tmc5041.o: rpi.bcm2835.o
+	$(Q)gcc -Werror -I . motor.tmc5041.c -o motor.tmc5041.o -c
 
 mcp3002.o: rpi.bcm2835.o
 	$(Q)gcc -Werror mcp3002.c -o mcp3002.o -c
@@ -38,7 +38,7 @@ tmc5041.o: rpi.bcm2835.o
 hotshot.lib.o:
 	$(Q)gcc -Wall -I . hotshot.lib.c -o hotshot.lib.o -c
 
-hotshot.joint.o: tmc5041.o hotshot.lib.o
+hotshot.joint.o: motor.tmc5041.o hotshot.lib.o
 	$(Q)gcc -Wall -I . -I /usr/include/linuxcnc -DRTAPI hotshot.joint.c -o hotshot.joint.o -c
 
 hotshot.air.c: mcp3002.o
@@ -56,14 +56,14 @@ test.mcp3002: rpi.bcm2835.o mcp3002.o
 	$(Q)gcc -Werror -o mcp3002.test mcp3002.o rpi.bcm2835.o mcp3002.test.o $(LIBS)
 	./mcp3002.test
 
-test.tmc5041: rpi.bcm2835.o tmc5041.o
+test.tmc5041: rpi.bcm2835.o motor.tmc5041.o
 	$(Q)gcc -Werror -I . tmc5041.test.c -o tmc5041.test.o -c
-	$(Q)gcc -Werror -o tmc5041.test rpi.bcm2835.o tmc5041.o tmc5041.test.o $(LIBS)
+	$(Q)gcc -Werror -o tmc5041.test rpi.bcm2835.o motor.tmc5041.o tmc5041.test.o $(LIBS)
 	./tmc5041.test
 
 test.unit: hotshot.o
 	$(Q)gcc -DRTAPI -Wall -I . hotshot.test.c -o hotshot.test.o -c
-	$(Q)gcc -Wall -o hotshot.test hotshot.lib.o rpi.bcm2835.o tmc5041.o hotshot.test.o $(LIBS)
+	$(Q)gcc -Wall -o hotshot.test hotshot.lib.o rpi.bcm2835.o motor.tmc5041.o hotshot.test.o $(LIBS)
 	./hotshot.test
 
 test.smoke:

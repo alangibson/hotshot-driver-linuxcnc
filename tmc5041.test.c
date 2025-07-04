@@ -116,7 +116,7 @@ int main() {
         rpi_spi_select(*tmc5041_motors[i].chip);
 
         // TODO This doesnt do much of anything
-        // tmc5041_motor_power_on(&tmc5041_motors[i]);
+        // motor_on(&tmc5041_motors[i]);
 
         tmc5041_pull_register_DRV_STATUS(&tmc5041_motors[i]);
         tmc5041_pull_register_RAMP_STAT(&tmc5041_motors[i]);

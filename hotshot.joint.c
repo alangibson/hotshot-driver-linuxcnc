@@ -44,7 +44,7 @@ void hotshot_init(joint_t * joints, uint8_t motor_count)
  * Initialize a single joint. 
  * Right now this only configures the motor, not switches.
  */
-bool hotshot_joint_init(joint_t * joint)
+void hotshot_joint_init(joint_t * joint)
 {
     // Set microstepping
     joint->tmc.mres = tmc5041_microsteps_to_mres(*joint->microsteps_cmd);
@@ -55,9 +55,7 @@ bool hotshot_joint_init(joint_t * joint)
     );
     joint->tmc.max_acceleration_cmd = units_to_pulses(*joint->max_acceleration_cmd, joint->unit_pulse_factor);
 
-    tmc5041_motor_init(&joint->tmc);
-
-    return TRUE; // successful
+    motor_init(&joint->tmc);
 }
 
 void hotshot_handle_homing(joint_t * joint)
@@ -86,7 +84,7 @@ void hotshot_handle_homing(joint_t * joint)
     //
     int32_t sg_trigger_thresh = *joint->tmc.sg_trigger_thresh_cmd;
     int32_t sg_load = *joint->tmc.motor_load_fb;
-    // int32_t vactual = tmc5041_get_velocity(&joint->tmc);
+    // int32_t vactual = motor_get_velocity(&joint->tmc);
     int32_t vactual = *joint->tmc.velocity_fb;
     int32_t threshold_diff = abs(vactual) - *joint->tmc.cs_thresh_cmd;
     int32_t stall_diff = sg_load - sg_trigger_thresh;
@@ -236,25 +234,26 @@ void hotshot_handle_move(joint_t * joint)
     // Debugging use only since we don't use positioning mode
     *joint->tmc.position_cmd = UNITS_TO_PULSES(*joint->position_cmd, joint->unit_pulse_factor);
 
+    // TODO Also doing this in motor_update
     *joint->position_fb = PULSES_TO_UNITS(*joint->tmc.position_fb, joint->unit_pulse_factor);
     *joint->velocity_fb = PULSES_TO_UNITS(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
 }
 
-void hotshot_update_joint(joint_t * joint)
-{
-    // Always keep these registers up to date
-    //
-    // Driver status
-    tmc5041_pull_register_DRV_STATUS(&joint->tmc);
-    // Position
-    *joint->tmc.position_fb = tmc5041_get_position(&joint->tmc);
-    *joint->position_fb     = PULSES_TO_UNITS(*joint->tmc.position_fb, joint->unit_pulse_factor);
-    // Velocity
-    *joint->tmc.velocity_fb  = tmc5041_get_velocity(&joint->tmc);
-    *joint->velocity_fb      = PULSES_TO_UNITS(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
-    // Stallguard threshold
-    tmc5041_push_register_COOLCONF(&joint->tmc);
-}
+// void hotshot_update_joint(joint_t * joint)
+// {
+//     // Always keep these registers up to date
+//     //
+//     // Driver status
+//     tmc5041_pull_register_DRV_STATUS(&joint->tmc);
+//     // Position
+//     *joint->tmc.position_fb = motor_get_position(&joint->tmc);
+//     *joint->position_fb     = PULSES_TO_UNITS(*joint->tmc.position_fb, joint->unit_pulse_factor);
+//     // Velocity
+//     *joint->tmc.velocity_fb  = motor_get_velocity(&joint->tmc);
+//     *joint->velocity_fb      = PULSES_TO_UNITS(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
+//     // Stallguard threshold
+//     tmc5041_push_register_COOLCONF(&joint->tmc);
+// }
 
 void hotshot_handle_joints(joint_t * joints, uint8_t motor_count) {
     // Do something with each joint
@@ -283,46 +282,47 @@ void hotshot_joint_spi(joint_t * joints, uint8_t motor_count)
     {
         rpi_spi_select(*joints[i].tmc.chip); 
         
-        //
-        // Writes
-        //
-        // Turn motor on or off
-        if (joints[i].tmc.is_motor_on == TRUE)
-        {
-            tmc5041_motor_power_on(&joints[i].tmc);
-        }
-        else
-        {
-            // LinuxCNC power button is off, so power motor off
-            // FIXME it's possible for driver to keep counting steps even after tmc5041_motor_power_off
-            tmc5041_motor_position_hold(&joints[i].tmc);            
-            tmc5041_motor_power_off(&joints[i].tmc);
-        }
+        // //
+        // // Writes
+        // //
+        // // Turn motor on or off
+        // if (joints[i].tmc.is_motor_on == TRUE)
+        // {
+        //     motor_on(&joints[i].tmc);
+        // }
+        // else
+        // {
+        //     // LinuxCNC power button is off, so power motor off
+        //     // FIXME it's possible for driver to keep counting steps even after motor_off
+        //     motor_stop(&joints[i].tmc);            
+        //     motor_off(&joints[i].tmc);
+        // }
 
-        // Set turn direction
-        //  1: Velocity mode to positive VMAX (using AMAX acceleration)
-        //  2: Velocity mode to negative VMAX (using AMAX acceleration)
-        if (*joints[i].tmc.velocity_cmd > 0)
-            tmc5041_set_register_RAMPMODE(&joints[i].tmc, 1);
-        else if (*joints[i].tmc.velocity_cmd < 0)
-            tmc5041_set_register_RAMPMODE(&joints[i].tmc, 2);
-        // else vmax == 0. do nothing while decelaration ramp finishes
-        // Set velocity
-        // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
-        tmc5041_set_velocity(&joints[i].tmc, *joints[i].tmc.velocity_cmd);
+        // // Set turn direction
+        // //  1: Velocity mode to positive VMAX (using AMAX acceleration)
+        // //  2: Velocity mode to negative VMAX (using AMAX acceleration)
+        // if (*joints[i].tmc.velocity_cmd > 0)
+        //     tmc5041_set_register_RAMPMODE(&joints[i].tmc, 1);
+        // else if (*joints[i].tmc.velocity_cmd < 0)
+        //     tmc5041_set_register_RAMPMODE(&joints[i].tmc, 2);
+        // // else vmax == 0. do nothing while decelaration ramp finishes
+        // // Set velocity
+        // // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
+        // motor_set_velocity(&joints[i].tmc, *joints[i].tmc.velocity_cmd);
 
-        // TODO move all math to hotshot_handle_move
-        //
-        // Reads
-        //
-        // Driver status
-        tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
-        // Position
-        *joints[i].tmc.position_fb = tmc5041_get_position(&joints[i].tmc);
-        // Velocity
-        *joints[i].tmc.velocity_fb  = tmc5041_get_velocity(&joints[i].tmc);
-        // Stallguard threshold
-        tmc5041_push_register_COOLCONF(&joints[i].tmc);
+        // // TODO move all math to hotshot_handle_move
+        // //
+        // // Reads
+        // //
+        // // Driver status
+        // tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
+        // // Position
+        // *joints[i].tmc.position_fb = motor_get_position(&joints[i].tmc);
+        // // Velocity
+        // *joints[i].tmc.velocity_fb  = motor_get_velocity(&joints[i].tmc);
+        // // Stallguard threshold
+        // tmc5041_push_register_COOLCONF(&joints[i].tmc);
+        motor_update();
 
         rpi_spi_unselect();
     }
@@ -337,7 +337,7 @@ void hotshot_end(joint_t * joints, uint8_t motor_count)
     printf("hotshot: Shut down motors\n");
 
     for (uint8_t i = 0; i < motor_count; i++) {
-        tmc5041_motor_end(&joints[i].tmc);
+        motor_end(&joints[i].tmc);
     }
 
     printf("hotshot: Shut down motors complete\n");

@@ -59,7 +59,6 @@ typedef struct {
     bool reset_flag;
 } spi_status_t;
 
-
 typedef int32_t     sg_thresh_t;
 typedef bool        home_sw_t;
 typedef bool        torch_breakaway_t;
@@ -164,7 +163,7 @@ void tmc5041_log_motor_state(tmc5041_motor_t * motor);
 void tmc5041_set_register_XACTUAL(tmc5041_motor_t * motor, int32 xactual);
 int32_t tmc5041_get_register_XACTUAL(tmc5041_motor_t * motor);
 int32_t tmc5041_get_register_VACTUAL(tmc5041_motor_t * motor);
-spi_status_t tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget);
+void tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget);
 void tmc5041_pull_register_RAMP_STAT(tmc5041_motor_t * motor);
 ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor);
 drv_status_register_t tmc5041_get_register_DRV_STATUS(tmc5041_motor_t * motor);
