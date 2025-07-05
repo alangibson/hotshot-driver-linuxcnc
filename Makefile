@@ -26,7 +26,7 @@ rpi.bcm2835.o:
 rpi.linux.o:
 	$(Q)gcc -Werror -I/usr/include/gpiod rpi.linux.c -o rpi.linux.o -c
 
-motor.tmc5041.o: rpi.bcm2835.o
+motor.tmc5041.o: # rpi.bcm2835.o
 	$(Q)gcc -Werror -I . motor.tmc5041.c -o motor.tmc5041.o -c
 
 mcp3002.o: rpi.bcm2835.o
@@ -56,7 +56,7 @@ test.mcp3002: rpi.bcm2835.o mcp3002.o
 	$(Q)gcc -Werror -o mcp3002.test mcp3002.o rpi.bcm2835.o mcp3002.test.o $(LIBS)
 	./mcp3002.test
 
-test.tmc5041: rpi.bcm2835.o motor.tmc5041.o
+test.tmc5041: # rpi.bcm2835.o motor.tmc5041.o
 	$(Q)gcc -Werror -I . tmc5041.test.c -o tmc5041.test.o -c
 	$(Q)gcc -Werror -o tmc5041.test rpi.bcm2835.o motor.tmc5041.o tmc5041.test.o $(LIBS)
 	./tmc5041.test

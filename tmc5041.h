@@ -13,6 +13,8 @@
 #define TMC5041_FIELD_WRITE(tdef, address, mask, shift, value) \
 	(tmc5041_writeInt(tdef, address, FIELD_SET(tmc5041_readInt(tdef, address), mask, shift, value)))
 
+#define CW 1
+#define CCW 2
 
 typedef struct {
     bool standstill;
