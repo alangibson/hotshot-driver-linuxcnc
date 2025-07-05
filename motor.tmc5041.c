@@ -5,6 +5,7 @@
 #include "tmc5041.h"
 #include "rpi.h"
 #include "global.h"
+#include "motor.h"
 
 // ----------------------------------------------------------------------------
 // Taken from TMC5041.c and modified
@@ -116,6 +117,306 @@ float64_t tmc5041_acceleration_time_ref(uint32_t fclk)
 {
     // Time reference ta² for accelerations: ta² = 2^41 / (fCLK)²
     return pow(2, 41) / (float64_t)pow(fclk, 2);
+}
+
+/**
+ * Creates and initializes a new tmc5041_motor_t struct.
+ * All pointers are initialized to NULL and scalar values to 0.
+ * The chip and motor values are set to the provided values.
+ * 
+ * @param chip The chip number this motor belongs to
+ * @param motor The motor number within the chip (0 or 1)
+ * @return A pointer to the newly allocated and initialized motor struct
+ */
+tmc5041_motor_t * tmc5041_motor_create(tmc_chip_t chip, tmc_motor_t motor) {
+    // Allocate memory for the struct
+    tmc5041_motor_t * m = (tmc5041_motor_t *)malloc(sizeof(tmc5041_motor_t));
+    if (!m) return NULL;  // Return NULL if allocation fails
+
+    // Initialize scalar values
+    m->mres = 0;
+    m->last_position_cmd = 0;
+    m->acceleration_cmd = 0;
+    m->max_acceleration_cmd = 0;
+    m->is_motor_on = false;
+    m->velocity_time_ref = 0;
+    m->acceleration_time_ref = 0;
+
+    // Allocate and initialize chip and motor numbers
+    m->chip = (tmc_chip_t *)malloc(sizeof(tmc_chip_t));
+    m->motor = (tmc_motor_t *)malloc(sizeof(tmc_motor_t));
+    // if (!m->chip || !m->motor) {
+    //     // Clean up if allocation fails
+    //     if (m->chip) free(m->chip);
+    //     if (m->motor) free(m->motor);
+    //     free(m);
+    //     return NULL;
+    // }
+    *m->chip = chip;
+    *m->motor = motor;
+
+    // Allocate memory for command variables
+    m->position_cmd = (volatile tmc_position_t *)malloc(sizeof(tmc_position_t));
+    m->velocity_cmd = (volatile tmc_velocity_t *)malloc(sizeof(tmc_velocity_t));
+    m->cs_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->sg_stop_cmd = (volatile bool *)malloc(sizeof(bool));
+    m->run_current_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->hold_current_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->current_hold_delay_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_mode_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_a1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_d1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_dmax_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_vstart_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_vstop_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_v1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_tzerowait_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_sfilt_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_seimin_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_sedn_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_seup_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_semin_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_semax_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_mode_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_vhigh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_vhighchm_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_vhighfs_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_tbl_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_hend_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_hstrt_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_toff_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_vsense_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->sw_en_softstop = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->sg_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->sg_trigger_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->vmax_factor_cmd = (volatile float64_t *)malloc(sizeof(float64_t));
+
+    // Check all command variable allocations
+    // if (!m->position_cmd || !m->velocity_cmd || !m->cs_thresh_cmd || 
+    //     !m->sg_stop_cmd || !m->run_current_cmd || !m->hold_current_cmd ||
+    //     !m->current_hold_delay_cmd || !m->ramp_mode_cmd || !m->ramp_a1_cmd ||
+    //     !m->ramp_d1_cmd || !m->ramp_dmax_cmd || !m->ramp_vstart_cmd ||
+    //     !m->ramp_vstop_cmd || !m->ramp_v1_cmd || !m->ramp_tzerowait_cmd ||
+    //     !m->coolstep_sfilt_cmd || !m->coolstep_seimin_cmd || !m->coolstep_sedn_cmd ||
+    //     !m->coolstep_seup_cmd || !m->coolstep_semin_cmd || !m->coolstep_semax_cmd ||
+    //     !m->chop_mode_cmd || !m->chop_vhigh_cmd || !m->chop_vhighchm_cmd ||
+    //     !m->chop_vhighfs_cmd || !m->chop_tbl_cmd || !m->chop_hend_cmd ||
+    //     !m->chop_hstrt_cmd || !m->chop_toff_cmd || !m->chop_vsense_cmd ||
+    //     !m->sw_en_softstop || !m->sg_thresh_cmd || !m->sg_trigger_thresh_cmd ||
+    //     !m->vmax_factor_cmd) {
+        
+    //     // Free all allocated memory
+    //     if (m->chip) free(m->chip);
+    //     if (m->motor) free(m->motor);
+    //     if (m->position_cmd) free((void*)m->position_cmd);
+    //     if (m->velocity_cmd) free((void*)m->velocity_cmd);
+    //     if (m->cs_thresh_cmd) free((void*)m->cs_thresh_cmd);
+    //     if (m->sg_stop_cmd) free((void*)m->sg_stop_cmd);
+    //     if (m->run_current_cmd) free((void*)m->run_current_cmd);
+    //     if (m->hold_current_cmd) free((void*)m->hold_current_cmd);
+    //     if (m->current_hold_delay_cmd) free((void*)m->current_hold_delay_cmd);
+    //     if (m->ramp_mode_cmd) free((void*)m->ramp_mode_cmd);
+    //     if (m->ramp_a1_cmd) free((void*)m->ramp_a1_cmd);
+    //     if (m->ramp_d1_cmd) free((void*)m->ramp_d1_cmd);
+    //     if (m->ramp_dmax_cmd) free((void*)m->ramp_dmax_cmd);
+    //     if (m->ramp_vstart_cmd) free((void*)m->ramp_vstart_cmd);
+    //     if (m->ramp_vstop_cmd) free((void*)m->ramp_vstop_cmd);
+    //     if (m->ramp_v1_cmd) free((void*)m->ramp_v1_cmd);
+    //     if (m->ramp_tzerowait_cmd) free((void*)m->ramp_tzerowait_cmd);
+    //     if (m->coolstep_sfilt_cmd) free((void*)m->coolstep_sfilt_cmd);
+    //     if (m->coolstep_seimin_cmd) free((void*)m->coolstep_seimin_cmd);
+    //     if (m->coolstep_sedn_cmd) free((void*)m->coolstep_sedn_cmd);
+    //     if (m->coolstep_seup_cmd) free((void*)m->coolstep_seup_cmd);
+    //     if (m->coolstep_semin_cmd) free((void*)m->coolstep_semin_cmd);
+    //     if (m->coolstep_semax_cmd) free((void*)m->coolstep_semax_cmd);
+    //     if (m->chop_mode_cmd) free((void*)m->chop_mode_cmd);
+    //     if (m->chop_vhigh_cmd) free((void*)m->chop_vhigh_cmd);
+    //     if (m->chop_vhighchm_cmd) free((void*)m->chop_vhighchm_cmd);
+    //     if (m->chop_vhighfs_cmd) free((void*)m->chop_vhighfs_cmd);
+    //     if (m->chop_tbl_cmd) free((void*)m->chop_tbl_cmd);
+    //     if (m->chop_hend_cmd) free((void*)m->chop_hend_cmd);
+    //     if (m->chop_hstrt_cmd) free((void*)m->chop_hstrt_cmd);
+    //     if (m->chop_toff_cmd) free((void*)m->chop_toff_cmd);
+    //     if (m->chop_vsense_cmd) free((void*)m->chop_vsense_cmd);
+    //     if (m->sw_en_softstop) free((void*)m->sw_en_softstop);
+    //     if (m->sg_thresh_cmd) free((void*)m->sg_thresh_cmd);
+    //     if (m->sg_trigger_thresh_cmd) free((void*)m->sg_trigger_thresh_cmd);
+    //     if (m->vmax_factor_cmd) free((void*)m->vmax_factor_cmd);
+    //     free(m);
+    //     return NULL;
+    // }
+
+    // Initialize command values to 0
+    if (m->position_cmd) *m->position_cmd = 0;
+    if (m->velocity_cmd) *m->velocity_cmd = 0;
+    if (m->cs_thresh_cmd) *m->cs_thresh_cmd = 0;
+    if (m->sg_stop_cmd) *m->sg_stop_cmd = 0;
+    if (m->run_current_cmd) *m->run_current_cmd = 0;
+    if (m->hold_current_cmd) *m->hold_current_cmd = 0;
+    if (m->current_hold_delay_cmd) *m->current_hold_delay_cmd = 0;
+    if (m->ramp_mode_cmd) *m->ramp_mode_cmd = 0;
+    if (m->ramp_a1_cmd) *m->ramp_a1_cmd = 0;
+    if (m->ramp_d1_cmd) *m->ramp_d1_cmd = 0;
+    if (m->ramp_dmax_cmd) *m->ramp_dmax_cmd = 0;
+    if (m->ramp_vstart_cmd) *m->ramp_vstart_cmd = 0;
+    if (m->ramp_vstop_cmd) *m->ramp_vstop_cmd = 0;
+    if (m->ramp_v1_cmd) *m->ramp_v1_cmd = 0;
+    if (m->ramp_tzerowait_cmd) *m->ramp_tzerowait_cmd = 0;
+    if (m->coolstep_sfilt_cmd) *m->coolstep_sfilt_cmd = 0;
+    if (m->coolstep_seimin_cmd) *m->coolstep_seimin_cmd = 0;
+    if (m->coolstep_sedn_cmd) *m->coolstep_sedn_cmd = 0;
+    if (m->coolstep_seup_cmd) *m->coolstep_seup_cmd = 0;
+    if (m->coolstep_semin_cmd) *m->coolstep_semin_cmd = 0;
+    if (m->coolstep_semax_cmd) *m->coolstep_semax_cmd = 0;
+    if (m->chop_mode_cmd) *m->chop_mode_cmd = 0;
+    if (m->chop_vhigh_cmd) *m->chop_vhigh_cmd = 0;
+    if (m->chop_vhighchm_cmd) *m->chop_vhighchm_cmd = 0;
+    if (m->chop_vhighfs_cmd) *m->chop_vhighfs_cmd = 0;
+    if (m->chop_tbl_cmd) *m->chop_tbl_cmd = 0;
+    if (m->chop_hend_cmd) *m->chop_hend_cmd = 0;
+    if (m->chop_hstrt_cmd) *m->chop_hstrt_cmd = 0;
+    if (m->chop_toff_cmd) *m->chop_toff_cmd = 0;
+    if (m->chop_vsense_cmd) *m->chop_vsense_cmd = 0;
+    if (m->sw_en_softstop) *m->sw_en_softstop = 0;
+    if (m->sg_thresh_cmd) *m->sg_thresh_cmd = 0;
+    if (m->sg_trigger_thresh_cmd) *m->sg_trigger_thresh_cmd = 0;
+    if (m->vmax_factor_cmd) *m->vmax_factor_cmd = 0;
+
+    // Allocate and initialize feedback variables
+    m->velocity_reached_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_sg_fb = (volatile bool *)malloc(sizeof(bool));
+    m->position_reached_fb = (volatile bool *)malloc(sizeof(bool));
+    m->event_pos_reached_fb = (volatile bool *)malloc(sizeof(bool));
+    m->event_stop_sg_fb = (volatile bool *)malloc(sizeof(bool));
+    m->event_stop_r_fb = (volatile bool *)malloc(sizeof(bool));
+    m->event_stop_l_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_latch_r_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_latch_l_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_stop_r_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_stop_l_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_standstill_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_full_stepping_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_overtemp_warning_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_overtemp_alarm_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_load_fb = (volatile int32_t *)malloc(sizeof(int32_t));
+    m->motor_current_fb = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->motor_stall_fb = (volatile bool *)malloc(sizeof(bool));
+    m->position_fb = (volatile int32_t *)malloc(sizeof(int32_t));
+    m->velocity_fb = (volatile int32_t *)malloc(sizeof(int32_t));
+
+    // Initialize all feedback values to 0
+    if (m->velocity_reached_fb) *m->velocity_reached_fb = 0;
+    if (m->status_sg_fb) *m->status_sg_fb = 0;
+    if (m->position_reached_fb) *m->position_reached_fb = 0;
+    if (m->event_pos_reached_fb) *m->event_pos_reached_fb = 0;
+    if (m->event_stop_sg_fb) *m->event_stop_sg_fb = 0;
+    if (m->event_stop_r_fb) *m->event_stop_r_fb = 0;
+    if (m->event_stop_l_fb) *m->event_stop_l_fb = 0;
+    if (m->status_latch_r_fb) *m->status_latch_r_fb = 0;
+    if (m->status_latch_l_fb) *m->status_latch_l_fb = 0;
+    if (m->status_stop_r_fb) *m->status_stop_r_fb = 0;
+    if (m->status_stop_l_fb) *m->status_stop_l_fb = 0;
+    if (m->motor_standstill_fb) *m->motor_standstill_fb = 0;
+    if (m->motor_full_stepping_fb) *m->motor_full_stepping_fb = 0;
+    if (m->motor_overtemp_warning_fb) *m->motor_overtemp_warning_fb = 0;
+    if (m->motor_overtemp_alarm_fb) *m->motor_overtemp_alarm_fb = 0;
+    if (m->motor_load_fb) *m->motor_load_fb = 0;
+    if (m->motor_current_fb) *m->motor_current_fb = 0;
+    if (m->motor_stall_fb) *m->motor_stall_fb = 0;
+    if (m->position_fb) *m->position_fb = 0;
+    if (m->velocity_fb) *m->velocity_fb = 0;
+
+    return m;
+}
+
+/**
+ * Multiply each velocity value (in machine units per second) with this factor
+ * to normalize the velocity to steps per second. 
+ * 
+ * Based on 17.1 Using the Internal Clock in TMC5041 datasheet.
+ * Make sure to SPI select the correct chip before running this function.
+ * At a nominal value of the internal clock frequency, 780 steps will be done in 100ms.
+ */
+float64_t tmc5041_frequency_scaling(tmc5041_motor_t * motor)
+{
+    
+    // 1. You may leave the motor driver disabled during the calibration. 
+    motor_end(motor);
+
+    // 2. Start  motor  in  velocity  mode,  with  VMAX=10000  and  AMAX=60000
+    // (for  quick  acceleration).  The acceleration phase is ended after a few ms.
+    int32_t vmax = 10000;
+    int32_t amax = 60000;
+    tmc5041_set_register_RAMPMODE(motor, 1); // 1: Velocity mode to positive VMAX
+    tmc5041_set_register_VMAX(motor, vmax);
+    tmc5041_set_register_AMAX(motor, amax);
+    // Wait 10ms
+    struct timeval tv_1;
+    int wait_1_ms = 10;
+    tv_1.tv_sec = wait_1_ms / 1000;
+    tv_1.tv_usec = (wait_1_ms % 1000) * 1000;
+    select(0, NULL, NULL, NULL, &tv_1);  // No file descriptors, just timeout
+    #ifdef DEBUG_SCALING
+    printf("hotshot(%d,%d)[scaling]: VMAX=%d, AMAX=%d. Waited %d ms.\n", 
+                *motor->chip, *motor->motor, vmax, amax, wait_1_ms);
+    #endif
+
+    // 3. Read out XACTUAL twice, at time point t1 and time point t2, e.g. 100ms 
+    // later (dt=0.1s). The time difference between both read accesses shall be 
+    // exactly timed by the external microcontroller.
+    int32_t xactual_t1 = tmc5041_get_register_XACTUAL(motor);
+    // Record current time in ms
+    struct timeval tv_2;
+    gettimeofday(&tv_2, NULL);
+    float64_t t1 = (tv_2.tv_sec * 1000LL) + (tv_2.tv_usec / 1000); // Convert seconds to ms and microseconds to ms
+    // Wait 100ms
+    struct timeval tv_3;
+    int wait_2_ms = 100;
+    tv_3.tv_sec = wait_2_ms / 1000;
+    tv_3.tv_usec = (wait_2_ms % 1000) * 1000;
+    select(0, NULL, NULL, NULL, &tv_3);  // No file descriptors, just timeout
+    // Again record current time in ms
+    struct timeval tv_4;
+    gettimeofday(&tv_4, NULL);
+    float64_t t2 = (tv_4.tv_sec * 1000LL) + (tv_4.tv_usec / 1000); // Convert seconds to ms and microseconds to ms
+    // Calculate exact duration that passed in ms
+    float64_t dt = (t2 - t1) / 1000; // in sec
+    int32_t xactual_t2 = tmc5041_get_register_XACTUAL(motor);
+    #ifdef DEBUG_SCALING
+    int32_t actual_steps = xactual_t2 - xactual_t1;
+    printf("hotshot(%d,%d)[scaling]: Moved actual steps = %d. Waited sec: target=%f, actual=%f.\n", 
+                *motor->chip, *motor->motor, actual_steps, (double)wait_2_ms/1000, dt);
+    #endif
+
+    // 4. Stop the motion ramp by setting VMAX=0.
+    tmc5041_set_register_VMAX(motor, 0);
+    // TODO restore AMAX
+    // tmc5041_set_register_AMAX(motor, 0);
+    // TODO restore driver on/off state
+    // tmc5041_set_register_RAMPMODE(motor, 0); // 0: hold
+    // motor_end(motor);
+    // Wait 10ms
+    struct timeval tv_5;
+    int wait_10_ms = 10;
+    tv_5.tv_sec = wait_1_ms / 1000;
+    tv_5.tv_usec = (wait_1_ms % 1000) * 1000;
+    select(0, NULL, NULL, NULL, &tv_5);  // No file descriptors, just timeout
+    int32_t vmax_actual = tmc5041_get_register_VACTUAL(motor);
+    #ifdef DEBUG_SCALING
+    printf("hotshot(%d,%d)[scaling]: Stopped motion ramp. Now VACTUAL=%d, AMAX=%d, RAMPMODE=%d.\n", 
+                *motor->chip, *motor->motor, vmax_actual, 0, 0);
+    #endif
+
+    // 5. The number of steps done in between of t1 and t2 now can be used to 
+    // calculate the factor
+    // f = (vmax * dt) / (xactual(t2) - xactual(t1))
+    float64_t f = (vmax * dt) / (xactual_t2 - xactual_t1);
+    #ifdef DEBUG_SCALING
+    printf("hotshot(%d,%d)[scaling]: Scaling factor is %f.\n", 
+                *motor->chip, *motor->motor, f);
+    #endif
+
+    return f;
 }
 
 // Utility functions
@@ -430,19 +731,26 @@ int32_t tmc5041_get_register_XLATCH(tmc5041_motor_t * motor) {
 // ----------------------------------------------------------------------------
 // motor.h interface
 
-void motor_set_velocity(tmc5041_motor_t * motor, int32_t vmax)
+void motor_set_velocity(tmc5041_motor_t * motor, motor_velocity_t vmax)
 {
-    tmc5041_set_register_VMAX(motor, abs(vmax * motor->velocity_time_ref));
+    *motor->velocity_cmd = vmax;
 }
 
 int32_t motor_get_velocity(tmc5041_motor_t * motor)
 {
-    return tmc5041_get_register_VACTUAL(motor) / motor->velocity_time_ref;
+    // return tmc5041_get_register_VACTUAL(motor) / motor->velocity_time_ref;
+    return *motor->velocity_fb;
+}
+
+motor_load_t motor_get_load(tmc5041_motor_t * motor)
+{
+    return *motor->motor_load_fb;
 }
 
 int32_t motor_get_position(tmc5041_motor_t * motor)
 {
-    return tmc5041_get_register_XACTUAL(motor);
+    // return tmc5041_get_register_XACTUAL(motor);
+    return *motor->position_fb;
 }
 
 void motor_stop(tmc5041_motor_t * motor)
@@ -454,10 +762,9 @@ void motor_stop(tmc5041_motor_t * motor)
     tmc5041_set_register_VMAX(motor, 0);   
 }
 
-void motor_set_home(tmc5041_motor_t * motor)
+void motor_homed(tmc5041_motor_t * motor)
 {
     // Disable stallguard stop on stall
-    *motor->sg_stop_cmd = 0;
     tmc5041_push_register_SW_MODE(motor);
     // Switch the ramp generator to hold mode
     tmc5041_set_register_RAMPMODE(motor, TMC5041_MODE_HOLD);
@@ -474,6 +781,16 @@ void motor_set_home(tmc5041_motor_t * motor)
     // tmc5041_set_register_RAMPMODE(motor, TMC5041_MODE_POSITION);
 }
 
+void motor_set_on(tmc5041_motor_t * motor)
+{
+    motor->is_motor_on = TRUE;
+}
+
+void motor_set_off(tmc5041_motor_t * motor)
+{
+    motor->is_motor_on = FALSE;
+}
+
 // TODO use CHOPCONF register struct here
 void motor_on(tmc5041_motor_t * motor)
 {
@@ -484,6 +801,7 @@ void motor_on(tmc5041_motor_t * motor)
     int32_t chopconf = tmc5041_readInt(motor, TMC5041_CHOPCONF(*motor->motor));
     chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, *motor->chop_toff_cmd);
     tmc5041_writeInt(motor, TMC5041_CHOPCONF(*motor->motor), chopconf);
+    
     motor->is_motor_on = TRUE;
 }
 
@@ -494,6 +812,12 @@ void motor_off(tmc5041_motor_t * motor)
     chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0); // 0 = off
     tmc5041_writeInt(motor, TMC5041_CHOPCONF(*motor->motor), chopconf);
     motor->is_motor_on = FALSE;
+}
+
+void motor_rotate(tmc5041_motor_t * motor, motor_dir_t dir) 
+{
+     // 1: Velocity mode = positive VMAX
+    tmc5041_set_register_RAMPMODE(motor, dir);
 }
 
 /** Read/write to/from motor driver over SPI bus.
@@ -528,7 +852,7 @@ void motor_update(tmc5041_motor_t * motor)
     // else vmax == 0. do nothing while decelaration ramp finishes
     // Set velocity
     // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
-    motor_set_velocity(motor, *motor->velocity_cmd);
+    tmc5041_set_register_VMAX(motor, abs((*motor->velocity_cmd) * motor->velocity_time_ref));
 
     // TODO move all math to hotshot_handle_move
     //
@@ -537,11 +861,14 @@ void motor_update(tmc5041_motor_t * motor)
     // Driver status
     tmc5041_pull_register_DRV_STATUS(motor);
     // Position
-    *motor->position_fb = motor_get_position(motor);
+    // *motor->position_fb = motor_get_position(motor);
+    *motor->position_fb = tmc5041_get_register_XACTUAL(motor);
     // TODO can we do math in this function since it should be fast?
     // *joint->position_fb     = PULSES_TO_UNITS(*joint->tmc.position_fb, joint->unit_pulse_factor);
     // Velocity
-    *motor->velocity_fb  = motor_get_velocity(motor);
+    // *motor->velocity_fb  = motor_get_velocity(motor);
+    *motor->velocity_fb  = tmc5041_get_register_VACTUAL(motor) / motor->velocity_time_ref;
+    // *motor->velocity_fb  = tmc5041_get_register_VACTUAL(motor);
     // TODO can we do math in this function since it should be fast?
     // *joint->velocity_fb      = PULSES_TO_UNITS(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
     // Stallguard threshold
@@ -561,6 +888,7 @@ void motor_init(tmc5041_motor_t * motor)
     // Calculate frequency scaling
     float64_t scale_factor = tmc5041_frequency_scaling(motor);
     motor->velocity_time_ref = scale_factor;
+    motor->acceleration_time_ref = tmc5041_acceleration_time_ref(TMC5041_CLOCK_HZ);
 
     // Prevent unexpected moves before we do anything else
     // Always start in hold mode to prevent unexpected movement
@@ -633,105 +961,18 @@ void motor_init(tmc5041_motor_t * motor)
 
 void motor_end(tmc5041_motor_t * motor)
 {
+
     // Stop chopper
     motor_off(motor);
     // Clear stallguard
-    tmc5041_motor_clear_stall(motor);
+    // tmc5041_motor_clear_stall(motor);
+    // Clear stallguard with by reading RAMP_STAT register
+    tmc5041_pull_register_RAMP_STAT(motor);
     // Reset XACTUAL to 0
-    motor_set_home(motor);
+    motor_homed(motor);
 }
 
 // TODO motor_load
 
 // motor.h interface
 // ----------------------------------------------------------------------------
-
-/**
- * Multiply each velocity value (in machine units per second) with this factor
- * to normalize the velocity to steps per second. 
- * 
- * Based on 17.1 Using the Internal Clock in TMC5041 datasheet.
- * Make sure to SPI select the correct chip before running this function.
- * At a nominal value of the internal clock frequency, 780 steps will be done in 100ms.
- */
-float64_t tmc5041_frequency_scaling(tmc5041_motor_t * motor)
-{
-    
-    // 1. You may leave the motor driver disabled during the calibration. 
-    motor_end(motor);
-
-    // 2. Start  motor  in  velocity  mode,  with  VMAX=10000  and  AMAX=60000
-    // (for  quick  acceleration).  The acceleration phase is ended after a few ms.
-    int32_t vmax = 10000;
-    int32_t amax = 60000;
-    tmc5041_set_register_RAMPMODE(motor, 1); // 1: Velocity mode to positive VMAX
-    tmc5041_set_register_VMAX(motor, vmax);
-    tmc5041_set_register_AMAX(motor, amax);
-    // Wait 10ms
-    struct timeval tv_1;
-    int wait_1_ms = 10;
-    tv_1.tv_sec = wait_1_ms / 1000;
-    tv_1.tv_usec = (wait_1_ms % 1000) * 1000;
-    select(0, NULL, NULL, NULL, &tv_1);  // No file descriptors, just timeout
-    #ifdef DEBUG_SCALING
-    printf("hotshot(%d,%d)[scaling]: VMAX=%d, AMAX=%d. Waited %d ms.\n", 
-                *motor->chip, *motor->motor, vmax, amax, wait_1_ms);
-    #endif
-
-    // 3. Read out XACTUAL twice, at time point t1 and time point t2, e.g. 100ms 
-    // later (dt=0.1s). The time difference between both read accesses shall be 
-    // exactly timed by the external microcontroller.
-    int32_t xactual_t1 = tmc5041_get_register_XACTUAL(motor);
-    // Record current time in ms
-    struct timeval tv_2;
-    gettimeofday(&tv_2, NULL);
-    float64_t t1 = (tv_2.tv_sec * 1000LL) + (tv_2.tv_usec / 1000); // Convert seconds to ms and microseconds to ms
-    // Wait 100ms
-    struct timeval tv_3;
-    int wait_2_ms = 100;
-    tv_3.tv_sec = wait_2_ms / 1000;
-    tv_3.tv_usec = (wait_2_ms % 1000) * 1000;
-    select(0, NULL, NULL, NULL, &tv_3);  // No file descriptors, just timeout
-    // Again record current time in ms
-    struct timeval tv_4;
-    gettimeofday(&tv_4, NULL);
-    float64_t t2 = (tv_4.tv_sec * 1000LL) + (tv_4.tv_usec / 1000); // Convert seconds to ms and microseconds to ms
-    // Calculate exact duration that passed in ms
-    float64_t dt = (t2 - t1) / 1000; // in sec
-    int32_t xactual_t2 = tmc5041_get_register_XACTUAL(motor);
-    #ifdef DEBUG_SCALING
-    int32_t actual_steps = xactual_t2 - xactual_t1;
-    printf("hotshot(%d,%d)[scaling]: Moved actual steps = %d. Waited sec: target=%f, actual=%f.\n", 
-                *motor->chip, *motor->motor, actual_steps, (double)wait_2_ms/1000, dt);
-    #endif
-
-    // 4. Stop the motion ramp by setting VMAX=0.
-    tmc5041_set_register_VMAX(motor, 0);
-    // TODO restore AMAX
-    // tmc5041_set_register_AMAX(motor, 0);
-    // TODO restore driver on/off state
-    // tmc5041_set_register_RAMPMODE(motor, 0); // 0: hold
-    // motor_end(motor);
-    // Wait 10ms
-    struct timeval tv_5;
-    int wait_10_ms = 10;
-    tv_5.tv_sec = wait_1_ms / 1000;
-    tv_5.tv_usec = (wait_1_ms % 1000) * 1000;
-    select(0, NULL, NULL, NULL, &tv_5);  // No file descriptors, just timeout
-    int32_t vmax_actual = tmc5041_get_register_VACTUAL(motor);
-    #ifdef DEBUG_SCALING
-    printf("hotshot(%d,%d)[scaling]: Stopped motion ramp. Now VACTUAL=%d, AMAX=%d, RAMPMODE=%d.\n", 
-                *motor->chip, *motor->motor, vmax_actual, 0, 0);
-    #endif
-
-    // 5. The number of steps done in between of t1 and t2 now can be used to 
-    // calculate the factor
-    // f = (vmax * dt) / (xactual(t2) - xactual(t1))
-    float64_t f = (vmax * dt) / (xactual_t2 - xactual_t1);
-    #ifdef DEBUG_SCALING
-    printf("hotshot(%d,%d)[scaling]: Scaling factor is %f.\n", 
-                *motor->chip, *motor->motor, f);
-    #endif
-
-    return f;
-}

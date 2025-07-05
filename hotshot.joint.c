@@ -234,7 +234,6 @@ void hotshot_handle_move(joint_t * joint)
     // Debugging use only since we don't use positioning mode
     *joint->tmc.position_cmd = UNITS_TO_PULSES(*joint->position_cmd, joint->unit_pulse_factor);
 
-    // TODO Also doing this in motor_update
     *joint->position_fb = PULSES_TO_UNITS(*joint->tmc.position_fb, joint->unit_pulse_factor);
     *joint->velocity_fb = PULSES_TO_UNITS(*joint->tmc.velocity_fb, joint->unit_pulse_factor);
 }

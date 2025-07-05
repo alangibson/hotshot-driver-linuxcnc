@@ -1,8 +1,9 @@
 typedef uint8_t motor_dir_t;
+typedef int32_t motor_load_t;
 
 typedef int32_t motor_position_t;
 typedef int32_t motor_velocity_t;
-typedef uint32_t motor_acceleration_t;
+typedef int32_t motor_acceleration_t;
 
 /** 
  * Allow driver to set up motor.
@@ -35,7 +36,12 @@ void motor_stop(tmc5041_motor_t * motor);
   */
 void motor_update(tmc5041_motor_t * motor);
 
-uint32_t motor_load(tmc5041_motor_t * motor);
+motor_load_t motor_get_load(tmc5041_motor_t * motor);
 
-void motor_set_velocity(int32_t vel);
-void motor_set_acceleration(int32_t acc);
+motor_velocity_t motor_get_velocity(tmc5041_motor_t * motor);
+void motor_set_velocity(tmc5041_motor_t * motor, motor_velocity_t vel);
+
+motor_position_t motor_get_position(tmc5041_motor_t * motor);
+
+void motor_set_on(tmc5041_motor_t * motor);
+void motor_set_off(tmc5041_motor_t * motor);

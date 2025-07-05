@@ -821,49 +821,18 @@ void tmc5041_log_motor_state(tmc5041_motor_t * motor) {
 //     return TRUE;
 // }
 
-/**
- * Clear Stallguard motor stall flag.
- * Returns true if motor was stalled.
- */
-bool tmc5041_motor_clear_stall(tmc5041_motor_t * motor)
-{
-    // Release by setting SW_MODE sg_stop = 0
-    // "Disable to release motor after stop event."
-    // bool orig_stop_cmd = *motor->sg_stop_cmd;
-    // *motor->sg_stop_cmd = 0;
-    // tmc5041_push_register_SW_MODE(motor);
-    // *motor->sg_stop_cmd = orig_stop_cmd;
-    // tmc5041_push_register_SW_MODE(motor);
+// /**
+//  * Clear Stallguard motor stall flag.
+//  * Returns true if motor was stalled.
+//  */
+// bool tmc5041_motor_clear_stall(tmc5041_motor_t * motor)
+// {
+//     // Clear stallguard with by reading RAMP_STAT register
+//     // ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(motor);
+//     tmc5041_pull_register_RAMP_STAT(motor);
 
-    // Clear stallguard with by reading RAMP_STAT register
-    // ramp_stat_register_t ramp_stat = tmc5041_get_register_RAMP_STAT(motor);
-    tmc5041_pull_register_RAMP_STAT(motor);
-
-    // printf("hotshot(%d, %d): RAMP_STAT status_sg=%d, position_reached=%d, velocity_reached=%d, event_pos_reached=%d, event_stop_sg=%d, event_stop_r=%d, event_stop_l=%d, status_latch_r=%d, status_latch_l=%d, status_stop_r=%d, status_stop_l=%d\n", 
-    //     motor->chip.chip, motor->motor,
-    //     motor->status_sg,
-    //     motor->position_reached,
-    //     motor->velocity_reached_fb,
-    //     motor->event_pos_reached,
-    //     motor->event_stop_sg,
-    //     motor->event_stop_r,
-    //     motor->event_stop_l,
-    //     motor->status_latch_r,
-    //     motor->status_latch_l,
-    //     motor->status_stop_r,
-    //     motor->status_stop_l
-    // );
-
-    // tmc5041_pull_register_DRV_STATUS(motor);
-
-    // printf("tmc5041_motor_clear_stall: status_sg=%d, motor_load_fb=%d, motor_stall_fb=%d\n",
-    //     ramp_stat.status_sg,
-    //     *motor->motor_load_fb,
-    //     *motor->motor_stall_fb);
-
-    return *motor->motor_stall_fb;
-    // return FALSE;
-}
+//     return *motor->motor_stall_fb;
+// }
 
 // void tmc5041_motor_end(tmc5041_motor_t * motor)
 // {
@@ -887,156 +856,156 @@ void tmc5041_end(tmc5041_motor_t * motors, size_t motor_count)
     }
 }
 
-/**
- * Creates and initializes a new tmc5041_motor_t struct.
- * All pointers are initialized to NULL and scalar values to 0.
- * The chip and motor values are set to the provided values.
- * 
- * @param chip The chip number this motor belongs to
- * @param motor The motor number within the chip (0 or 1)
- * @return A pointer to the newly allocated and initialized motor struct
- */
-tmc5041_motor_t * tmc5041_motor_create(tmc_chip_t chip, tmc_motor_t motor) {
-    // Allocate memory for the struct
-    tmc5041_motor_t * m = (tmc5041_motor_t *)malloc(sizeof(tmc5041_motor_t));
-    if (!m) return NULL;  // Return NULL if allocation fails
+// /**
+//  * Creates and initializes a new tmc5041_motor_t struct.
+//  * All pointers are initialized to NULL and scalar values to 0.
+//  * The chip and motor values are set to the provided values.
+//  * 
+//  * @param chip The chip number this motor belongs to
+//  * @param motor The motor number within the chip (0 or 1)
+//  * @return A pointer to the newly allocated and initialized motor struct
+//  */
+// tmc5041_motor_t * tmc5041_motor_create(tmc_chip_t chip, tmc_motor_t motor) {
+//     // Allocate memory for the struct
+//     tmc5041_motor_t * m = (tmc5041_motor_t *)malloc(sizeof(tmc5041_motor_t));
+//     if (!m) return NULL;  // Return NULL if allocation fails
 
-    // Initialize scalar values
-    m->mres = 0;
-    m->last_position_cmd = 0;
-    m->acceleration_cmd = 0;
-    m->max_acceleration_cmd = 0;
-    m->is_motor_on = false;
-    m->velocity_time_ref = 0;
-    m->acceleration_time_ref = 0;
+//     // Initialize scalar values
+//     m->mres = 0;
+//     m->last_position_cmd = 0;
+//     m->acceleration_cmd = 0;
+//     m->max_acceleration_cmd = 0;
+//     m->is_motor_on = false;
+//     m->velocity_time_ref = 0;
+//     m->acceleration_time_ref = 0;
 
-    // Allocate and initialize chip and motor numbers
-    m->chip = (tmc_chip_t *)malloc(sizeof(tmc_chip_t));
-    m->motor = (tmc_motor_t *)malloc(sizeof(tmc_motor_t));
-    // if (!m->chip || !m->motor) {
-    //     // Clean up if allocation fails
-    //     if (m->chip) free(m->chip);
-    //     if (m->motor) free(m->motor);
-    //     free(m);
-    //     return NULL;
-    // }
-    *m->chip = chip;
-    *m->motor = motor;
+//     // Allocate and initialize chip and motor numbers
+//     m->chip = (tmc_chip_t *)malloc(sizeof(tmc_chip_t));
+//     m->motor = (tmc_motor_t *)malloc(sizeof(tmc_motor_t));
+//     // if (!m->chip || !m->motor) {
+//     //     // Clean up if allocation fails
+//     //     if (m->chip) free(m->chip);
+//     //     if (m->motor) free(m->motor);
+//     //     free(m);
+//     //     return NULL;
+//     // }
+//     *m->chip = chip;
+//     *m->motor = motor;
 
-    // Allocate memory for command variables
-    m->position_cmd = (volatile tmc_position_t *)malloc(sizeof(tmc_position_t));
-    m->velocity_cmd = (volatile tmc_velocity_t *)malloc(sizeof(tmc_velocity_t));
-    m->cs_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->sg_stop_cmd = (volatile bool *)malloc(sizeof(bool));
-    m->run_current_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->hold_current_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->current_hold_delay_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->ramp_mode_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->ramp_a1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->ramp_d1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->ramp_dmax_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->ramp_vstart_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->ramp_vstop_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->ramp_v1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->ramp_tzerowait_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->coolstep_sfilt_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->coolstep_seimin_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->coolstep_sedn_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->coolstep_seup_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->coolstep_semin_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->coolstep_semax_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_mode_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_vhigh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_vhighchm_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_vhighfs_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_tbl_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_hend_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_hstrt_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_toff_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->chop_vsense_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->sw_en_softstop = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->sg_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->sg_trigger_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->vmax_factor_cmd = (volatile float64_t *)malloc(sizeof(float64_t));
+//     // Allocate memory for command variables
+//     m->position_cmd = (volatile tmc_position_t *)malloc(sizeof(tmc_position_t));
+//     m->velocity_cmd = (volatile tmc_velocity_t *)malloc(sizeof(tmc_velocity_t));
+//     m->cs_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->sg_stop_cmd = (volatile bool *)malloc(sizeof(bool));
+//     m->run_current_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->hold_current_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->current_hold_delay_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->ramp_mode_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->ramp_a1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->ramp_d1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->ramp_dmax_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->ramp_vstart_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->ramp_vstop_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->ramp_v1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->ramp_tzerowait_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->coolstep_sfilt_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->coolstep_seimin_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->coolstep_sedn_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->coolstep_seup_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->coolstep_semin_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->coolstep_semax_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_mode_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_vhigh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_vhighchm_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_vhighfs_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_tbl_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_hend_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_hstrt_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_toff_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->chop_vsense_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->sw_en_softstop = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->sg_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->sg_trigger_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->vmax_factor_cmd = (volatile float64_t *)malloc(sizeof(float64_t));
 
-    // Initialize command values to 0
-    if (m->position_cmd) *m->position_cmd = 0;
-    if (m->velocity_cmd) *m->velocity_cmd = 0;
-    if (m->cs_thresh_cmd) *m->cs_thresh_cmd = 0;
-    if (m->sg_stop_cmd) *m->sg_stop_cmd = 0;
-    if (m->run_current_cmd) *m->run_current_cmd = 0;
-    if (m->hold_current_cmd) *m->hold_current_cmd = 0;
-    if (m->current_hold_delay_cmd) *m->current_hold_delay_cmd = 0;
-    if (m->ramp_mode_cmd) *m->ramp_mode_cmd = 0;
-    if (m->ramp_a1_cmd) *m->ramp_a1_cmd = 0;
-    if (m->ramp_d1_cmd) *m->ramp_d1_cmd = 0;
-    if (m->ramp_dmax_cmd) *m->ramp_dmax_cmd = 0;
-    if (m->ramp_vstart_cmd) *m->ramp_vstart_cmd = 0;
-    if (m->ramp_vstop_cmd) *m->ramp_vstop_cmd = 0;
-    if (m->ramp_v1_cmd) *m->ramp_v1_cmd = 0;
-    if (m->ramp_tzerowait_cmd) *m->ramp_tzerowait_cmd = 0;
-    if (m->coolstep_sfilt_cmd) *m->coolstep_sfilt_cmd = 0;
-    if (m->coolstep_seimin_cmd) *m->coolstep_seimin_cmd = 0;
-    if (m->coolstep_sedn_cmd) *m->coolstep_sedn_cmd = 0;
-    if (m->coolstep_seup_cmd) *m->coolstep_seup_cmd = 0;
-    if (m->coolstep_semin_cmd) *m->coolstep_semin_cmd = 0;
-    if (m->coolstep_semax_cmd) *m->coolstep_semax_cmd = 0;
-    if (m->chop_mode_cmd) *m->chop_mode_cmd = 0;
-    if (m->chop_vhigh_cmd) *m->chop_vhigh_cmd = 0;
-    if (m->chop_vhighchm_cmd) *m->chop_vhighchm_cmd = 0;
-    if (m->chop_vhighfs_cmd) *m->chop_vhighfs_cmd = 0;
-    if (m->chop_tbl_cmd) *m->chop_tbl_cmd = 0;
-    if (m->chop_hend_cmd) *m->chop_hend_cmd = 0;
-    if (m->chop_hstrt_cmd) *m->chop_hstrt_cmd = 0;
-    if (m->chop_toff_cmd) *m->chop_toff_cmd = 0;
-    if (m->chop_vsense_cmd) *m->chop_vsense_cmd = 0;
-    if (m->sw_en_softstop) *m->sw_en_softstop = 0;
-    if (m->sg_thresh_cmd) *m->sg_thresh_cmd = 0;
-    if (m->sg_trigger_thresh_cmd) *m->sg_trigger_thresh_cmd = 0;
-    if (m->vmax_factor_cmd) *m->vmax_factor_cmd = 0;
+//     // Initialize command values to 0
+//     if (m->position_cmd) *m->position_cmd = 0;
+//     if (m->velocity_cmd) *m->velocity_cmd = 0;
+//     if (m->cs_thresh_cmd) *m->cs_thresh_cmd = 0;
+//     if (m->sg_stop_cmd) *m->sg_stop_cmd = 0;
+//     if (m->run_current_cmd) *m->run_current_cmd = 0;
+//     if (m->hold_current_cmd) *m->hold_current_cmd = 0;
+//     if (m->current_hold_delay_cmd) *m->current_hold_delay_cmd = 0;
+//     if (m->ramp_mode_cmd) *m->ramp_mode_cmd = 0;
+//     if (m->ramp_a1_cmd) *m->ramp_a1_cmd = 0;
+//     if (m->ramp_d1_cmd) *m->ramp_d1_cmd = 0;
+//     if (m->ramp_dmax_cmd) *m->ramp_dmax_cmd = 0;
+//     if (m->ramp_vstart_cmd) *m->ramp_vstart_cmd = 0;
+//     if (m->ramp_vstop_cmd) *m->ramp_vstop_cmd = 0;
+//     if (m->ramp_v1_cmd) *m->ramp_v1_cmd = 0;
+//     if (m->ramp_tzerowait_cmd) *m->ramp_tzerowait_cmd = 0;
+//     if (m->coolstep_sfilt_cmd) *m->coolstep_sfilt_cmd = 0;
+//     if (m->coolstep_seimin_cmd) *m->coolstep_seimin_cmd = 0;
+//     if (m->coolstep_sedn_cmd) *m->coolstep_sedn_cmd = 0;
+//     if (m->coolstep_seup_cmd) *m->coolstep_seup_cmd = 0;
+//     if (m->coolstep_semin_cmd) *m->coolstep_semin_cmd = 0;
+//     if (m->coolstep_semax_cmd) *m->coolstep_semax_cmd = 0;
+//     if (m->chop_mode_cmd) *m->chop_mode_cmd = 0;
+//     if (m->chop_vhigh_cmd) *m->chop_vhigh_cmd = 0;
+//     if (m->chop_vhighchm_cmd) *m->chop_vhighchm_cmd = 0;
+//     if (m->chop_vhighfs_cmd) *m->chop_vhighfs_cmd = 0;
+//     if (m->chop_tbl_cmd) *m->chop_tbl_cmd = 0;
+//     if (m->chop_hend_cmd) *m->chop_hend_cmd = 0;
+//     if (m->chop_hstrt_cmd) *m->chop_hstrt_cmd = 0;
+//     if (m->chop_toff_cmd) *m->chop_toff_cmd = 0;
+//     if (m->chop_vsense_cmd) *m->chop_vsense_cmd = 0;
+//     if (m->sw_en_softstop) *m->sw_en_softstop = 0;
+//     if (m->sg_thresh_cmd) *m->sg_thresh_cmd = 0;
+//     if (m->sg_trigger_thresh_cmd) *m->sg_trigger_thresh_cmd = 0;
+//     if (m->vmax_factor_cmd) *m->vmax_factor_cmd = 0;
 
-    // Allocate and initialize feedback variables
-    m->velocity_reached_fb = (volatile bool *)malloc(sizeof(bool));
-    m->status_sg_fb = (volatile bool *)malloc(sizeof(bool));
-    m->position_reached_fb = (volatile bool *)malloc(sizeof(bool));
-    m->event_pos_reached_fb = (volatile bool *)malloc(sizeof(bool));
-    m->event_stop_sg_fb = (volatile bool *)malloc(sizeof(bool));
-    m->event_stop_r_fb = (volatile bool *)malloc(sizeof(bool));
-    m->event_stop_l_fb = (volatile bool *)malloc(sizeof(bool));
-    m->status_latch_r_fb = (volatile bool *)malloc(sizeof(bool));
-    m->status_latch_l_fb = (volatile bool *)malloc(sizeof(bool));
-    m->status_stop_r_fb = (volatile bool *)malloc(sizeof(bool));
-    m->status_stop_l_fb = (volatile bool *)malloc(sizeof(bool));
-    m->motor_standstill_fb = (volatile bool *)malloc(sizeof(bool));
-    m->motor_full_stepping_fb = (volatile bool *)malloc(sizeof(bool));
-    m->motor_overtemp_warning_fb = (volatile bool *)malloc(sizeof(bool));
-    m->motor_overtemp_alarm_fb = (volatile bool *)malloc(sizeof(bool));
-    m->motor_load_fb = (volatile int32_t *)malloc(sizeof(int32_t));
-    m->motor_current_fb = (volatile uint32_t *)malloc(sizeof(uint32_t));
-    m->motor_stall_fb = (volatile bool *)malloc(sizeof(bool));
+//     // Allocate and initialize feedback variables
+//     m->velocity_reached_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->status_sg_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->position_reached_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->event_pos_reached_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->event_stop_sg_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->event_stop_r_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->event_stop_l_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->status_latch_r_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->status_latch_l_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->status_stop_r_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->status_stop_l_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->motor_standstill_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->motor_full_stepping_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->motor_overtemp_warning_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->motor_overtemp_alarm_fb = (volatile bool *)malloc(sizeof(bool));
+//     m->motor_load_fb = (volatile int32_t *)malloc(sizeof(int32_t));
+//     m->motor_current_fb = (volatile uint32_t *)malloc(sizeof(uint32_t));
+//     m->motor_stall_fb = (volatile bool *)malloc(sizeof(bool));
 
-    // Initialize all feedback values to 0
-    if (m->velocity_reached_fb) *m->velocity_reached_fb = 0;
-    if (m->status_sg_fb) *m->status_sg_fb = 0;
-    if (m->position_reached_fb) *m->position_reached_fb = 0;
-    if (m->event_pos_reached_fb) *m->event_pos_reached_fb = 0;
-    if (m->event_stop_sg_fb) *m->event_stop_sg_fb = 0;
-    if (m->event_stop_r_fb) *m->event_stop_r_fb = 0;
-    if (m->event_stop_l_fb) *m->event_stop_l_fb = 0;
-    if (m->status_latch_r_fb) *m->status_latch_r_fb = 0;
-    if (m->status_latch_l_fb) *m->status_latch_l_fb = 0;
-    if (m->status_stop_r_fb) *m->status_stop_r_fb = 0;
-    if (m->status_stop_l_fb) *m->status_stop_l_fb = 0;
-    if (m->motor_standstill_fb) *m->motor_standstill_fb = 0;
-    if (m->motor_full_stepping_fb) *m->motor_full_stepping_fb = 0;
-    if (m->motor_overtemp_warning_fb) *m->motor_overtemp_warning_fb = 0;
-    if (m->motor_overtemp_alarm_fb) *m->motor_overtemp_alarm_fb = 0;
-    if (m->motor_load_fb) *m->motor_load_fb = 0;
-    if (m->motor_current_fb) *m->motor_current_fb = 0;
-    if (m->motor_stall_fb) *m->motor_stall_fb = 0;
+//     // Initialize all feedback values to 0
+//     if (m->velocity_reached_fb) *m->velocity_reached_fb = 0;
+//     if (m->status_sg_fb) *m->status_sg_fb = 0;
+//     if (m->position_reached_fb) *m->position_reached_fb = 0;
+//     if (m->event_pos_reached_fb) *m->event_pos_reached_fb = 0;
+//     if (m->event_stop_sg_fb) *m->event_stop_sg_fb = 0;
+//     if (m->event_stop_r_fb) *m->event_stop_r_fb = 0;
+//     if (m->event_stop_l_fb) *m->event_stop_l_fb = 0;
+//     if (m->status_latch_r_fb) *m->status_latch_r_fb = 0;
+//     if (m->status_latch_l_fb) *m->status_latch_l_fb = 0;
+//     if (m->status_stop_r_fb) *m->status_stop_r_fb = 0;
+//     if (m->status_stop_l_fb) *m->status_stop_l_fb = 0;
+//     if (m->motor_standstill_fb) *m->motor_standstill_fb = 0;
+//     if (m->motor_full_stepping_fb) *m->motor_full_stepping_fb = 0;
+//     if (m->motor_overtemp_warning_fb) *m->motor_overtemp_warning_fb = 0;
+//     if (m->motor_overtemp_alarm_fb) *m->motor_overtemp_alarm_fb = 0;
+//     if (m->motor_load_fb) *m->motor_load_fb = 0;
+//     if (m->motor_current_fb) *m->motor_current_fb = 0;
+//     if (m->motor_stall_fb) *m->motor_stall_fb = 0;
 
-    return m;
-}
+//     return m;
+// }
 
 // Configuration
 // ----------------------------------------------------------------------------

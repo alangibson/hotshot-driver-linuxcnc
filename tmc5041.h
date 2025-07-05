@@ -187,7 +187,7 @@ void tmc5041_pull_register_CHOPCONF(tmc5041_motor_t * motor);
 void tmc5041_set_velocity(tmc5041_motor_t * motor, int32_t vmax);
 int32_t tmc5041_get_velocity(tmc5041_motor_t * motor);
 int32_t tmc5041_get_position(tmc5041_motor_t * motor);
-bool tmc5041_motor_clear_stall(tmc5041_motor_t * motor);
+// bool tmc5041_motor_clear_stall(tmc5041_motor_t * motor);
 bool tmc5041_motor_set_home(tmc5041_motor_t * motor);
 void tmc5041_motor_end(tmc5041_motor_t * motor);
 void tmc5041_motor_power_on(tmc5041_motor_t * motor);
