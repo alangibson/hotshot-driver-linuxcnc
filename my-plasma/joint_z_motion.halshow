@@ -26,10 +26,10 @@ pin+pid.z.tune-effort
 pin+pid.z.tune-start
 pin+pid.z.tune-type
 pin+pid.z.tune-mode
+pin+hotshot.0.axis-z-tmc-sw-en-softstop
 pin+hotshot.0.axis-z-tmc-sg-stop-cmd
 pin+hotshot.0.axis-z-tmc-sg-thresh-cmd
 pin+hotshot.0.axis-z-tmc-motor-stall-fb
 pin+hotshot.0.axis-z-tmc-motor-standstill-fb
 pin+hotshot.0.axis-z-tmc-motor-load-fb
-pin+hotshot.0.axis-z-tmc-sw-en-softstop
 pin+hotshot.0.axis-z-tmc-sg-trigger-thresh-cmd

@@ -1,10 +1,12 @@
-# halshow watchlist created Wed Oct 02 19:31:08 CEST 2024
+# halshow watchlist created Fri Oct 04 12:53:15 CEST 2024
 
+pin+pid.yl.enable
 pin+pid.yl.command
 pin+pid.yl.command-deriv
 pin+pid.yl.feedback
 pin+pid.yl.feedback-deriv
-pin+pid.yl.enable
+pin+pid.yl.output
+pin+joint.0.pos-cmd
 pin+hotshot.0.axis-yl-enable
 pin+hotshot.0.axis-yl-position-cmd
 pin+hotshot.0.axis-yl-position-fb
@@ -19,3 +21,15 @@ pin+pid.yl.FF0
 pin+pid.yl.FF1
 pin+pid.yl.FF2
 pin+hotshot.0.axis-yl-tmc-vmax-factor-cmd
+pin+pid.yl.tune-cycles
+pin+pid.yl.tune-effort
+pin+pid.yl.tune-start
+pin+pid.yl.tune-type
+pin+pid.yl.tune-mode
+pin+hotshot.0.axis-yl-tmc-sw-en-softstop
+pin+hotshot.0.axis-yl-tmc-sg-stop-cmd
+pin+hotshot.0.axis-yl-tmc-sg-thresh-cmd
+pin+hotshot.0.axis-yl-tmc-motor-stall-fb
+pin+hotshot.0.axis-yl-tmc-motor-standstill-fb
+pin+hotshot.0.axis-yl-tmc-motor-load-fb
+pin+hotshot.0.axis-yl-tmc-sg-trigger-thresh-cmd

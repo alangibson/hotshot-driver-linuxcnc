@@ -102,8 +102,8 @@ setp                hotshot.0.axis-x-microsteps-cmd                 256
 setp                hotshot.0.axis-x-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-x-tmc-run-current-cmd            30
 setp                hotshot.0.axis-x-tmc-hold-current-cmd           12
-setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              7
-setp                hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd      150
+setp                hotshot.0.axis-x-tmc-sg-thresh-cmd              8
+setp                hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd      100
 setp                hotshot.0.axis-x-tmc-sg-stop-cmd                0
 setp                hotshot.0.axis-x-tmc-cs-thresh-cmd              30000
 setp                hotshot.0.axis-x-tmc-current-hold-delay-cmd     1
@@ -273,8 +273,8 @@ setp                hotshot.0.axis-z-microsteps-cmd                 256
 setp                hotshot.0.axis-z-motor-fullsteps-per-rev-cmd    200
 setp                hotshot.0.axis-z-tmc-run-current-cmd            23
 setp                hotshot.0.axis-z-tmc-hold-current-cmd           8
-setp                hotshot.0.axis-z-tmc-sg-thresh-cmd              8
-setp                hotshot.0.axis-z-tmc-sg-trigger-thresh-cmd      250
+setp                hotshot.0.axis-z-tmc-sg-thresh-cmd              6
+setp                hotshot.0.axis-z-tmc-sg-trigger-thresh-cmd      100
 setp                hotshot.0.axis-z-tmc-sg-stop-cmd                0
 setp                hotshot.0.axis-z-tmc-cs-thresh-cmd              20000
 setp                hotshot.0.axis-z-tmc-current-hold-delay-cmd     1

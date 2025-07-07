@@ -1,4 +1,4 @@
-# halshow watchlist created Wed Oct 02 19:29:46 CEST 2024
+# halshow watchlist created Fri Oct 04 12:53:15 CEST 2024
 
 pin+pid.yr.enable
 pin+pid.yr.command
@@ -26,3 +26,10 @@ pin+pid.yr.tune-effort
 pin+pid.yr.tune-start
 pin+pid.yr.tune-type
 pin+pid.yr.tune-mode
+pin+hotshot.0.axis-yr-tmc-sw-en-softstop
+pin+hotshot.0.axis-yr-tmc-sg-stop-cmd
+pin+hotshot.0.axis-yr-tmc-sg-thresh-cmd
+pin+hotshot.0.axis-yr-tmc-motor-stall-fb
+pin+hotshot.0.axis-yr-tmc-motor-standstill-fb
+pin+hotshot.0.axis-yr-tmc-motor-load-fb
+pin+hotshot.0.axis-yr-tmc-sg-trigger-thresh-cmd
