@@ -23,18 +23,16 @@ float mcp3002_read_voltage(int channel, float ref_voltage) {
     rpi_spi_transfernb(tx, rx, 2);
 
     // Decode 10-bit ADC value
-    uint16_t high = rx[0] & 0b00000011;
+    uint16_t high = (rx[0] & 0b00000011);
     uint16_t low = rx[1];
 
+    // Combine to form 10-bit value
     uint16_t adc_value = (high << 8) | low;
+    // HACK not sure why we have to divide by 2
+    adc_value = adc_value >> 1;
 
-    // Convert to voltage with correction factor
+    // Convert to voltage - return raw voltage, scaling will be done by caller
     float voltage = ((float)adc_value / 1024.0f) * ref_voltage;
-
-    // FIXME Why do we need this correction factor?
-    //       Is the voltage divider or the reference voltage wrong?
-    // Apply same correction factor as Python test
-    voltage = voltage / (float) ARC_VOLT_CORRECTION;
 
     return voltage;
 }

@@ -42,12 +42,11 @@
 #define ARC_VOLT_CS 3
 #define ARC_VOLT_CHANNEL 0
 #define ARC_VOLT_DIVISION 50
-#define ARC_VOLT_CORRECTION 2.5
 #define AIR_PRESSURE_CS 2
 #define AIR_PRESSURE_CHANNEL 0
 
 // Actual reference voltages
-#define REF_5V 5
+#define REF_5V 4.187
 
 // Homing debounce
 #define HOME_SEARCHING_DEBOUNCE 0

@@ -9,8 +9,8 @@ spi.open(SPI_BUS, SPI_DEVICE)
 spi.max_speed_hz = 1000000  # 1 MHz is typical
 spi.mode = 0b00
 
-REF_VOLTAGE = 5
-VOLTAGE_DIVISOR = 50
+REF_VOLTAGE = 4.187
+VOLTAGE_DIVISOR = 25  # Changed from 50 to correct the doubled voltage reading
 
 # MCP3002 command byte structure (sent by master):
 # Bit 7: Start bit (must be 1)
@@ -19,18 +19,23 @@ VOLTAGE_DIVISOR = 50
 # Bit 4: MSBF (Don't care for MCP3002, often set to 0)
 # Bits 3-0: Don't care (often set to 0)
 #
-# CH0: 1100 0000 = 0xC0
-# CH1: 1110 0000 = 0xE0
+# CH0: 1000 0000 = 0x80 (differential mode)
+# CH1: 1010 0000 = 0xA0 (differential mode)
 channel = 0
-command_byte = 0xC0 if channel == 0 else 0xE0
+command_byte = 0x80 if channel == 0 else 0xA0
 command = [ command_byte, 0x00 ]
 
 response = spi.xfer(command)
 
-print('response', response)
+print('response bytes:', [hex(b) for b in response])
+print('response[0] binary:', format(response[0], '08b'), 'hex:', hex(response[0]))
+print('response[1] binary:', format(response[1], '08b'), 'hex:', hex(response[1]))
 
 # Decode 10-bit ADC value
-high = response[0] & 0b00000011
+# In the MCP3002's protocol, the first byte contains the two MSBs 
+# in bits 6 and 7 (not bits 0 and 1 as we're currently masking). 
+# We need to shift these bits right by 6 positions after masking them.
+high = (response[0] & 0b11000000) >> 6  # Get bits 7,6 and shift right
 low = response[1]
 adc_value = (high << 8) | low
 
@@ -43,15 +48,11 @@ print('adc_volts', adc_volts)
 
 def arc_volt():
 
-    #  5V : is=0.24437927663734116, want=0.1
-    # 10V : is=0.49853372434017595, want=0.2
-    # 15V : is=0.7429130009775171,  want=0.3
-    # 20V : is=0.9970674486803519,  want=0.4
-
     # TODO why is measurement wrong by this amount?
-    CORRECTION_HACK = 2.5
-
-    voltage = ( adc_volts / CORRECTION_HACK) * VOLTAGE_DIVISOR
+    # CORRECTION_HACK = 2.5
+    # adc_volts = adc_volts / CORRECTION_HACK
+    
+    voltage = adc_volts * VOLTAGE_DIVISOR
 
     print('arc_volt', voltage)
 

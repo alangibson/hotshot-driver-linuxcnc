@@ -117,14 +117,14 @@ void rpi_spi_init()
     bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 
     // Start SPI1 operations.
-    bcm2835_aux_spi_begin();
+    // bcm2835_aux_spi_begin();
 
-    // Set SPI parameters
-    bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);        // The default
-    bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                     // Data comes in on falling edge
-    bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_256); 
-    bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);        // the default
-    bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
+    // // Set SPI parameters
+    // bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);        // The default
+    // bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                     // Data comes in on falling edge
+    // bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_256); 
+    // bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, LOW);        // the default
+    // bcm2835_spi_chipSelect(BCM2835_SPI_CS_NONE);
 }
 
 // Call once to unconfgure SPI0

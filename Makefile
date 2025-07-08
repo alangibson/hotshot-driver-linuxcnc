@@ -12,8 +12,8 @@
 # Set BUILD_VERBOSE=1 env var to output make commands
 
 obj-m += hotshot.o
-complex-objs := rpi.bcm2835.o mcp3002.o tmc5041.o hotshot.lib.o hotshot.joint.o hotshot.air.c hotshot.thc.c
-LIBS += -lm -lgpiod /usr/local/lib/libbcm2835.a
+complex-objs := rpi.bcm2835.o mcp3002.o tmc5041.o hotshot.lib.o hotshot.joint.o hotshot.air.o hotshot.thc.o
+LIBS += -lm /usr/local/lib/libbcm2835.a
 # include /usr/share/linuxcnc/Makefile.modinc
 include Makefile.modinc
 
@@ -79,7 +79,7 @@ test.functional: hotshot.o
 	@echo '* If test segfaults, run as root                                             *'
 	@echo '******************************************************************************'
 	$(Q)gcc -Wall -I . rpi.test.c -o rpi.test.o -c
-	$(Q)gcc -Wall -o rpi.test rpi.bcm2835.o bcm2835.o rpi.test.o $(LIBS)
+	$(Q)gcc -Wall -o rpi.test rpi.bcm2835.o rpi.test.o $(LIBS)
 	# $(Q)gcc -DRTAPI -Wall -I . hotshot.motor.test.c -o hotshot.motor.test.o -c || true
 	# $(Q)gcc -Wall -o hotshot.motor.test $(complex-objs) hotshot.motor.test.o
 	# ./hotshot.motor.test

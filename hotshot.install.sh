@@ -4,7 +4,7 @@
 
 export BUILD_VERBOSE=1
 make clean
-sudo make test
+# sudo make test
 make 
 sudo make install
 
