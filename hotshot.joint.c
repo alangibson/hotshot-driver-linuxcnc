@@ -289,14 +289,34 @@ void hotshot_joint_spi(joint_t * joints, uint8_t motor_count)
         // Turn motor on or off
         if (joints[i].tmc.is_motor_on == TRUE)
         {
-            tmc5041_motor_power_on(&joints[i].tmc);
+            // tmc5041_motor_power_on(&joints[i].tmc);
+            //
+            // Power motor up after tmc5041_motor_off()
+            // If we power a motor off, then back on, the XACTUAL is some random number.
+            // This sort of makes sense because once a motor has been powered off we can no
+            // longer guarantee it's position. So sync XACTUAL with what EMC has commanded.
+            int32_t chopconf = tmc5041_readInt(&joints[i].tmc, TMC5041_CHOPCONF(*joints[i].tmc.motor));
+            chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, *joints[i].tmc.chop_toff_cmd);
+            tmc5041_writeInt(&joints[i].tmc, TMC5041_CHOPCONF(*joints[i].tmc.motor), chopconf);
         }
         else
         {
+            // tmc5041_motor_stop(&joints[i].tmc);
+            //
             // LinuxCNC power button is off, so power motor off
             // FIXME it's possible for driver to keep counting steps even after tmc5041_motor_power_off
-            tmc5041_motor_position_hold(&joints[i].tmc);            
-            tmc5041_motor_power_off(&joints[i].tmc);
+            //
+            // OPTIONS TO TERMINATE MOTION USING ACCELERATION SETTINGS:
+            // a)
+            // Switch to velocity mode
+            // set VMAX=0
+            tmc5041_set_register_VMAX(&joints[i].tmc, 0);
+
+            // tmc5041_motor_power_off(&joints[i].tmc);
+            //
+            int32_t chopconf = tmc5041_readInt(&joints[i].tmc, TMC5041_CHOPCONF(*joints[i].tmc.motor));
+            chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0); // 0 = off
+            tmc5041_writeInt(&joints[i].tmc, TMC5041_CHOPCONF(*joints[i].tmc.motor), chopconf);
         }
 
         // Set turn direction
@@ -307,20 +327,32 @@ void hotshot_joint_spi(joint_t * joints, uint8_t motor_count)
         else if (*joints[i].tmc.velocity_cmd < 0)
             tmc5041_set_register_RAMPMODE(&joints[i].tmc, 2);
         // else vmax == 0. do nothing while decelaration ramp finishes
+
+        // tmc5041_set_velocity(&joints[i].tmc, *joints[i].tmc.velocity_cmd);
+        //
         // Set velocity
         // VMAX is defined as an unsigned int in the datasheet, so it must be absolute
-        tmc5041_set_velocity(&joints[i].tmc, *joints[i].tmc.velocity_cmd);
-
-        // TODO move all math to hotshot_handle_move
         //
+        int32_t vmax = *joints[i].tmc.velocity_cmd * joints[i].tmc.velocity_time_ref;
+        tmc5041_set_register_VMAX(&joints[i].tmc, abs(vmax));
+
         // Reads
         //
+        
         // Driver status
         tmc5041_pull_register_DRV_STATUS(&joints[i].tmc);
+        
         // Position
-        *joints[i].tmc.position_fb = tmc5041_get_position(&joints[i].tmc);
+        // *joints[i].tmc.position_fb = tmc5041_get_register_XACTUAL(&joints[i].tmc);
+        tmc5041_pull_register_XACTUAL(&joints[i].tmc);
+        
         // Velocity
-        *joints[i].tmc.velocity_fb  = tmc5041_get_velocity(&joints[i].tmc);
+        // *joints[i].tmc.velocity_fb  = tmc5041_get_velocity(&joints[i].tmc);
+        //
+        // int32_t vactual = tmc5041_get_register_VACTUAL(&joints[i].tmc) / joints[i].tmc.velocity_time_ref;
+        // *joints[i].tmc.velocity_fb = vactual;
+        tmc5041_pull_register_VACTUAL(&joints[i].tmc);
+        
         // Stallguard threshold
         tmc5041_push_register_COOLCONF(&joints[i].tmc);
 

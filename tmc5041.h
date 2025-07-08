@@ -163,7 +163,9 @@ void tmc5041_log_motor_state(tmc5041_motor_t * motor);
 //
 void tmc5041_set_register_XACTUAL(tmc5041_motor_t * motor, int32 xactual);
 int32_t tmc5041_get_register_XACTUAL(tmc5041_motor_t * motor);
+void tmc5041_pull_register_XACTUAL(tmc5041_motor_t * motor);
 int32_t tmc5041_get_register_VACTUAL(tmc5041_motor_t * motor);
+void tmc5041_pull_register_VACTUAL(tmc5041_motor_t * motor);
 spi_status_t tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget);
 void tmc5041_pull_register_RAMP_STAT(tmc5041_motor_t * motor);
 ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor);
@@ -187,11 +189,10 @@ void tmc5041_set_velocity(tmc5041_motor_t * motor, int32_t vmax);
 int32_t tmc5041_get_velocity(tmc5041_motor_t * motor);
 int32_t tmc5041_get_position(tmc5041_motor_t * motor);
 bool tmc5041_motor_clear_stall(tmc5041_motor_t * motor);
-bool tmc5041_motor_set_home(tmc5041_motor_t * motor);
+bool tmc5041_homed(tmc5041_motor_t * motor);
 void tmc5041_motor_end(tmc5041_motor_t * motor);
 void tmc5041_motor_power_on(tmc5041_motor_t * motor);
 void tmc5041_motor_power_off(tmc5041_motor_t * motor);
-void tmc5041_motor_position_hold(tmc5041_motor_t * motor);
 void tmc5041_motor_reset(tmc5041_motor_t * motor);
 
 /**

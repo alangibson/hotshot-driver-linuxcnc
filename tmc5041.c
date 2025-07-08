@@ -249,6 +249,11 @@ int32_t tmc5041_get_register_XACTUAL(tmc5041_motor_t * motor)
     return tmc5041_readInt(motor, TMC5041_XACTUAL(*motor->motor));
 }
 
+void tmc5041_pull_register_XACTUAL(tmc5041_motor_t * motor)
+{
+    *motor->position_fb = tmc5041_get_register_XACTUAL(motor);
+}
+
 void tmc5041_set_register_VCOOLTHRS(tmc5041_motor_t * motor, int32_t vcoolthrs)
 {
     //
@@ -433,6 +438,11 @@ int32_t tmc5041_get_register_VACTUAL(tmc5041_motor_t * motor)
     // Actual motor velocity from ramp generator (signed)
     int32_t value = tmc5041_readInt(motor, TMC5041_VACTUAL(*motor->motor));
     return convert_24bit_to_32bit(value);
+}
+
+void tmc5041_pull_register_VACTUAL(tmc5041_motor_t * motor)
+{
+    *motor->velocity_fb = tmc5041_get_register_VACTUAL(motor) / motor->velocity_time_ref;
 }
 
 ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor)
@@ -676,7 +686,6 @@ float64_t tmc5041_acceleration_time_ref(uint32_t fclk)
 void tmc5041_set_velocity(tmc5041_motor_t * motor, int32_t vmax)
 {
     vmax = vmax * motor->velocity_time_ref;
-    // vmax = vmax * (*motor->vmax_factor_cmd);
     tmc5041_set_register_VMAX(motor, abs(vmax));
 }
 
@@ -684,7 +693,6 @@ int32_t tmc5041_get_velocity(tmc5041_motor_t * motor)
 {
     int32_t vactual = tmc5041_get_register_VACTUAL(motor);
     vactual = (vactual / motor->velocity_time_ref);
-    // vactual = vactual / (*motor->vmax_factor_cmd);
     return vactual;
 }
 
@@ -806,7 +814,7 @@ void tmc5041_motor_stop(tmc5041_motor_t * motor)
     tmc5041_set_register_VMAX(motor, 0);   
 }
 
-bool tmc5041_motor_set_home(tmc5041_motor_t * motor)
+bool tmc5041_homed(tmc5041_motor_t * motor)
 {
     // Disable stallguard stop on stall
     *motor->sg_stop_cmd = 0;
@@ -838,13 +846,7 @@ void tmc5041_motor_reset(tmc5041_motor_t * motor)
     // Clear stallguard
     tmc5041_motor_clear_stall(motor);
     // Reset XACTUAL to 0
-    tmc5041_motor_set_home(motor);
-}
-
-// Put motor in "hold position" mode
-void tmc5041_motor_position_hold(tmc5041_motor_t * motor)
-{
-    tmc5041_set_register_VMAX(motor, 0);
+    tmc5041_homed(motor);
 }
 
 /**
