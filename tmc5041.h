@@ -67,17 +67,20 @@ typedef float64_t   position_t;
 typedef int32_t     tmc_position_t;
 typedef int32_t     tmc_velocity_t;
 typedef float64_t   velocity_t;
+typedef uint32_t    acceleration_t;
+typedef uint32_t    tmc_chip_t;
+typedef uint32_t    tmc_motor_t;
 
 typedef struct {
     uint8_t     					    mres;
     tmc_position_t     	                last_position_cmd;
-    uint32_t                            acceleration_cmd;
-    uint32_t                            max_acceleration_cmd;
+    acceleration_t                      acceleration_cmd;
+    acceleration_t                      max_acceleration_cmd;
     bool                                is_motor_on;
     float64_t                           velocity_time_ref;
     float64_t                           acceleration_time_ref;
-    volatile uint32_t               *   chip;
-	volatile uint32_t               *   motor;
+    volatile tmc_chip_t             *   chip;
+	volatile tmc_motor_t            *   motor;
     volatile tmc_position_t     	*   position_cmd;
     volatile tmc_velocity_t         *   velocity_cmd;
     volatile uint32_t               *   cs_thresh_cmd;      // coolStep threshold in ppt for TMC register
@@ -106,6 +109,7 @@ typedef struct {
     volatile uint32_t               *   chop_tbl_cmd;
     volatile uint32_t               *   chop_hend_cmd;
     volatile uint32_t               *   chop_hstrt_cmd;
+    // Must be > 0 for motor to power on
     volatile uint32_t               *   chop_toff_cmd;
     volatile uint32_t               *   chop_vsense_cmd;
     volatile uint32_t               *   sw_en_softstop;
@@ -143,7 +147,6 @@ int32_t tmc5041_readInt(tmc5041_motor_t * motor, uint8_t address);
 //
 // Setup and init functions
 //
-void tmc5041_chip_init();
 void tmc5041_motor_init(tmc5041_motor_t * motor);
 void tmc5041_motor_set_config_registers(tmc5041_motor_t * motor);
 void tmc5041_init(tmc5041_motor_t * motors, size_t motor_count);
@@ -151,6 +154,9 @@ void tmc5041_end(tmc5041_motor_t * motors, size_t motor_count);
 uint8_t tmc5041_microsteps_to_mres(uint16_t usteps);
 float64_t tmc5041_velocity_time_ref(uint32_t fclk);
 float64_t tmc5041_acceleration_time_ref(uint32_t fclk);
+float64_t tmc5041_frequency_scaling(tmc5041_motor_t * motor);
+
+void tmc5041_log_motor_state(tmc5041_motor_t * motor);
 
 //
 // Register access
@@ -172,6 +178,7 @@ void tmc5041_set_register_VCOOLTHRS(tmc5041_motor_t * motor, int32_t vcoolthrs);
 void tmc5041_push_register_SW_MODE(tmc5041_motor_t * motor);
 void tmc5041_pull_register_DRV_STATUS(tmc5041_motor_t * motor);
 void tmc5041_push_register_COOLCONF(tmc5041_motor_t * motor);
+void tmc5041_pull_register_CHOPCONF(tmc5041_motor_t * motor);
 
 //
 // Higher order and/or complex functions
@@ -186,3 +193,14 @@ void tmc5041_motor_power_on(tmc5041_motor_t * motor);
 void tmc5041_motor_power_off(tmc5041_motor_t * motor);
 void tmc5041_motor_position_hold(tmc5041_motor_t * motor);
 void tmc5041_motor_reset(tmc5041_motor_t * motor);
+
+/**
+ * Creates and initializes a new tmc5041_motor_t struct.
+ * All pointers are initialized to NULL and scalar values to 0.
+ * The chip and motor values are set to the provided values.
+ * 
+ * @param chip The chip number this motor belongs to
+ * @param motor The motor number within the chip (0 or 1)
+ * @return A pointer to the newly allocated and initialized motor struct
+ */
+tmc5041_motor_t * tmc5041_motor_create(tmc_chip_t chip, tmc_motor_t motor);

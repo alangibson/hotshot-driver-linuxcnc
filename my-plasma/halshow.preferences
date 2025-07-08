@@ -1,6 +1,6 @@
 # Halshow settings
 # This file is generated automatically.
-wm geometry . 938x1016+-348+27
+wm geometry . 938x1016+17+43
 placeFrames 0.3758099352051836
 set ::ratio 0.3758099352051836
 set ::old_w_leftf 398
@@ -37,22 +37,6 @@ set ::watchlist {
     pin+hotshot.0.axis-yl-tmc-sg-trigger-thresh-cmd
     pin+hotshot.0.axis-yr-tmc-sg-trigger-thresh-cmd
     pin+hotshot.0.axis-z-tmc-sg-trigger-thresh-cmd
-    pin+hotshot.0.axis-x-homing-state-fb
-    pin+hotshot.0.axis-yl-homing-state-fb
-    pin+hotshot.0.axis-yr-homing-state-fb
-    pin+hotshot.0.axis-z-homing-state-fb
-    pin+joint.0.home-state
-    pin+joint.1.home-state
-    pin+joint.2.home-state
-    pin+joint.3.home-state
-    pin+joint.0.homed
-    pin+joint.1.homed
-    pin+joint.2.homed
-    pin+joint.3.homed
-    pin+joint.0.homing
-    pin+joint.1.homing
-    pin+joint.2.homing
-    pin+joint.3.homing
 }
 set ::workmode watchhal
 set ::watchInterval 100

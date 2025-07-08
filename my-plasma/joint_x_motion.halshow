@@ -26,3 +26,10 @@ pin+pid.x.tune-effort
 pin+pid.x.tune-start
 pin+pid.x.tune-type
 pin+pid.x.tune-mode
+pin+hotshot.0.axis-x-tmc-sw-en-softstop
+pin+hotshot.0.axis-x-tmc-sg-stop-cmd
+pin+hotshot.0.axis-x-tmc-sg-thresh-cmd
+pin+hotshot.0.axis-x-tmc-motor-stall-fb
+pin+hotshot.0.axis-x-tmc-motor-standstill-fb
+pin+hotshot.0.axis-x-tmc-motor-load-fb
+pin+hotshot.0.axis-x-tmc-sg-trigger-thresh-cmd

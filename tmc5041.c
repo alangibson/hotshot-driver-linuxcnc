@@ -1,10 +1,10 @@
 #include "stdio.h"
 #include "math.h"
 #include "sys/time.h"
-#include "bcm2835.h"
-#include "rpi.h"
 #include "tmc/helpers/Macros.h"
 #include "tmc5041.h"
+#include "rpi.h"
+#include "global.h"
 
 /**
  * Position
@@ -91,48 +91,6 @@
 // ----------------------------------------------------------------------------
 // Taken from TMC5041.c and modified
 
-void tmc5041_readWriteArray(uint8_t chip, uint8_t *data, size_t length)
-{
-    bcm2835_spi_transfernb(data, data, length);
-}
-
-int32_t tmc5041_writeDatagram(tmc5041_motor_t * motor, uint8_t address, uint8_t x1, uint8_t x2, uint8_t x3, uint8_t x4)
-{
-	uint8_t data[5] = {address | TMC5041_WRITE_BIT, x1, x2, x3, x4 };
-	tmc5041_readWriteArray(*motor->chip, data, 5);
-	int32_t value = ((uint32_t)x1 << 24) | ((uint32_t)x2 << 16) | (x3 << 8) | x4;
-    return value;
-}
-
-int32_t tmc5041_writeInt(tmc5041_motor_t * motor, uint8_t address, int32_t value)
-{
-    // return tmc5041_write_register(address, value);
-    return tmc5041_writeDatagram(motor, address, BYTE(value, 3), BYTE(value, 2), BYTE(value, 1), BYTE(value, 0));
-}
-
-int32_t tmc5041_readInt(tmc5041_motor_t * motor, uint8_t address)
-{
-	uint8_t data[5] = { 0, 0, 0, 0, 0 };
-	data[0] = address;
-	tmc5041_readWriteArray(*motor->chip, &data[0], 5);
-	data[0] = address;
-	tmc5041_readWriteArray(*motor->chip, &data[0], 5);
-	return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | (data[3] << 8) | data[4];
-}
-
-spi_status_t parse_spi_status(uint8_t spi_status[40])
-{
-    return (spi_status_t) {
-        .status_stop_l2     = spi_status[0] & 0b01000000,
-        .status_stop_l1     = spi_status[0] & 0b00100000,
-        .velocity_reached2  = spi_status[0] & 0b00010000,
-        .velocity_reached1  = spi_status[0] & 0b00001000,
-        .driver_error2      = spi_status[0] & 0b00000100,
-        .driver_error1      = spi_status[0] & 0b00000010,
-        .reset_flag         = spi_status[0] & 0b00000001
-    };
-}
-
 // 4.1.2 SPI Status Bits Transferred with Each Datagram Read Back
 void log_spi_status(tmc5041_motor_t * motor, uint8_t spi_status[40])
 {
@@ -156,6 +114,51 @@ void log_spi_status(tmc5041_motor_t * motor, uint8_t spi_status[40])
     }
 }
 
+void tmc5041_readWriteArray(uint8_t chip, uint8_t *data, size_t length)
+{
+    rpi_spi_transfernb(data, data, length);
+}
+
+int32_t tmc5041_writeDatagram(tmc5041_motor_t * motor, uint8_t address, uint8_t x1, uint8_t x2, uint8_t x3, uint8_t x4)
+{
+	uint8_t data[5] = {address | TMC5041_WRITE_BIT, x1, x2, x3, x4 };
+	tmc5041_readWriteArray(*motor->chip, data, 5);
+	int32_t value = ((uint32_t)x1 << 24) | ((uint32_t)x2 << 16) | (x3 << 8) | x4;
+    return value;
+}
+
+/** Writes a 32bit integer to a register */
+int32_t tmc5041_writeInt(tmc5041_motor_t * motor, uint8_t address, int32_t value)
+{
+    // return tmc5041_write_register(address, value);
+    return tmc5041_writeDatagram(motor, address, BYTE(value, 3), BYTE(value, 2), BYTE(value, 1), BYTE(value, 0));
+}
+
+/** Reads a 32bit integer from a register */
+int32_t tmc5041_readInt(tmc5041_motor_t * motor, uint8_t address)
+{
+	uint8_t data[5] = { 0, 0, 0, 0, 0 };
+	data[0] = address;
+	tmc5041_readWriteArray(*motor->chip, &data[0], 5);
+	data[0] = address;
+	tmc5041_readWriteArray(*motor->chip, &data[0], 5);
+	return ((uint32_t)data[1] << 24) | ((uint32_t)data[2] << 16) | (data[3] << 8) | data[4];
+}
+
+spi_status_t parse_spi_status(uint8_t spi_status[40])
+{
+    return (spi_status_t) {
+        .status_stop_l2     = spi_status[0] & 0b01000000,
+        .status_stop_l1     = spi_status[0] & 0b00100000,
+        .velocity_reached2  = spi_status[0] & 0b00010000,
+        .velocity_reached1  = spi_status[0] & 0b00001000,
+        .driver_error2      = spi_status[0] & 0b00000100,
+        .driver_error1      = spi_status[0] & 0b00000010,
+        .reset_flag         = spi_status[0] & 0b00000001
+    };
+}
+
+
 int convert_24bit_to_32bit(int x) {
     // printf("convert_24bit_to_32bit: before=%d\n", x);
     // Check if the 24th bit is set (negative number)
@@ -169,6 +172,33 @@ int convert_24bit_to_32bit(int x) {
 
 // Taken from TMC5041.c and modified
 // ----------------------------------------------------------------------------
+
+void tmc5041_log_motor_state(tmc5041_motor_t * motor) {
+
+    printf("DRV_STATUS (chip:%d, motor:%d):\n", *motor->chip, *motor->motor);
+    printf("  Standstill: %d\n", *motor->motor_standstill_fb);
+    printf("  Full Stepping: %d\n", *motor->motor_full_stepping_fb);
+    printf("  Overtemp Warning: %d\n", *motor->motor_overtemp_warning_fb);
+    printf("  Overtemp Alarm: %d\n", *motor->motor_overtemp_alarm_fb);
+    printf("  Load: %d\n", *motor->motor_load_fb);
+    printf("  Current: %d\n", *motor->motor_current_fb);
+    printf("  Stall: %d\n", *motor->motor_stall_fb);
+    printf("RAMP_STAT (chip:%d, motor:%d):\n", *motor->chip, *motor->motor);
+    printf("  Velocity Reached: %d\n", *motor->velocity_reached_fb);
+    printf("  Position Reached: %d\n", *motor->position_reached_fb);
+    printf("  Status SG: %d\n", *motor->status_sg_fb);
+    printf("  Event Position Reached: %d\n", *motor->event_pos_reached_fb);
+    printf("  Event Stop SG: %d\n", *motor->event_stop_sg_fb);
+    printf("  Event Stop R: %d\n", *motor->event_stop_r_fb);
+    printf("  Event Stop L: %d\n", *motor->event_stop_l_fb);
+    printf("  Status Latch R: %d\n", *motor->status_latch_r_fb);
+    printf("  Status Latch L: %d\n", *motor->status_latch_l_fb);
+    printf("  Status Stop R: %d\n", *motor->status_stop_r_fb);
+    printf("  Status Stop L: %d\n", *motor->status_stop_l_fb);
+    printf("CHOP_CONF (chip:%d, motor:%d):\n", *motor->chip, *motor->motor);
+    printf("  Mres: %d\n", motor->mres);
+
+}
 
 // ----------------------------------------------------------------------------
 // Register access
@@ -188,7 +218,7 @@ void tmc5041_set_register_RAMPMODE(tmc5041_motor_t * motor, int32_t rampmode)
     write_payload = 0x00;
     write_payload = FIELD_SET(write_payload, TMC5041_RAMPMODE_MASK, TMC5041_RAMPMODE_SHIFT, rampmode);
     uint8_t rampmode_message[40] = {TMC5041_RAMPMODE(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(rampmode_message, spi_status, 5);
+    rpi_spi_transfernb(rampmode_message, spi_status, 5);
 }
 
 void tmc5041_set_register_XACTUAL(tmc5041_motor_t * motor, int32 xactual)
@@ -198,7 +228,7 @@ void tmc5041_set_register_XACTUAL(tmc5041_motor_t * motor, int32 xactual)
     // XACTUAL
     write_payload = FIELD_SET(write_payload, TMC5041_XACTUAL_MASK, TMC5041_XACTUAL_SHIFT, xactual);
     uint8_t xtarget_message[40] = {TMC5041_XACTUAL(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(xtarget_message, spi_status, 5);
+    rpi_spi_transfernb(xtarget_message, spi_status, 5);
 }
 
 void tmc5041_set_register_IHOLD_IRUN(tmc5041_motor_t * motor, uint32_t ihold, uint32_t irun) {
@@ -210,7 +240,7 @@ void tmc5041_set_register_IHOLD_IRUN(tmc5041_motor_t * motor, uint32_t ihold, ui
     tmc5041_writeInt(motor, TMC5041_IHOLD_IRUN(*motor->motor), value);
 
     // uint8_t current[40] = {TMC5041_IHOLD_IRUN(*motor->motor) | TMC_WRITE_BIT, value >> 24, value >> 16, value >> 8, value};
-    // bcm2835_spi_transfernb(current, current, 5);
+    // rpi_spi_transfernb(current, current, 5);
 }
 
 int32_t tmc5041_get_register_XACTUAL(tmc5041_motor_t * motor)
@@ -234,7 +264,7 @@ void tmc5041_set_register_VCOOLTHRS(tmc5041_motor_t * motor, int32_t vcoolthrs)
     int32_t write_payload = 0x00;
     write_payload = FIELD_SET(write_payload, TMC5041_VCOOLTHRS_MASK, TMC5041_VCOOLTHRS_SHIFT, vcoolthrs);
     uint8_t vcoolthrs_message[40] = {TMC5041_VCOOLTHRS(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vcoolthrs_message, vcoolthrs_message, 5);
+    rpi_spi_transfernb(vcoolthrs_message, vcoolthrs_message, 5);
 }
 
 void tmc5041_set_register_VMAX(tmc5041_motor_t * motor, int32_t vmax) 
@@ -246,7 +276,7 @@ void tmc5041_set_register_VMAX(tmc5041_motor_t * motor, int32_t vmax)
     int32_t write_payload = 0x00;
     write_payload = FIELD_SET(write_payload, TMC5041_VMAX_MASK, TMC5041_VMAX_SHIFT, vmax);
     uint8_t vmax_message[40] = {TMC5041_VMAX(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vmax_message, vmax_message, 5);
+    rpi_spi_transfernb(vmax_message, vmax_message, 5);
 }
 
 void tmc5041_set_register_AMAX(tmc5041_motor_t * motor, int32_t amax) 
@@ -260,7 +290,7 @@ void tmc5041_set_register_AMAX(tmc5041_motor_t * motor, int32_t amax)
     int32_t write_payload = 0x00;
     write_payload = FIELD_SET(write_payload, TMC5041_AMAX_MASK, TMC5041_AMAX_SHIFT, motor->max_acceleration_cmd);
     uint8_t amax_message[40] = {TMC5041_AMAX(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(amax_message, amax_message, 5);
+    rpi_spi_transfernb(amax_message, amax_message, 5);
 }
 
 void tmc5041_set_register_VSTART(tmc5041_motor_t * motor, int32_t vstart) 
@@ -268,7 +298,7 @@ void tmc5041_set_register_VSTART(tmc5041_motor_t * motor, int32_t vstart)
     int32_t write_payload = 0x00;
     write_payload = FIELD_SET(write_payload, TMC5041_VSTART_MASK, TMC5041_VSTART_SHIFT, vstart);
     uint8_t vstart_message[40] = {TMC5041_VSTART(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vstart_message, vstart_message, 5);
+    rpi_spi_transfernb(vstart_message, vstart_message, 5);
 }
 
 void tmc5041_set_register_VSTOP(tmc5041_motor_t * motor, int32_t vstop) 
@@ -276,7 +306,7 @@ void tmc5041_set_register_VSTOP(tmc5041_motor_t * motor, int32_t vstop)
     int32_t write_payload = 0x00;
     write_payload = FIELD_SET(write_payload, TMC5041_VSTOP_MASK, TMC5041_VSTOP_SHIFT, vstop);
     uint8_t vstop_message[40] = {TMC5041_VSTOP(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vstop_message, vstop_message, 5);
+    rpi_spi_transfernb(vstop_message, vstop_message, 5);
 }
 
 void tmc5041_push_register_SW_MODE(tmc5041_motor_t * motor)
@@ -298,7 +328,7 @@ void tmc5041_push_register_SW_MODE(tmc5041_motor_t * motor)
     write_payload = FIELD_SET(write_payload, TMC5041_STOP_R_ENABLE_MASK, TMC5041_STOP_R_ENABLE_SHIFT, 0);
     write_payload = FIELD_SET(write_payload, TMC5041_STOP_L_ENABLE_MASK, TMC5041_STOP_L_ENABLE_SHIFT, 0);
     uint8_t swmode[40] = {TMC5041_SWMODE(*motor->motor)|TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(swmode, swmode, 5);
+    rpi_spi_transfernb(swmode, swmode, 5);
 
 }
 
@@ -320,7 +350,7 @@ void tmc5041_push_register_COOLCONF(tmc5041_motor_t * motor)
     // coolstep activated when SG < SEMIN*32
     write_payload = FIELD_SET(write_payload, TMC5041_SEMIN_MASK, TMC5041_SEMIN_SHIFT, *motor->coolstep_semin_cmd);
     uint8_t coolconf[40] = {TMC5041_COOLCONF(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(coolconf, coolconf, 5);
+    rpi_spi_transfernb(coolconf, coolconf, 5);
 
 }
 
@@ -349,7 +379,7 @@ void tmc5041_push_register_IHOLD_IRUN(tmc5041_motor_t * motor) {
     // IHOLDDELAY: 0 = instant IHOLD
     write_payload = FIELD_SET(write_payload, TMC5041_IHOLDDELAY_MASK, TMC5041_IHOLDDELAY_SHIFT, *motor->current_hold_delay_cmd);
     uint8_t current[40] = {TMC5041_IHOLD_IRUN(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(current, current, 5);
+    rpi_spi_transfernb(current, current, 5);
 }
 
 void tmc5041_push_register_CHOPCONF(tmc5041_motor_t * motor) {
@@ -381,14 +411,7 @@ void tmc5041_push_register_CHOPCONF(tmc5041_motor_t * motor) {
     // Start chopper in off mode. We will set this when we turn the motor on.
     // write_payload = FIELD_SET(write_payload, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, 0);
     uint8_t chop_conf[40] = {TMC5041_CHOPCONF(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(chop_conf, chop_conf, 5);
-}
-
-int32_t tmc5041_get_register_VACTUAL(tmc5041_motor_t * motor)
-{
-    // Actual motor velocity from ramp generator (signed)
-    int32_t value = tmc5041_readInt(motor, TMC5041_VACTUAL(*motor->motor));
-    return convert_24bit_to_32bit(value);
+    rpi_spi_transfernb(chop_conf, chop_conf, 5);
 }
 
 spi_status_t tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget)
@@ -401,8 +424,15 @@ spi_status_t tmc5041_set_register_XTARGET(tmc5041_motor_t * motor, int32 xtarget
     // XTARGET
     write_payload = FIELD_SET(write_payload, TMC5041_XTARGET_MASK, TMC5041_XTARGET_SHIFT, xtarget);
     uint8_t message[40] = {TMC5041_XTARGET(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(message, message, 5);
+    rpi_spi_transfernb(message, message, 5);
     return parse_spi_status(message);
+}
+
+int32_t tmc5041_get_register_VACTUAL(tmc5041_motor_t * motor)
+{
+    // Actual motor velocity from ramp generator (signed)
+    int32_t value = tmc5041_readInt(motor, TMC5041_VACTUAL(*motor->motor));
+    return convert_24bit_to_32bit(value);
 }
 
 ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor)
@@ -412,7 +442,6 @@ ramp_stat_register_t tmc5041_get_register_RAMP_STAT(tmc5041_motor_t * motor)
     // (Flag and interrupt condition are cleared upon reading)
     // This bit is ORed to the interrupt output signal
 
-    // int32_t reply = tmc5041_read_register(TMC5041_RAMPSTAT(*motor->motor));
     int32_t reply = tmc5041_readInt(motor, TMC5041_RAMPSTAT(*motor->motor));
 
     ramp_stat_register_t reg;
@@ -464,11 +493,6 @@ drv_status_register_t tmc5041_get_register_DRV_STATUS(tmc5041_motor_t * motor)
     reg.cs_actual = FIELD_GET(reply, TMC5041_CS_ACTUAL_MASK, TMC5041_CS_ACTUAL_SHIFT);
     reg.sg_status = FIELD_GET(reply, TMC5041_STALLGUARD_MASK, TMC5041_STALLGUARD_SHIFT);
     reg.full_stepping = FIELD_GET(reply, TMC5041_FSACTIVE_MASK, TMC5041_FSACTIVE_SHIFT);
-    // TODO    
-    // bool open_load_phase_b;
-    // bool open_load_phase_a;
-    // bool ground_short_phase_b;
-    // bool ground_short_phase_a;
     return reg;
 }
 
@@ -479,6 +503,11 @@ chopconf_register_t tmc5041_get_register_CHOPCONF(tmc5041_motor_t * motor) {
     reg.mres = FIELD_GET(reply, TMC5041_MRES_MASK, TMC5041_MRES_SHIFT);
 
     return reg;
+}
+
+void tmc5041_pull_register_CHOPCONF(tmc5041_motor_t * motor) {
+    chopconf_register_t reg = tmc5041_get_register_CHOPCONF(motor);
+    motor->mres = reg.mres;
 }
 
 int32_t tmc5041_get_register_XLATCH(tmc5041_motor_t * motor) {
@@ -537,15 +566,6 @@ uint8_t tmc5041_microsteps_to_mres(uint16_t usteps)
     return 8 - (value > 8 ? 8 : value);
 }
 
-void tmc5041_chip_init()
-{
-    static uint8_t spi_status[40] = {____, ____, ____, ____, ____};
-    // GCONF
-    //
-    uint8_t gconf[40] = {TMC5041_GSTAT, ____, ____, ____, ____};
-    bcm2835_spi_transfernb(gconf, spi_status, 5);
-}
-
 /**
  * Multiply each velocity value (in machine units per second) with this factor
  * to normalize the velocity to steps per second. 
@@ -556,15 +576,15 @@ void tmc5041_chip_init()
  */
 float64_t tmc5041_frequency_scaling(tmc5041_motor_t * motor)
 {
+    
     // 1. You may leave the motor driver disabled during the calibration. 
-    // tmc5041_motor_power_off(motor);
     tmc5041_motor_reset(motor);
 
     // 2. Start  motor  in  velocity  mode,  with  VMAX=10000  and  AMAX=60000
     // (for  quick  acceleration).  The acceleration phase is ended after a few ms.
-    tmc5041_set_register_RAMPMODE(motor, 1); // 1: Velocity mode to positive VMAX
     int32_t vmax = 10000;
     int32_t amax = 60000;
+    tmc5041_set_register_RAMPMODE(motor, 1); // 1: Velocity mode to positive VMAX
     tmc5041_set_register_VMAX(motor, vmax);
     tmc5041_set_register_AMAX(motor, amax);
     // Wait 10ms
@@ -602,7 +622,7 @@ float64_t tmc5041_frequency_scaling(tmc5041_motor_t * motor)
     #ifdef DEBUG_SCALING
     int32_t actual_steps = xactual_t2 - xactual_t1;
     printf("hotshot(%d,%d)[scaling]: Moved actual steps = %d. Waited sec: target=%f, actual=%f.\n", 
-                *motor->chip, *motor->motor, actual_steps, wait_2_ms/1000, dt);
+                *motor->chip, *motor->motor, actual_steps, (double)wait_2_ms/1000, dt);
     #endif
 
     // 4. Stop the motion ramp by setting VMAX=0.
@@ -690,7 +710,7 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
     // Always start in hold mode to prevent unexpected movement
     tmc5041_set_register_VMAX(motor, 0);
     tmc5041_set_register_RAMPMODE(motor, 0);
-    // TODO turn off chopper with? *motor->chop_toff_cmd = 0;
+    
     // Reset position registers in case they are dirty after restarting LinuxCNC
     // TODO or should we sync them up with LinuxCNC on startup?
     tmc5041_set_register_XTARGET(motor, 0);
@@ -729,7 +749,7 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
     // VHIGH: Set high values for both
     write_payload = FIELD_SET(write_payload, TMC5041_VHIGH_MASK, TMC5041_VHIGH_SHIFT, *motor->chop_vhigh_cmd);
     uint8_t vhigh_message[40] = {TMC5041_VHIGH(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(vhigh_message, spi_status, 5);
+    rpi_spi_transfernb(vhigh_message, spi_status, 5);
 
     // COOLCONF: Smart Energy Control CoolStep and StallGuard2
     tmc5041_push_register_COOLCONF(motor);
@@ -751,7 +771,8 @@ void tmc5041_motor_init(tmc5041_motor_t * motor)
     write_payload = 0x00;
     write_payload = FIELD_SET(write_payload, TMC5041_TZEROWAIT_MASK, TMC5041_TZEROWAIT_SHIFT, *motor->ramp_tzerowait_cmd);
     uint8_t tzerowait_message[40] = {TMC5041_TZEROWAIT(*motor->motor) | TMC_WRITE_BIT, write_payload >> 24, write_payload >> 16, write_payload >> 8, write_payload};
-    bcm2835_spi_transfernb(tzerowait_message, spi_status, 5);
+    rpi_spi_transfernb(tzerowait_message, spi_status, 5);
+
 }
 
 void tmc5041_motor_power_off(tmc5041_motor_t * motor)
@@ -766,13 +787,9 @@ void tmc5041_motor_power_off(tmc5041_motor_t * motor)
 void tmc5041_motor_power_on(tmc5041_motor_t * motor)
 {
     // Power motor up after tmc5041_motor_off()
-    // tmc5041_set_register_IHOLD_IRUN(motor, *motor->hold_current_cmd, *motor->run_current_cmd);
-
     // If we power a motor off, then back on, the XACTUAL is some random number.
     // This sort of makes sense because once a motor has been powered off we can no
     // longer guarantee it's position. So sync XACTUAL with what EMC has commanded.
-    // tmc5041_set_register_XACTUAL(motor, motor->position_cmd);
-
     int32_t chopconf = tmc5041_readInt(motor, TMC5041_CHOPCONF(*motor->motor));
     chopconf = FIELD_SET(chopconf, TMC5041_TOFF_MASK, TMC5041_TOFF_SHIFT, *motor->chop_toff_cmd);
     tmc5041_writeInt(motor, TMC5041_CHOPCONF(*motor->motor), chopconf);
@@ -889,6 +906,157 @@ void tmc5041_end(tmc5041_motor_t * motors, size_t motor_count)
         tmc5041_motor_reset(&motors[i]);
         rpi_spi_unselect();
     }
+}
+
+/**
+ * Creates and initializes a new tmc5041_motor_t struct.
+ * All pointers are initialized to NULL and scalar values to 0.
+ * The chip and motor values are set to the provided values.
+ * 
+ * @param chip The chip number this motor belongs to
+ * @param motor The motor number within the chip (0 or 1)
+ * @return A pointer to the newly allocated and initialized motor struct
+ */
+tmc5041_motor_t * tmc5041_motor_create(tmc_chip_t chip, tmc_motor_t motor) {
+    // Allocate memory for the struct
+    tmc5041_motor_t * m = (tmc5041_motor_t *)malloc(sizeof(tmc5041_motor_t));
+    if (!m) return NULL;  // Return NULL if allocation fails
+
+    // Initialize scalar values
+    m->mres = 0;
+    m->last_position_cmd = 0;
+    m->acceleration_cmd = 0;
+    m->max_acceleration_cmd = 0;
+    m->is_motor_on = false;
+    m->velocity_time_ref = 0;
+    m->acceleration_time_ref = 0;
+
+    // Allocate and initialize chip and motor numbers
+    m->chip = (tmc_chip_t *)malloc(sizeof(tmc_chip_t));
+    m->motor = (tmc_motor_t *)malloc(sizeof(tmc_motor_t));
+    // if (!m->chip || !m->motor) {
+    //     // Clean up if allocation fails
+    //     if (m->chip) free(m->chip);
+    //     if (m->motor) free(m->motor);
+    //     free(m);
+    //     return NULL;
+    // }
+    *m->chip = chip;
+    *m->motor = motor;
+
+    // Allocate memory for command variables
+    m->position_cmd = (volatile tmc_position_t *)malloc(sizeof(tmc_position_t));
+    m->velocity_cmd = (volatile tmc_velocity_t *)malloc(sizeof(tmc_velocity_t));
+    m->cs_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->sg_stop_cmd = (volatile bool *)malloc(sizeof(bool));
+    m->run_current_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->hold_current_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->current_hold_delay_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_mode_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_a1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_d1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_dmax_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_vstart_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_vstop_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_v1_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->ramp_tzerowait_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_sfilt_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_seimin_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_sedn_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_seup_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_semin_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->coolstep_semax_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_mode_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_vhigh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_vhighchm_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_vhighfs_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_tbl_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_hend_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_hstrt_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_toff_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->chop_vsense_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->sw_en_softstop = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->sg_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->sg_trigger_thresh_cmd = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->vmax_factor_cmd = (volatile float64_t *)malloc(sizeof(float64_t));
+
+    // Initialize command values to 0
+    if (m->position_cmd) *m->position_cmd = 0;
+    if (m->velocity_cmd) *m->velocity_cmd = 0;
+    if (m->cs_thresh_cmd) *m->cs_thresh_cmd = 0;
+    if (m->sg_stop_cmd) *m->sg_stop_cmd = 0;
+    if (m->run_current_cmd) *m->run_current_cmd = 0;
+    if (m->hold_current_cmd) *m->hold_current_cmd = 0;
+    if (m->current_hold_delay_cmd) *m->current_hold_delay_cmd = 0;
+    if (m->ramp_mode_cmd) *m->ramp_mode_cmd = 0;
+    if (m->ramp_a1_cmd) *m->ramp_a1_cmd = 0;
+    if (m->ramp_d1_cmd) *m->ramp_d1_cmd = 0;
+    if (m->ramp_dmax_cmd) *m->ramp_dmax_cmd = 0;
+    if (m->ramp_vstart_cmd) *m->ramp_vstart_cmd = 0;
+    if (m->ramp_vstop_cmd) *m->ramp_vstop_cmd = 0;
+    if (m->ramp_v1_cmd) *m->ramp_v1_cmd = 0;
+    if (m->ramp_tzerowait_cmd) *m->ramp_tzerowait_cmd = 0;
+    if (m->coolstep_sfilt_cmd) *m->coolstep_sfilt_cmd = 0;
+    if (m->coolstep_seimin_cmd) *m->coolstep_seimin_cmd = 0;
+    if (m->coolstep_sedn_cmd) *m->coolstep_sedn_cmd = 0;
+    if (m->coolstep_seup_cmd) *m->coolstep_seup_cmd = 0;
+    if (m->coolstep_semin_cmd) *m->coolstep_semin_cmd = 0;
+    if (m->coolstep_semax_cmd) *m->coolstep_semax_cmd = 0;
+    if (m->chop_mode_cmd) *m->chop_mode_cmd = 0;
+    if (m->chop_vhigh_cmd) *m->chop_vhigh_cmd = 0;
+    if (m->chop_vhighchm_cmd) *m->chop_vhighchm_cmd = 0;
+    if (m->chop_vhighfs_cmd) *m->chop_vhighfs_cmd = 0;
+    if (m->chop_tbl_cmd) *m->chop_tbl_cmd = 0;
+    if (m->chop_hend_cmd) *m->chop_hend_cmd = 0;
+    if (m->chop_hstrt_cmd) *m->chop_hstrt_cmd = 0;
+    if (m->chop_toff_cmd) *m->chop_toff_cmd = 0;
+    if (m->chop_vsense_cmd) *m->chop_vsense_cmd = 0;
+    if (m->sw_en_softstop) *m->sw_en_softstop = 0;
+    if (m->sg_thresh_cmd) *m->sg_thresh_cmd = 0;
+    if (m->sg_trigger_thresh_cmd) *m->sg_trigger_thresh_cmd = 0;
+    if (m->vmax_factor_cmd) *m->vmax_factor_cmd = 0;
+
+    // Allocate and initialize feedback variables
+    m->velocity_reached_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_sg_fb = (volatile bool *)malloc(sizeof(bool));
+    m->position_reached_fb = (volatile bool *)malloc(sizeof(bool));
+    m->event_pos_reached_fb = (volatile bool *)malloc(sizeof(bool));
+    m->event_stop_sg_fb = (volatile bool *)malloc(sizeof(bool));
+    m->event_stop_r_fb = (volatile bool *)malloc(sizeof(bool));
+    m->event_stop_l_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_latch_r_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_latch_l_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_stop_r_fb = (volatile bool *)malloc(sizeof(bool));
+    m->status_stop_l_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_standstill_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_full_stepping_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_overtemp_warning_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_overtemp_alarm_fb = (volatile bool *)malloc(sizeof(bool));
+    m->motor_load_fb = (volatile int32_t *)malloc(sizeof(int32_t));
+    m->motor_current_fb = (volatile uint32_t *)malloc(sizeof(uint32_t));
+    m->motor_stall_fb = (volatile bool *)malloc(sizeof(bool));
+
+    // Initialize all feedback values to 0
+    if (m->velocity_reached_fb) *m->velocity_reached_fb = 0;
+    if (m->status_sg_fb) *m->status_sg_fb = 0;
+    if (m->position_reached_fb) *m->position_reached_fb = 0;
+    if (m->event_pos_reached_fb) *m->event_pos_reached_fb = 0;
+    if (m->event_stop_sg_fb) *m->event_stop_sg_fb = 0;
+    if (m->event_stop_r_fb) *m->event_stop_r_fb = 0;
+    if (m->event_stop_l_fb) *m->event_stop_l_fb = 0;
+    if (m->status_latch_r_fb) *m->status_latch_r_fb = 0;
+    if (m->status_latch_l_fb) *m->status_latch_l_fb = 0;
+    if (m->status_stop_r_fb) *m->status_stop_r_fb = 0;
+    if (m->status_stop_l_fb) *m->status_stop_l_fb = 0;
+    if (m->motor_standstill_fb) *m->motor_standstill_fb = 0;
+    if (m->motor_full_stepping_fb) *m->motor_full_stepping_fb = 0;
+    if (m->motor_overtemp_warning_fb) *m->motor_overtemp_warning_fb = 0;
+    if (m->motor_overtemp_alarm_fb) *m->motor_overtemp_alarm_fb = 0;
+    if (m->motor_load_fb) *m->motor_load_fb = 0;
+    if (m->motor_current_fb) *m->motor_current_fb = 0;
+    if (m->motor_stall_fb) *m->motor_stall_fb = 0;
+
+    return m;
 }
 
 // Configuration

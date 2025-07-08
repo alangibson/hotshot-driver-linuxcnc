@@ -5,7 +5,7 @@
 #include "tmc/helpers/Types.h"
 #include "global.h"
 #include "rpi.h"
-#include "hotshot.hal.h"
+#include "hotshot.joint.h"
 
 // in us
 // #define SERVO_PERIOD 1000

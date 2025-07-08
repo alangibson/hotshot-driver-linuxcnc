@@ -16,11 +16,11 @@ MachineLogDialog_play_sound = True
 MachineLogDialog_sound_type = READY
 
 [BOOK_KEEPING]
-last_loaded_directory = /media/alangibson/358E-2CEB
-RecentPath_0 = /media/alangibson/358E-2CEB/5 lines - 5mm - 2.tap
+last_loaded_directory = /media/operator/358E-2CEB
+RecentPath_0 = /media/operator/358E-2CEB/Table Gusset R (40_2).tap
 style_QSS_Path = DEFAULT
-last_saved_directory = /home/alangibson
-RecentSavedPath_0 = /home/alangibson/move.ngc
+last_saved_directory = /media/operator/358E-2CEB
+RecentSavedPath_0 = /media/operator/358E-2CEB/Table Gusset R (40_2).tap
 
 [SCREEN_OPTIONS]
 overlay_play_sound = False
@@ -31,7 +31,7 @@ notify_max_msgs = 10
 shutdown_check = False
 sound_player_on = False
 mainwindow_geometry = 267 97 1386 905
-MainWindow-geometry = 0 0 1348 702
+MainWindow-geometry = 420 80 1348 1011
 
 [MCH_MSG_OPTIONS]
 mchnMsg_play_sound = True

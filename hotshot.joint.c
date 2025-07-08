@@ -6,11 +6,12 @@
 #include "math.h"
 #include "hal.h"
 #include "global.h"
-#include "bcm2835.h"
+// #include "bcm2835.h"
 #include "rpi.h"
+// #include "tmc5041.h"
 #include "hotshot.h"
 #include "hotshot.lib.h"
-#include "hotshot.hal.h"
+#include "hotshot.joint.h"
 
 // #define DEBUG_HOMING 1
 
@@ -276,7 +277,7 @@ void hotshot_handle_joints(joint_t * joints, uint8_t motor_count) {
 /** Read/write to/from TMC5041 over SPI bus.
  * No math should happen in this function, or in any functions it calls.
  */
-void hotshot_spi(joint_t * joints, uint8_t motor_count)
+void hotshot_joint_spi(joint_t * joints, uint8_t motor_count)
 {
     for (uint8_t i = 0; i < motor_count; i++)
     {
@@ -297,6 +298,7 @@ void hotshot_spi(joint_t * joints, uint8_t motor_count)
             tmc5041_motor_position_hold(&joints[i].tmc);            
             tmc5041_motor_power_off(&joints[i].tmc);
         }
+
         // Set turn direction
         //  1: Velocity mode to positive VMAX (using AMAX acceleration)
         //  2: Velocity mode to negative VMAX (using AMAX acceleration)
@@ -330,11 +332,19 @@ void hotshot_spi(joint_t * joints, uint8_t motor_count)
  * Shut down Hotshot board and driver.
  * Should only be called once at shutdown.
  */
-void hotshot_end(joint_t * joint, uint8_t motor_count)
+void hotshot_end(joint_t * joints, uint8_t motor_count)
 {
-    // tmc5041_end(joint, MOTOR_COUNT);
+    printf("hotshot: Shut down motors\n");
+
     for (uint8_t i = 0; i < motor_count; i++) {
-        tmc5041_motor_end(&joint[i].tmc);
+        tmc5041_motor_end(&joints[i].tmc);
     }
+
+    printf("hotshot: Shut down motors complete\n");
+
+    printf("hotshot: Reset host computer\n");
+
     rpi_end();
+
+    printf("hotshot: Reset host computer complete\n");
 }

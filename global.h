@@ -3,7 +3,7 @@
 #define GLOBAL_OK
 
 // Uncomment to turn debugging on
-// #define DEBUG
+#define DEBUG
 // #define DEBUG_HOMING
 #define DEBUG_SCALING
 
@@ -12,23 +12,41 @@
 #define TMC5041_CLOCK_HZ 13200000
 
 // Define GPIO pin numbers
+// Be sure to sync any changes here to linuxcnc-rpi-image config.txt configuration.
 //
-// pin 38 / TORCH_FIRE
+// TORCH_FIRE / gpio 20 / pin 38 / output, drive low
 #define PIN_TORCH_ON 20
-// pin 28 / ARC_FREQ
-#define PIN_ARC_FREQ 1
-// pin 37 / ARC_OK
+// ARC_FREQ / gpio 1, pin 28 
+// #define PIN_ARC_FREQ 1
+// ARC_OK / gpio 26 / pin 37 / input, pull down
 #define PIN_ARC_OK 26
-// pin 10 / IHS_ENABLE
+// IHS_ENABLE / gpio 15 / pin 10 / output, drive low
 #define PIN_OHMIC_ENABLE 15
-// pin 8 / IHS_SENSE
+// IHS_SENSE / gpio 14 / pin 8 / input, pull down
 #define PIN_OHMIC_PROBE 14
-// pin 36 / ESTOP
+// ESTOP / gpio 16 / pin 36 / input, pull down
 #define PIN_ESTOP 16
-// pin 32 / TORCH_FLOAT
+// TORCH_FLOAT / gpio 12 / pin 32 / input, pull down
 #define PIN_TORCH_FLOAT 12
-// pin 40 / TORCH_LASER
+// TORCH_LASER / gpio 21 / pin 40 / output, drive low
 #define PIN_TORCH_LASER 21
+
+// SPI
+#define NUM_CS_PINS 4   // Total number of chip select pins
+#define SPI0_CS0_GPIO 8
+#define SPI0_CS1_GPIO 7
+#define SPI0_CS2_GPIO 19
+#define SPI0_CS3_GPIO 1
+
+// ADC
+#define ARC_VOLT_CS 3
+#define ARC_VOLT_CHANNEL 0
+#define ARC_VOLT_DIVISION 50
+#define AIR_PRESSURE_CS 2
+#define AIR_PRESSURE_CHANNEL 0
+
+// Actual reference voltages
+#define REF_5V 4.187
 
 // Homing debounce
 #define HOME_SEARCHING_DEBOUNCE 0

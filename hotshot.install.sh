@@ -4,7 +4,8 @@
 
 export BUILD_VERBOSE=1
 make clean
-make test
+# sudo make test
+make 
 sudo make install
 
 # mkdir -p $HOME/dev/plasma/linuxcnc/src/hal/drivers/hotshot/

@@ -2,7 +2,9 @@ component hotshot "Hotshot Board Driver";
 license "GPL";
 
 include "hotshot.h";
-include "hotshot.hal.h";
+include "hotshot.joint.h";
+include "hotshot.thc.h";
+include "hotshot.air.h";
 
 // plasmac requires floating-point
 function _ fp;
@@ -10,17 +12,19 @@ function x fp;
 function yl fp;
 function yr fp;
 function z fp;
-function spi fp;
+function joint_spi fp;
+function adc_spi fp;
 function sensors;
-function arc;
+// function arc;
 function rms;
 
 // option extra_setup;
-// option extra_cleanup;
+option extra_cleanup;
 
 pin out bit arc_ok;             // wire to plasmac.arc-ok-in
-// pin out float arc_voltage;   // wire to plasmac.arc-voltage-in
-pin out bit arc_freq_state;
+pin out float arc_voltage;      // wire to plasmac.arc-voltage-in
+pin out float air_pressure;     
+// pin out bit arc_freq_state;
 pin out bit torch_breakaway;    // wire to plasmac.breakaway
 pin out bit torch_float;        // wire to plasmac:float-switch
 pin in bit torch_on;            // wire to plasmac.torch-on
@@ -434,8 +438,8 @@ variable float sum_of_squares = 0.0;
 #include "stdlib.h"
 #include "stdio.h"
 #include "math.h"
-#include <rtapi.h>
-#include "bcm2835.h"
+#include "rtapi.h"
+// #include "bcm2835.h"
 #include "rpi.h"
 
 // X
@@ -622,10 +626,10 @@ variable float sum_of_squares = 0.0;
 
 #undef joints
 
+// Save reference so we can shut down in EXTRA_CLEANUP
+static struct __comp_state * state = NULL;
+
 bool IS_INITIALIZED = FALSE;
-// bool NEEDS_RPI_INIT = TRUE;
-// bool NEEDS_MOTOR_INIT = TRUE;
-// bool NEEDS_BOARD_INIT = TRUE;
 // 0 = X, 1 = YL, 2 = YR, 3 = Z
 // joint_t MOTORS[MOTOR_COUNT];
 
@@ -639,6 +643,9 @@ void ensure_initialized(struct __comp_state * __comp_inst)
     {
         return;
     }
+
+    // Save reference to __comp_inst for EXTRA_CLEANUP
+    state = __comp_inst;
 
     printf("hotshot: Initializing driver\n");
 
@@ -972,15 +979,14 @@ void ensure_initialized(struct __comp_state * __comp_inst)
 }
 
 // Must be loaded first in hal config since it initializes joints array.
-FUNCTION(spi)
+FUNCTION(joint_spi)
 {
     ensure_initialized(__comp_inst);
-    hotshot_spi(__comp_inst->joints, MOTOR_COUNT);
+    hotshot_joint_spi(__comp_inst->joints, MOTOR_COUNT);
 }
 
 FUNCTION(_)
 {
-    // ensure_initialized(__comp_inst);
     hotshot_handle_joints(__comp_inst->joints, MOTOR_COUNT);
 }
 
@@ -1008,43 +1014,27 @@ FUNCTION(z)
     hotshot_handle_homing(&__comp_inst->joints[3]);
 }
 
-FUNCTION(arc) 
+FUNCTION(adc_spi)
 {
-    uint8_t arc_freq_level = bcm2835_gpio_lev(PIN_ARC_FREQ);
-    if (arc_freq_level == HIGH)
-    {
-        arc_freq_state = TRUE;
-    }
-    else
-    {
-        arc_freq_state = FALSE;
-    }
+    ensure_initialized(__comp_inst);
+    
+    // Select adc chip
+    rpi_spi_select(ARC_VOLT_CS);
+    arc_voltage = hotshot_arc_voltage();
+    rpi_spi_unselect();
+
+    rpi_spi_select(AIR_PRESSURE_CS);
+    air_pressure = hotshot_air_pressure();
+    rpi_spi_unselect();
 }
 
 FUNCTION(sensors)
 {
-    // ensure_initialized(__comp_inst);
-
-    // Removed in favor of Stallguard based breakaway
-    //
-    // Read in breakaway switch state and set breakaway pin bit
-    //  plasmac.breakaway bit in
-    //      torch breakaway switch (optional, see float_switch)
-    // uint8_t torch_breakaway_level = bcm2835_gpio_lev(PIN_TORCH_BREAKAWAY);
-    // if (torch_breakaway_level == LOW)
-    // {
-    //     torch_breakaway = TRUE;
-    // }
-    // else
-    // {
-    //     torch_breakaway = FALSE;
-    // }
-
     // Read in ohmic probe contact state and set ohmic_probe pin bit
     //  plasmac.ohmic-probe bit in
     //      ohmic probe input
-    uint8_t ohmic_probe_level = bcm2835_gpio_lev(PIN_OHMIC_PROBE);
-    if (ohmic_probe_level == HIGH)
+    uint8_t ohmic_probe_level = rpi_gpio_read(PIN_OHMIC_PROBE);
+    if (ohmic_probe_level == 1)
     {
         ohmic_probe = TRUE;
     }
@@ -1056,8 +1046,8 @@ FUNCTION(sensors)
     // Read in ohmic probe contact state and set ohmic_probe pin bit
     // estop is wired fail safe, i.e. active low.
     // However, PlasmaC expects FALSE to indicate active estop
-    uint8_t estop_level = bcm2835_gpio_lev(PIN_ESTOP);
-    if (estop_level == HIGH)
+    uint8_t estop_level = rpi_gpio_read(PIN_ESTOP);
+    if (estop_level == 1)
     {
         machine_estop_fb = TRUE;
     }
@@ -1067,8 +1057,8 @@ FUNCTION(sensors)
     }
 
     // Read ARC_OK signal
-    uint8_t arc_ok_level = bcm2835_gpio_lev(PIN_ARC_OK);
-    if (arc_ok_level == HIGH)
+    uint8_t arc_ok_level = rpi_gpio_read(PIN_ARC_OK);
+    if (arc_ok_level == 1)
     {
         arc_ok = TRUE;
     }
@@ -1079,8 +1069,8 @@ FUNCTION(sensors)
 
     // Read torch float signal
     // Signal is active low.
-    uint8_t torch_float_level = bcm2835_gpio_lev(PIN_TORCH_FLOAT);
-    if (torch_float_level == HIGH)
+    uint8_t torch_float_level = rpi_gpio_read(PIN_TORCH_FLOAT);
+    if (torch_float_level == 1)
     {
         torch_float = FALSE;
     }
@@ -1094,11 +1084,11 @@ FUNCTION(sensors)
     //      on only while probing
     if (ohmic_enable)
     {
-        bcm2835_gpio_set(PIN_OHMIC_ENABLE);
+        rpi_gpio_on(PIN_OHMIC_ENABLE);
     }
     else
     {
-        bcm2835_gpio_clr(PIN_OHMIC_ENABLE);
+        rpi_gpio_off(PIN_OHMIC_ENABLE);
     }
 
     // Read in torch_on pin bit and enable/disable torch fire relay
@@ -1106,11 +1096,11 @@ FUNCTION(sensors)
     //      turn torch on, connect to your torch on input
     if (torch_on)
     {
-        bcm2835_gpio_set(PIN_TORCH_ON);
+        rpi_gpio_on(PIN_TORCH_ON);
     }
     else
     {
-        bcm2835_gpio_clr(PIN_TORCH_ON);
+        rpi_gpio_off(PIN_TORCH_ON);
     }
 }
 
@@ -1132,11 +1122,18 @@ FUNCTION(rms)
     rms_out = sqrt(sum_of_squares / num_samples);
 }
 
-// TODO is this still needed?
-// EXTRA_CLEANUP()
-// {
-//     hotshot_end(&__comp_inst->joints[0], MOTOR_COUNT);
-// }
+EXTRA_CLEANUP()
+{
+    printf("hotshot: Stopping driver\n");
+
+    if (state) {
+        hotshot_end(state->joints, MOTOR_COUNT);
+    }
+
+    IS_INITIALIZED = FALSE;
+
+    printf("hotshot: Stopping driver complete\n");
+}
 
 // HAL Module
 // ============================================================================
